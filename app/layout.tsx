@@ -14,6 +14,13 @@ export const metadata: Metadata = {
     siteName: 'Tour de Gunung Batu',
     type: 'website',
   },
+  icons: {
+    icon: [
+      { url: '/images/logo_peaderal_x_rudeboys.png', type: 'image/png' },
+    ],
+    shortcut: '/images/logo_peaderal_x_rudeboys.png',
+    apple: '/images/logo_peaderal_x_rudeboys.png',
+  },
 };
 
 export default function RootLayout({
