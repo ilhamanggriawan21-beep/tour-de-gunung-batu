@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAllAdminData } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const { registrants_with_po } = await getAllAdminData();
