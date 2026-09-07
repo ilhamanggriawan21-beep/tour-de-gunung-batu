@@ -1,0 +1,117 @@
+{
+  "last_bib": 1002,
+  "registrants": [
+    {
+      "id": "reg_j6ct3rj",
+      "nomor_registrasi": "TDGB-50774",
+      "nomor_bib": 1000,
+      "nama_lengkap": "IMAM RUTBOY",
+      "alamat_lengkap": "GANDOANG",
+      "no_telepon": "08123456789",
+      "no_telepon_kerabat": "08123456788",
+      "komunitas": "RUDEBOYS CYCLIST",
+      "jenis_registrasi": "daftar_saja",
+      "consent_data": true,
+      "consent_waiver": true,
+      "consent_no_refund": false,
+      "created_at": "2026-09-07T04:43:54.473Z"
+    },
+    {
+      "id": "reg_u7r464n",
+      "nomor_registrasi": "TDGB-77428",
+      "nomor_bib": 1001,
+      "nama_lengkap": "Budi Santoso",
+      "alamat_lengkap": "Jl. Raya Jonggol No. 10, Bogor",
+      "no_telepon": "081299998888",
+      "no_telepon_kerabat": "",
+      "komunitas": "Kopi Gowes",
+      "jenis_registrasi": "po_jersey",
+      "consent_data": true,
+      "consent_waiver": true,
+      "consent_no_refund": true,
+      "created_at": "2026-09-07T07:45:52.300Z"
+    },
+    {
+      "id": "reg_pqo1i3z",
+      "nomor_registrasi": "TDGB-34431",
+      "nomor_bib": 1002,
+      "nama_lengkap": "ILHAM ANGGRIAWAN",
+      "alamat_lengkap": "KRAMAT JATI RT. 015 RW. 011, KRAMAT JATI, KRAMAT JATI",
+      "no_telepon": "08811228085",
+      "no_telepon_kerabat": "0895341467617",
+      "komunitas": "RUDE BOYS",
+      "jenis_registrasi": "po_jersey",
+      "consent_data": true,
+      "consent_waiver": true,
+      "consent_no_refund": true,
+      "created_at": "2026-09-07T08:54:11.076Z"
+    }
+  ],
+  "jersey_pos": [
+    {
+      "id": "po_bdt2kfx",
+      "registrant_id": "reg_u7r464n",
+      "jenis_lengan": "long_sleeve",
+      "ukuran": "XL",
+      "qty": 1,
+      "harga_satuan": 185000,
+      "harga_total": 185000,
+      "status_pembayaran": "lunas",
+      "metode_ambil": "ambil_langsung",
+      "alamat_pengiriman": "",
+      "bukti_transfer_url": "https://example.com/bukti.jpg",
+      "verified_by": "PIC Rudeboys Cyclist",
+      "verified_at": "2026-09-07T08:12:41.095Z",
+      "catatan_admin": "",
+      "paid_at": "2026-09-07T08:12:41.095Z"
+    },
+    {
+      "id": "po_823f75u",
+      "registrant_id": "reg_pqo1i3z",
+      "jenis_lengan": "long_sleeve",
+      "ukuran": "L",
+      "qty": 1,
+      "harga_satuan": 135000,
+      "harga_total": 135000,
+      "status_pembayaran": "menunggu_verifikasi",
+      "metode_ambil": "ambil_langsung",
+      "alamat_pengiriman": ""
+    }
+  ],
+  "settings": {
+    "harga_short_sleeve": 120000,
+    "harga_long_sleeve": 135000,
+    "qris_image_url": "/qris-peaderal.png",
+    "nomor_rekening": "ON PROCESS",
+    "nama_bank": "DANA",
+    "nama_pemilik_rekening": "DANA PEADERAL",
+    "tanggal_tutup_po": "2026-09-20T23:59:59",
+    "tanggal_tutup_pendaftaran": "2026-09-25T23:59:59",
+    "kontak_wa_panitia": "6281298765432"
+  },
+  "admins": [
+    {
+      "id": "adm-super",
+      "email_login": "admin.tourdegunungbatu.com",
+      "password": "P@ssw0rd",
+      "pihak": "superadmin",
+      "role": "superadmin",
+      "nama_pic": "Admin Utama (Superadmin)",
+      "kontak_pic": "081298765432"
+    },
+    {
+      "id": "adm-rudeboys",
+      "email_login": "rudeboys@tourdegunungbatu.com",
+      "pihak": "rudeboys",
+      "nama_pic": "PIC Rudeboys Cyclist",
+      "kontak_pic": "08123456789"
+    },
+    {
+      "id": "adm-peaderal",
+      "email_login": "peaderal@tourdegunungbatu.com",
+      "pihak": "peaderal",
+      "nama_pic": "PIC Pergerakan PEADERAL",
+      "kontak_pic": "08987654321"
+    }
+  ]
+}

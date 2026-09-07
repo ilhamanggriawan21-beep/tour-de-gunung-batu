@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fredoka', 'Impact', sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F2F7FD;
+  color: #0A1338;
+  overflow-x: hidden;
+}
+
+/* Custom Text Shadow for Retro Jersey Typography */
+.text-shadow-jersey {
+  text-shadow: 2px 2px 0px #1D3AAE, -2px -2px 0px #1D3AAE, 2px -2px 0px #1D3AAE, -2px 2px 0px #1D3AAE, 0px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.text-shadow-gold {
+  text-shadow: 0 0 12px rgba(244, 199, 22, 0.6);
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Glassmorphism utility */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(168, 203, 238, 0.4);
+}
+
+.glass-card-dark {
+  background: rgba(10, 19, 56, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(168, 203, 238, 0.2);
+}
+
+/* Subtle fade-in animation for sections */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* Pulse glow for CTA buttons */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(244, 199, 22, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(244, 199, 22, 0.5);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* Fix for images with white/transparent backgrounds on light sections */
+.logo-contrast-dark {
+  filter: drop-shadow(0 0 1px rgba(0,0,0,0.15));
+}
+
+/* Responsive image container that maintains aspect ratio */
+.img-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.img-frame img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Improved form input focus styles */
+input:focus, select:focus, textarea:focus {
+  border-color: #1D3AAE !important;
+  box-shadow: 0 0 0 3px rgba(29, 58, 174, 0.1) !important;
+}
+
+/* Better scroll bar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F2F7FD;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #A8CBEE;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1D3AAE;
+}
