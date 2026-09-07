@@ -3,7 +3,7 @@ import { getAllAdminData } from '@/lib/db';
 
 export async function GET() {
   try {
-    const { registrants_with_po } = getAllAdminData();
+    const { registrants_with_po } = await getAllAdminData();
 
     // CSV Header
     let csv = 'BIB,No. Registrasi,Nama Lengkap,Komunitas,No. Telepon,No. Kerabat,Alamat Lengkap,Jenis Registrasi,Jenis Lengan,Ukuran,Qty,Metode Ambil,Alamat Pengiriman,Total Harga,Status Pembayaran,Verifikator,Tanggal Bayar\n';

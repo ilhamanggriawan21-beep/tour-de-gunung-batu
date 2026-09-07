@@ -19,8 +19,8 @@ import { getSettings, getWallOfHeroesData } from '@/lib/db';
 export const revalidate = 0; // Dynamic server render
 
 export default async function HomePage() {
-  const settings = getSettings();
-  const heroData = getWallOfHeroesData();
+  const settings = await getSettings();
+  const heroData = await getWallOfHeroesData();
 
   return (
     <div className="relative bg-brand-iceBg min-h-screen overflow-hidden">

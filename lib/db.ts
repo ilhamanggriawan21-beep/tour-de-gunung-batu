@@ -165,24 +165,41 @@ function writeDB(data: DBData): void {
   }
 }
 
-export function getSettings(): Settings {
+import { isSupabaseConfigured } from './supabase';
+import {
+  getSupabaseSettings,
+  updateSupabaseSettings,
+  getSupabaseAdmins,
+  createSupabaseAdminUser,
+  deleteSupabaseAdminUser,
+  updateSupabaseAdminProfile,
+  registerSupabaseParticipant,
+  addSupabaseLateJerseyPO,
+  uploadSupabasePaymentProof,
+  getSupabaseRegistrationDetails,
+  updateSupabasePaymentStatus,
+  getSupabaseWallOfHeroesData,
+  getSupabaseAllAdminData
+} from './supabase-db';
+
+function getLocalSettings(): Settings {
   const db = readDB();
   return db.settings;
 }
 
-export function updateSettings(newSettings: Partial<Settings>): Settings {
+function updateLocalSettings(newSettings: Partial<Settings>): Settings {
   const db = readDB();
   db.settings = { ...db.settings, ...newSettings };
   writeDB(db);
   return db.settings;
 }
 
-export function getAdmins(): AdminUser[] {
+function getLocalAdmins(): AdminUser[] {
   const db = readDB();
   return db.admins;
 }
 
-export function createAdminUser(data: {
+function createLocalAdminUser(data: {
   email_login: string;
   password?: string;
   pihak: 'rudeboys' | 'peaderal';
@@ -205,7 +222,7 @@ export function createAdminUser(data: {
   return newAdmin;
 }
 
-export function deleteAdminUser(id: string): boolean {
+function deleteLocalAdminUser(id: string): boolean {
   const db = readDB();
   const idx = db.admins.findIndex(a => a.id === id);
   if (idx !== -1) {
@@ -220,7 +237,7 @@ export function deleteAdminUser(id: string): boolean {
   return false;
 }
 
-export function updateAdminProfile(id: string, nama_pic: string, kontak_pic: string): AdminUser | null {
+function updateLocalAdminProfile(id: string, nama_pic: string, kontak_pic: string): AdminUser | null {
   const db = readDB();
   const idx = db.admins.findIndex(a => a.id === id || a.email_login === id);
   if (idx !== -1) {
@@ -232,7 +249,7 @@ export function updateAdminProfile(id: string, nama_pic: string, kontak_pic: str
   return null;
 }
 
-export function registerParticipant(data: {
+function registerLocalParticipant(data: {
   nama_lengkap: string;
   alamat_lengkap: string;
   no_telepon: string;
@@ -305,7 +322,7 @@ export function registerParticipant(data: {
   return { registrant, jersey_po: jerseyPO };
 }
 
-export function addLateJerseyPO(registrantIdOrNo: string, jerseySpec: {
+function addLateLocalJerseyPO(registrantIdOrNo: string, jerseySpec: {
   jenis_lengan: 'short_sleeve' | 'long_sleeve';
   ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
   qty: number;
@@ -369,7 +386,7 @@ export function addLateJerseyPO(registrantIdOrNo: string, jerseySpec: {
   return { registrant, jersey_po: jerseyPO };
 }
 
-export function uploadPaymentProof(nomorRegistrasi: string, buktiUrl: string): JerseyPO | null {
+function uploadLocalPaymentProof(nomorRegistrasi: string, buktiUrl: string): JerseyPO | null {
   const db = readDB();
   const reg = db.registrants.find(r => r.nomor_registrasi.toLowerCase() === nomorRegistrasi.toLowerCase());
   if (!reg) return null;
@@ -383,7 +400,7 @@ export function uploadPaymentProof(nomorRegistrasi: string, buktiUrl: string): J
   return db.jersey_pos[poIdx];
 }
 
-export function getRegistrationDetails(nomorRegistrasi: string): { registrant: Registrant; jersey_po?: JerseyPO; settings: Settings } | null {
+function getLocalRegistrationDetails(nomorRegistrasi: string): { registrant: Registrant; jersey_po?: JerseyPO; settings: Settings } | null {
   const db = readDB();
   const reg = db.registrants.find(
     r => r.nomor_registrasi.toLowerCase() === nomorRegistrasi.toLowerCase() ||
@@ -400,7 +417,7 @@ export function getRegistrationDetails(nomorRegistrasi: string): { registrant: R
   };
 }
 
-export function updatePaymentStatus(
+function updateLocalPaymentStatus(
   poId: string, 
   status: 'lunas' | 'menunggu_verifikasi' | 'perlu_klarifikasi' | 'kedaluwarsa',
   verifiedBy: string = 'Admin',
@@ -423,7 +440,7 @@ export function updatePaymentStatus(
   return db.jersey_pos[poIdx];
 }
 
-export function getWallOfHeroesData(): {
+function getLocalWallOfHeroesData(): {
   total_peserta: number;
   total_partisipan_jersey: number;
   peserta_terdaftar: Array<{
@@ -511,7 +528,7 @@ export function getWallOfHeroesData(): {
   };
 }
 
-export function getAllAdminData(): {
+function getLocalAllAdminData(): {
   registrants_with_po: Array<{
     registrant: Registrant;
     jersey_po?: JerseyPO;
@@ -533,4 +550,174 @@ export function getAllAdminData(): {
     settings: db.settings,
     admins: db.admins
   };
+}
+
+// =========================================================================
+// UNIVERSAL EXPORTED FUNCTIONS (Connects to Supabase or Falls back to Local)
+// =========================================================================
+
+export async function getSettings(): Promise<Settings> {
+  if (isSupabaseConfigured()) {
+    const s = await getSupabaseSettings();
+    if (s) return s;
+  }
+  return getLocalSettings();
+}
+
+export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
+  if (isSupabaseConfigured()) {
+    const s = await updateSupabaseSettings(newSettings);
+    if (s) return s;
+  }
+  return updateLocalSettings(newSettings);
+}
+
+export async function getAdmins(): Promise<AdminUser[]> {
+  if (isSupabaseConfigured()) {
+    const a = await getSupabaseAdmins();
+    if (a && a.length > 0) return a;
+  }
+  return getLocalAdmins();
+}
+
+export async function createAdminUser(data: {
+  email_login: string;
+  password?: string;
+  pihak: 'rudeboys' | 'peaderal';
+  nama_pic: string;
+  kontak_pic: string;
+}): Promise<AdminUser> {
+  if (isSupabaseConfigured()) {
+    const a = await createSupabaseAdminUser(data);
+    if (a) return a;
+  }
+  return createLocalAdminUser(data);
+}
+
+export async function deleteAdminUser(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    const success = await deleteSupabaseAdminUser(id);
+    if (success) return true;
+  }
+  return deleteLocalAdminUser(id);
+}
+
+export async function updateAdminProfile(id: string, nama_pic: string, kontak_pic: string): Promise<AdminUser | null> {
+  if (isSupabaseConfigured()) {
+    const a = await updateSupabaseAdminProfile(id, nama_pic, kontak_pic);
+    if (a) return a;
+  }
+  return updateLocalAdminProfile(id, nama_pic, kontak_pic);
+}
+
+export async function registerParticipant(data: {
+  nama_lengkap: string;
+  alamat_lengkap: string;
+  no_telepon: string;
+  no_telepon_kerabat?: string;
+  komunitas?: string;
+  jenis_registrasi: 'daftar_saja' | 'po_jersey';
+  consent_data: boolean;
+  consent_waiver: boolean;
+  consent_no_refund?: boolean;
+  jersey_spec?: {
+    jenis_lengan: 'short_sleeve' | 'long_sleeve';
+    ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+    qty: number;
+    metode_ambil: 'ambil_langsung' | 'dikirim';
+    alamat_pengiriman?: string;
+  };
+}): Promise<{ registrant: Registrant; jersey_po?: JerseyPO }> {
+  if (isSupabaseConfigured()) {
+    const res = await registerSupabaseParticipant(data);
+    if (res) return res;
+  }
+  return registerLocalParticipant(data);
+}
+
+export async function addLateJerseyPO(registrantIdOrNo: string, jerseySpec: {
+  jenis_lengan: 'short_sleeve' | 'long_sleeve';
+  ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  qty: number;
+  metode_ambil: 'ambil_langsung' | 'dikirim';
+  alamat_pengiriman?: string;
+  consent_no_refund: boolean;
+}): Promise<{ registrant: Registrant; jersey_po: JerseyPO } | null> {
+  if (isSupabaseConfigured()) {
+    const res = await addSupabaseLateJerseyPO(registrantIdOrNo, jerseySpec);
+    if (res) return res;
+  }
+  return addLateLocalJerseyPO(registrantIdOrNo, jerseySpec);
+}
+
+export async function uploadPaymentProof(nomorRegistrasi: string, buktiUrl: string): Promise<JerseyPO | null> {
+  if (isSupabaseConfigured()) {
+    const res = await uploadSupabasePaymentProof(nomorRegistrasi, buktiUrl);
+    if (res) return res;
+  }
+  return uploadLocalPaymentProof(nomorRegistrasi, buktiUrl);
+}
+
+export async function getRegistrationDetails(nomorRegistrasi: string): Promise<{ registrant: Registrant; jersey_po?: JerseyPO; settings: Settings } | null> {
+  if (isSupabaseConfigured()) {
+    const res = await getSupabaseRegistrationDetails(nomorRegistrasi);
+    if (res) return res;
+  }
+  return getLocalRegistrationDetails(nomorRegistrasi);
+}
+
+export async function updatePaymentStatus(
+  poId: string, 
+  status: 'lunas' | 'menunggu_verifikasi' | 'perlu_klarifikasi' | 'kedaluwarsa',
+  verifiedBy: string = 'Admin',
+  catatanAdmin: string = ''
+): Promise<JerseyPO | null> {
+  if (isSupabaseConfigured()) {
+    const res = await updateSupabasePaymentStatus(poId, status, verifiedBy, catatanAdmin);
+    if (res) return res;
+  }
+  return updateLocalPaymentStatus(poId, status, verifiedBy, catatanAdmin);
+}
+
+export async function getWallOfHeroesData(): Promise<{
+  total_peserta: number;
+  total_partisipan_jersey: number;
+  peserta_terdaftar: Array<{
+    id: string;
+    nama_lengkap: string;
+    komunitas: string;
+    nomor_bib: number;
+    is_jersey_lunas: boolean;
+    created_at: string;
+  }>;
+  partisipan_jersey: Array<{
+    id: string;
+    nama_lengkap: string;
+    komunitas: string;
+    nomor_bib: number;
+    jersey_spec_str: string;
+    created_at: string;
+  }>;
+  top_komunitas: Array<{ nama: string; jumlah: number }>;
+}> {
+  if (isSupabaseConfigured()) {
+    const res = await getSupabaseWallOfHeroesData();
+    if (res) return res;
+  }
+  return getLocalWallOfHeroesData();
+}
+
+export async function getAllAdminData(): Promise<{
+  registrants_with_po: Array<{
+    registrant: Registrant;
+    jersey_po?: JerseyPO;
+  }>;
+  settings: Settings;
+  admins: AdminUser[];
+}> {
+  if (isSupabaseConfigured()) {
+    const res = await getSupabaseAllAdminData();
+    if (res) return res;
+  }
+  return getLocalAllAdminData();
 }

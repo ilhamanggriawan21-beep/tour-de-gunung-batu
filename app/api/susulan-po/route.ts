@@ -3,7 +3,7 @@ import { addLateJerseyPO, getSettings } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
-    const settings = getSettings();
+    const settings = await getSettings();
     const now = new Date();
     const poDeadline = new Date(settings.tanggal_tutup_po);
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const result = addLateJerseyPO(registrantIdOrNo, jerseySpec);
+    const result = await addLateJerseyPO(registrantIdOrNo, jerseySpec);
 
     if (!result) {
       return NextResponse.json(

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'poId dan status diperlukan' }, { status: 400 });
     }
 
-    const updated = updatePaymentStatus(poId, status, adminId || 'Admin', catatanAdmin || '');
+    const updated = await updatePaymentStatus(poId, status, adminId || 'Admin', catatanAdmin || '');
 
     if (!updated) {
       return NextResponse.json({ success: false, error: 'Data PO tidak ditemukan' }, { status: 404 });

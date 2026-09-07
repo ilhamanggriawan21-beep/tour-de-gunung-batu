@@ -3,7 +3,7 @@ import { registerParticipant, getSettings } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
-    const settings = getSettings();
+    const settings = await getSettings();
     const now = new Date();
 
     // Check deadlines
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = registerParticipant(body);
+    const result = await registerParticipant(body);
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     return NextResponse.json(

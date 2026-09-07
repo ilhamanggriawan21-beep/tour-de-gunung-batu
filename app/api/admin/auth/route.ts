@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Email dan kata sandi wajib diisi.' }, { status: 400 });
     }
 
-    const admins = getAdmins();
+    const admins = await getAdmins();
     const cleanInput = email.toLowerCase().trim();
 
     // Find admin by exact email_login or matching normalized address

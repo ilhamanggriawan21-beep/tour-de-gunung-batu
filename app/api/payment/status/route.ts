@@ -10,7 +10,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Kode registrasi atau nomor telp diperlukan' }, { status: 400 });
     }
 
-    const details = getRegistrationDetails(regCode);
+    const details = await getRegistrationDetails(regCode);
     if (!details) {
       return NextResponse.json({ success: false, error: 'Data registrasi tidak ditemukan' }, { status: 404 });
     }

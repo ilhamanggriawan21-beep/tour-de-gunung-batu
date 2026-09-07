@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Semua field PIC wajib diisi' }, { status: 400 });
     }
 
-    const updatedAdmin = updateAdminProfile(adminId, nama_pic, kontak_pic);
+    const updatedAdmin = await updateAdminProfile(adminId, nama_pic, kontak_pic);
     if (!updatedAdmin) {
       return NextResponse.json({ success: false, error: 'Profil admin tidak ditemukan' }, { status: 404 });
     }

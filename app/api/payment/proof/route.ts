@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Nomor registrasi dan bukti transfer wajib diisi' }, { status: 400 });
     }
 
-    const updatedPo = uploadPaymentProof(nomor_registrasi, bukti_url);
+    const updatedPo = await uploadPaymentProof(nomor_registrasi, bukti_url);
     if (!updatedPo) {
       return NextResponse.json({ success: false, error: 'Data PO Jersey tidak ditemukan untuk nomor registrasi ini' }, { status: 404 });
     }
