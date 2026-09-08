@@ -32,83 +32,86 @@ export default async function HomePage() {
       <TopoBackground />
 
       {/* HERO SECTION — Gunung Batu Photo Banner with Blue Gradient Overlay */}
-      <section className="relative min-h-[85vh] sm:min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 text-white overflow-hidden">
+      <section className="relative min-h-[88vh] sm:min-h-[92vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 text-white overflow-hidden pt-20 sm:pt-24 pb-12 sm:pb-16">
         {/* Background: Gunung Batu Photo */}
         <div className="absolute inset-0 z-0">
           <img
             src="/images/gambar_gunung.jpg"
             alt="Gunung Batu Jonggol"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-center scale-105 animate-pulse-slow"
           />
-          {/* Blue Gradient Overlay — Logo harus terlihat */}
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-navy/85 via-brand-navy/70 to-brand-navy/95"></div>
+          {/* Multi-layered Blue & Neon Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-brand-navy/90 via-brand-navy/75 to-brand-navy/98" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-brand-royal/30 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[200px] bg-brand-yellow/15 rounded-full blur-[90px] pointer-events-none" />
           {/* Extra bottom fade for smooth transition */}
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-brand-navy to-transparent"></div>
+          <div className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-t from-brand-navy via-brand-navy/80 to-transparent" />
         </div>
 
-        <div className="max-w-5xl mx-auto text-center relative z-10 py-10 sm:py-16">
-          
-          {/* Presenter Intro Line */}
-          <div className="mb-4 sm:mb-6">
-            <p className="text-xs sm:text-sm md:text-base font-bold text-white tracking-[0.2em] sm:tracking-[0.25em] uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-              PEADERAL x RUDEBOYS 2026 PRESENT :
+        <div className="max-w-5xl mx-auto text-center relative z-10 py-6 sm:py-10">
+          {/* Presenter Glass Pill Badge */}
+          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-white/10 via-white/15 to-white/10 backdrop-blur-xl px-4 sm:px-6 py-2 rounded-full border border-brand-yellow/40 shadow-[0_0_20px_rgba(244,199,22,0.25)] mb-6 sm:mb-8 group">
+            <span className="w-2 h-2 rounded-full bg-brand-yellow animate-ping" />
+            <p className="text-[11px] sm:text-xs md:text-sm font-black text-brand-yellow tracking-[0.2em] sm:tracking-[0.25em] uppercase drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">
+              PEADERAL × RUDEBOYS 2026 PRESENT
             </p>
           </div>
 
           {/* 
-            LOGO EVENT — BESAR sebagai banner utama identitas event.
-            Logo ini biru gelap + kuning di atas background putih (PNG).
-            Agar terlihat di atas gradasi biru gelap, kita beri glow putih.
+            LOGO EVENT — BESAR & DINAMIS sebagai banner utama identitas event.
+            Logo ini diberi container glassmorphism halus + glow ambient.
           */}
-          <div className="w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto mb-6 sm:mb-8">
+          <div className="relative w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto mb-6 sm:mb-8 p-3 sm:p-5 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-500 hover:border-brand-yellow/40 hover:shadow-[0_0_50px_rgba(244,199,22,0.25)] group">
             <img
               src="/images/logo_event.png"
               alt="TOUR DE GUNUNG BATU — Logo Utama Event"
-              className="w-full h-auto object-contain drop-shadow-[0_0_40px_rgba(255,255,255,0.35)] hover:drop-shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all duration-500"
+              className="w-full h-auto object-contain drop-shadow-[0_0_40px_rgba(255,255,255,0.4)] group-hover:scale-[1.02] transition-transform duration-500"
             />
           </div>
 
           {/* Logo Kolaborasi Peaderal x Rudeboys — kecil di bawah logo utama */}
           <div className="flex items-center justify-center mb-5 sm:mb-6">
-            <img
-              src="/images/logo_peaderal_x_rudeboys.png"
-              alt="Logo PEADERAL x Rudeboys"
-              className="max-h-8 sm:max-h-10 md:max-h-12 w-auto object-contain drop-shadow-[0_0_15px_rgba(244,199,22,0.5)]"
-            />
+            <div className="bg-brand-navy/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 shadow-inner">
+              <img
+                src="/images/logo_peaderal_x_rudeboys.png"
+                alt="Logo PEADERAL x Rudeboys"
+                className="max-h-7 sm:max-h-9 md:max-h-11 w-auto object-contain drop-shadow-[0_0_15px_rgba(244,199,22,0.6)]"
+              />
+            </div>
           </div>
 
-          <p className="max-w-xl sm:max-w-2xl mx-auto text-sm sm:text-base text-white/85 font-medium leading-relaxed mb-6 sm:mb-8 px-2">
-            Event bersepeda mandiri (<em className="text-white font-semibold">self-supported</em>). Pendaftaran 100% GRATIS. Seluruh hasil pre-order jersey resmi disalurkan menjadi sepeda untuk anak yatim/piatu &amp; dhuafa.
+          <p className="max-w-xl sm:max-w-2xl mx-auto text-xs sm:text-sm md:text-base text-slate-200 font-medium leading-relaxed mb-6 sm:mb-8 px-2">
+            Event bersepeda mandiri (<em className="text-brand-yellow font-semibold not-italic">self-supported</em>). Pendaftaran 100% GRATIS. Seluruh hasil pre-order jersey resmi disalurkan menjadi sepeda untuk anak yatim/piatu &amp; dhuafa.
           </p>
 
           {/* Key Event Info Pills — Date & Location */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8 text-xs sm:text-sm font-bold px-2">
-            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 text-brand-yellow w-full sm:w-auto justify-center">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2.5 sm:gap-3 mb-6 sm:mb-8 text-xs sm:text-sm font-bold px-2">
+            <div className="flex items-center space-x-2.5 bg-gradient-to-r from-brand-yellow/20 to-amber-500/20 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-brand-yellow/40 text-brand-yellow w-full sm:w-auto justify-center shadow-lg">
               <Calendar className="w-4 h-4 text-brand-yellow flex-shrink-0" />
               <span>Minggu, 27 Sept 2026</span>
             </div>
-            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 text-white w-full sm:w-auto justify-center">
+            <div className="flex items-center space-x-2.5 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-white w-full sm:w-auto justify-center shadow-lg">
               <MapPin className="w-4 h-4 text-brand-sky flex-shrink-0" />
               <span>Tugu Tegar Beriman → Gunung Batu</span>
             </div>
           </div>
 
-          {/* Route Stats — Large Display Cards */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-lg sm:max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-3 sm:p-5 text-center flex flex-col items-center justify-center">
+          {/* Route Stats — Large Dynamic Display Cards */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-lg sm:max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
+            <div className="bg-gradient-to-b from-white/15 to-white/5 backdrop-blur-xl rounded-2xl border border-white/20 p-3 sm:p-5 text-center flex flex-col items-center justify-center hover:-translate-y-1 transition-all duration-300 shadow-xl">
               <Bike className="w-5 h-5 sm:w-7 sm:h-7 text-brand-sky mb-1 sm:mb-2" />
               <span className="text-2xl sm:text-4xl font-black text-white font-display leading-none">22.6</span>
-              <span className="text-[10px] sm:text-xs font-bold text-brand-sky uppercase tracking-wider mt-1">KM Total</span>
+              <span className="text-[10px] sm:text-xs font-extrabold text-brand-sky uppercase tracking-wider mt-1.5">KM Total</span>
             </div>
-            <div className="bg-brand-yellow/20 backdrop-blur-md rounded-2xl border border-brand-yellow/40 p-3 sm:p-5 text-center flex flex-col items-center justify-center">
+            <div className="bg-gradient-to-b from-brand-yellow/25 to-amber-500/10 backdrop-blur-xl rounded-2xl border border-brand-yellow/50 p-3 sm:p-5 text-center flex flex-col items-center justify-center hover:-translate-y-1 transition-all duration-300 shadow-[0_0_25px_rgba(244,199,22,0.2)]">
               <Mountain className="w-5 h-5 sm:w-7 sm:h-7 text-brand-yellow mb-1 sm:mb-2" />
               <span className="text-2xl sm:text-4xl font-black text-brand-yellow font-display leading-none">700<span className="text-base sm:text-xl">m</span></span>
-              <span className="text-[10px] sm:text-xs font-bold text-brand-yellow/80 uppercase tracking-wider mt-1">Elevation Gain</span>
+              <span className="text-[10px] sm:text-xs font-extrabold text-brand-yellow/90 uppercase tracking-wider mt-1.5">Elevation Gain</span>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-3 sm:p-5 text-center flex flex-col items-center justify-center">
+            <div className="bg-gradient-to-b from-emerald-500/20 to-white/5 backdrop-blur-xl rounded-2xl border border-emerald-400/40 p-3 sm:p-5 text-center flex flex-col items-center justify-center hover:-translate-y-1 transition-all duration-300 shadow-xl">
               <Award className="w-5 h-5 sm:w-7 sm:h-7 text-emerald-400 mb-1 sm:mb-2" />
-              <span className="text-2xl sm:text-4xl font-black text-white font-display leading-none">FREE</span>
-              <span className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider mt-1">Pendaftaran</span>
+              <span className="text-2xl sm:text-4xl font-black text-emerald-300 font-display leading-none">FREE</span>
+              <span className="text-[10px] sm:text-xs font-extrabold text-emerald-400 uppercase tracking-wider mt-1.5">Pendaftaran</span>
             </div>
           </div>
 
@@ -116,15 +119,15 @@ export default async function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-2">
             <Link
               href="/daftar"
-              className="w-full sm:w-auto bg-gradient-to-r from-brand-yellow to-amber-400 text-brand-navy text-base sm:text-lg font-extrabold px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl shadow-glow hover:scale-105 transition-all flex items-center justify-center space-x-2 sm:space-x-3 animate-pulse-glow"
+              className="w-full sm:w-auto bg-gradient-to-r from-brand-yellow via-amber-300 to-brand-yellow text-brand-navy text-base sm:text-lg font-black px-7 sm:px-9 py-4 rounded-2xl shadow-[0_0_30px_rgba(244,199,22,0.4)] hover:shadow-[0_0_40px_rgba(244,199,22,0.7)] hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2.5 uppercase tracking-wider"
             >
               <Bike className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>Daftar Sekarang (Gratis)</span>
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
               href="/wall-of-heroes"
-              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border border-white/30 text-base sm:text-lg font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl backdrop-blur-sm transition-all flex items-center justify-center space-x-2 sm:space-x-3"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border border-white/30 text-base sm:text-lg font-bold px-7 sm:px-9 py-4 rounded-2xl backdrop-blur-md transition-all duration-300 flex items-center justify-center space-x-2.5"
             >
               <Users className="w-5 h-5 text-brand-yellow" />
               <span>Wall of Heroes ({heroData.total_peserta} Peserta)</span>
