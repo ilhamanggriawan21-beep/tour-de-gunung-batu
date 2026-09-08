@@ -43,66 +43,8 @@ export default function Navbar() {
           {/* Subtle Glow Behind Navbar */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-royal/30 via-brand-yellow/20 to-brand-royal/30 rounded-full blur-md opacity-50 -z-10 animate-pulse pointer-events-none" />
 
-          {/* Logo Branding - Clean Enlarged Logo without badge/text */}
-          <Link href="/" className="flex items-center justify-center group py-0.5">
-            <img
-              src="/images/logo_peaderal_x_rudeboys.png"
-              alt="Logo PEADERAL x RUDEBOYS"
-              className="h-9 sm:h-11 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_0_15px_rgba(244,199,22,0.6)]"
-            />
-          </Link>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center space-x-1 bg-black/20 backdrop-blur-md p-1.5 rounded-full border border-white/10">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative px-4 py-2 rounded-full text-xs font-extrabold transition-all duration-300 flex items-center space-x-1.5 group ${
-                    isActive
-                      ? 'bg-gradient-to-r from-brand-royal via-blue-600 to-brand-royal text-white shadow-lg shadow-brand-royal/40 ring-1 ring-white/30'
-                      : 'text-slate-200 hover:text-brand-yellow hover:bg-white/10'
-                  }`}
-                >
-                  {Icon && (
-                    <Icon
-                      className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110 ${
-                        isActive ? 'text-brand-yellow' : 'text-brand-sky group-hover:text-brand-yellow'
-                      }`}
-                    />
-                  )}
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* CTA Desktop */}
-          <div className="hidden lg:flex items-center space-x-3">
-            <Link
-              href="/daftar"
-              className="relative group overflow-hidden bg-gradient-to-r from-brand-yellow via-amber-300 to-brand-yellow hover:from-amber-300 hover:to-brand-yellow text-brand-navy font-black px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(244,199,22,0.4)] hover:shadow-[0_0_30px_rgba(244,199,22,0.7)] transition-all duration-300 hover:scale-105 flex items-center space-x-2 text-xs uppercase tracking-wider"
-            >
-              <div className="absolute inset-0 w-1/2 h-full bg-white/30 skew-x-12 -translate-x-full group-hover:translate-x-[300%] transition-transform duration-700 ease-out" />
-              <Bike className="w-4 h-4 text-brand-navy" />
-              <span>Daftar Sekarang</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-
-          {/* Mobile Actions */}
-          <div className="lg:hidden flex items-center space-x-2">
-            <Link
-              href="/daftar"
-              className="bg-gradient-to-r from-brand-yellow to-amber-400 text-brand-navy font-black text-[11px] px-3.5 py-1.5 rounded-full shadow-lg shadow-brand-yellow/30 flex items-center space-x-1 uppercase tracking-wide active:scale-95 transition-transform"
-            >
-              <span>Daftar</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-
+          {/* PALING KIRI: Garis Tiga (Hamburger Menu) & Desktop Nav Links */}
+          <div className="flex items-center space-x-2 z-10">
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-brand-sky hover:text-white focus:outline-none transition-colors border border-white/15"
@@ -110,6 +52,59 @@ export default function Navbar() {
             >
               {isOpen ? <X className="w-5 h-5 text-brand-yellow" /> : <Menu className="w-5 h-5 text-white" />}
             </button>
+
+            {/* Desktop Navigation Links */}
+            <nav className="hidden lg:flex items-center space-x-1 bg-black/20 backdrop-blur-md p-1.5 rounded-full border border-white/10">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                const Icon = link.icon;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all duration-300 flex items-center space-x-1.5 group ${
+                      isActive
+                        ? 'bg-gradient-to-r from-brand-royal via-blue-600 to-brand-royal text-white shadow-lg shadow-brand-royal/40 ring-1 ring-white/30'
+                        : 'text-slate-200 hover:text-brand-yellow hover:bg-white/10'
+                    }`}
+                  >
+                    {Icon && (
+                      <Icon
+                        className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110 ${
+                          isActive ? 'text-brand-yellow' : 'text-brand-sky group-hover:text-brand-yellow'
+                        }`}
+                      />
+                    )}
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* PALING TENGAH: Logo PEADERAL x RUDEBOYS */}
+          <div className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
+            <Link href="/" className="flex items-center justify-center group py-0.5">
+              <img
+                src="/images/logo_peaderal_x_rudeboys.png"
+                alt="Logo PEADERAL x RUDEBOYS"
+                className="h-8 sm:h-10 md:h-11 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_0_15px_rgba(244,199,22,0.6)]"
+              />
+            </Link>
+          </div>
+
+          {/* PALING KANAN: Tombol DAFTAR */}
+          <div className="flex items-center space-x-3 z-10">
+            <Link
+              href="/daftar"
+              className="relative group overflow-hidden bg-gradient-to-r from-brand-yellow via-amber-300 to-brand-yellow hover:from-amber-300 hover:to-brand-yellow text-brand-navy font-black px-4 sm:px-5 py-1.5 sm:py-2 rounded-full shadow-[0_0_20px_rgba(244,199,22,0.4)] hover:shadow-[0_0_30px_rgba(244,199,22,0.7)] transition-all duration-300 hover:scale-105 flex items-center space-x-1.5 text-xs uppercase tracking-wider active:scale-95"
+            >
+              <div className="absolute inset-0 w-1/2 h-full bg-white/30 skew-x-12 -translate-x-full group-hover:translate-x-[300%] transition-transform duration-700 ease-out" />
+              <Bike className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-navy" />
+              <span className="hidden sm:inline">Daftar Sekarang</span>
+              <span className="sm:hidden font-black">Daftar</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
         </div>
 
