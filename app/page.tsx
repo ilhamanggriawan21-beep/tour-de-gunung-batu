@@ -276,14 +276,10 @@ export default async function HomePage() {
                 Sifat Event: <strong>Self-Supported (Mandiri)</strong>
               </p>
             </div>
-            <a
-              href="/gpx/tour_de_gunung_batu.gpx"
-              download="TOUR_DE_GUNUNG_BATU.gpx"
-              className="mt-2 inline-flex items-center justify-center space-x-2 bg-brand-navy hover:bg-brand-royal text-brand-yellow hover:text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download File GPX Resmi</span>
-            </a>
+            <div className="mt-2 flex items-start space-x-2 bg-amber-50 border border-amber-200 text-amber-900 p-2.5 rounded-xl text-[11px] leading-relaxed">
+              <ShieldCheck className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <span>File GPX rute akan dibagikan resmi pada H-1 (26 Sept 2026) demi menjaga sterilisasi jalur event.</span>
+            </div>
           </div>
         </div>
       </section>

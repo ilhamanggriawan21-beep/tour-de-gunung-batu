@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Tour de Gunung Batu 2026 — Gowes Amal & PO Jersey',
     description: 'Pendaftaran event gowes amal gratis 27 September 2026. 100% keuntungan jersey donasi sepeda.',
-    url: 'https://tourdegunungbatu.vercel.app',
+    url: 'https://tour-de-gunung-batu.vercel.app',
     siteName: 'Tour de Gunung Batu',
     type: 'website',
   },

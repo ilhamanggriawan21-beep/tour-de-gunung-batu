@@ -1,6 +1,6 @@
 import React from 'react';
 import TopoBackground from '@/components/TopoBackground';
-import { ShieldCheck, AlertTriangle, Bike, Clock, MapPin, PhoneCall, HelpCircle, Download } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Bike, Clock, MapPin, PhoneCall, HelpCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PeraturanPage() {
@@ -50,16 +50,8 @@ export default function PeraturanPage() {
               <li><strong>Jam Kumpul & Briefing:</strong> 07.00 WIB</li>
               <li><strong>Jam Roll Out (On Saddle):</strong> 07.30 WIB Tepat (Tidak menunggu peserta terlambat)</li>
               <li><strong>Destinasi Rute:</strong> Kaki Gunung Batu, Jonggol (Jarak: ±22,6 KM Start → Finish, Elevation Gain ±700m)</li>
-              <li className="flex flex-col sm:flex-row sm:items-center gap-1.5 pt-1">
-                <strong>File GPX Rute:</strong>
-                <a
-                  href="/gpx/tour_de_gunung_batu.gpx"
-                  download="TOUR_DE_GUNUNG_BATU.gpx"
-                  className="inline-flex items-center space-x-1 bg-brand-royal/10 hover:bg-brand-royal hover:text-white text-brand-royal px-2.5 py-1 rounded-lg text-xs font-bold transition-all w-fit"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download File GPX Resmi (22,6 KM)</span>
-                </a>
+              <li className="pt-1 text-slate-600">
+                <strong>File GPX Rute:</strong> Akan dibagikan resmi pada <strong>26 September 2026 (H-1 Event)</strong> demi menjaga sterilisasi jalur event.
               </li>
             </ul>
           </section>
@@ -113,25 +105,25 @@ export default function PeraturanPage() {
               <div className="p-4 bg-brand-iceBg rounded-2xl border border-brand-sky/30">
                 <span className="font-bold text-brand-navy text-sm block mb-1">File GPX Navigasi Rute</span>
                 <p className="text-xs text-slate-500 mb-3">
-                  File navigasi rute format .GPX untuk Garmin, Wahoo, Bryton, dan Strava akan dirilis resmi pada <strong>26 September 2026 (H-1 Event)</strong>.
+                  File navigasi rute format .GPX untuk Garmin, Wahoo, Bryton, dan Strava akan dirilis resmi pada <strong>26 September 2026 (H-1 Event)</strong> demi menjaga sterilisasi rute event.
                 </p>
                 <span className="inline-block bg-slate-200 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg cursor-not-allowed">
-                  Download GPX (Tersedia 26 Sept)
+                  Tersedia 26 Sept 2026
                 </span>
               </div>
               <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
                 <span className="font-bold text-emerald-900 text-sm block mb-1">Kontak Darurat &amp; Info Panitia</span>
                 <p className="text-xs text-slate-600 mb-3">
-                  Untuk pertanyaan dan koordinasi darurat seputar event, silakan hubungi WhatsApp panitia resmi.
+                  Untuk pertanyaan dan koordinasi darurat seputar event, silakan hubungi WhatsApp panitia resmi: <strong>+62 877-4587-0767 (Rangga Rudeboys)</strong>.
                 </p>
                 <a
-                  href="https://wa.me/6281298765432?text=Halo%20Panitia%20Tour%20de%20Gunung%20Batu%202026"
+                  href="https://wa.me/6287745870767?text=Halo%20Panitia%20Tour%20de%20Gunung%20Batu%202026"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow"
+                  className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow"
                 >
                   <PhoneCall className="w-3.5 h-3.5" />
-                  <span>WhatsApp Panitia Resmi</span>
+                  <span>WhatsApp: +62 877-4587-0767 (Rangga Rudeboys)</span>
                 </a>
               </div>
             </div>
@@ -139,12 +131,20 @@ export default function PeraturanPage() {
         </div>
 
         {/* Navigation CTAs */}
-        <div className="text-center space-x-4">
-          <Link href="/daftar" className="bg-brand-yellow text-brand-navy font-extrabold px-6 py-3 rounded-xl shadow-glow">
-            Lanjut Pendaftaran Sekarang
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-4 pb-6 w-full max-w-md sm:max-w-none mx-auto">
+          <Link
+            href="/daftar"
+            className="w-full sm:w-auto bg-gradient-to-r from-brand-yellow to-amber-400 text-brand-navy font-extrabold px-6 sm:px-8 py-3.5 rounded-2xl shadow-glow hover:scale-105 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base text-center"
+          >
+            <span>Lanjut Pendaftaran Sekarang</span>
+            <ArrowRight className="w-4 h-4" />
           </Link>
-          <Link href="/faq" className="bg-white text-slate-700 font-bold px-6 py-3 rounded-xl border border-slate-300">
-            Lihat FAQ & Tanya Jawab
+          <Link
+            href="/faq"
+            className="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 font-bold px-6 sm:px-8 py-3.5 rounded-2xl border border-slate-300 transition-all flex items-center justify-center space-x-2 text-sm sm:text-base text-center shadow-sm"
+          >
+            <HelpCircle className="w-4 h-4 text-brand-royal" />
+            <span>Lihat FAQ &amp; Tanya Jawab</span>
           </Link>
         </div>
       </div>

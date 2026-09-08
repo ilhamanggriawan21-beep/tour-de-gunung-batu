@@ -12,7 +12,7 @@ Titik Kumpul: Tugu Tegar Beriman, Jonggol → Tujuan: Gunung Batu, Jonggol
 On Saddle: 07.30 WIB | Jarak ±30 KM berangkat + ±30 KM pulang | EG
 ±1000m+
 
-Domain: tourdegunungbatu.vercel.app
+Domain: tour-de-gunung-batu.vercel.app
 
 *Dokumen versi 4.3 — Revisi: pembayaran PO Jersey via QRIS statis +
 verifikasi manual (tombol "Sudah Bayar"/"Batalkan Verifikasi", tanpa fee
@@ -67,7 +67,7 @@ share (Epic I) — semua tetap mengikuti tema visual jersey yang sama.
 
 ### 1.3 Kriteria Sukses (Success Metrics)
 
-- Website live dan dapat diakses publik di tourdegunungbatu.vercel.app
+- Website live dan dapat diakses publik di tour-de-gunung-batu.vercel.app
   selambat-lambatnya H-10 sebelum event (17 September 2026).
 
 - 100% data peserta tersimpan terstruktur di database — 0% dikelola

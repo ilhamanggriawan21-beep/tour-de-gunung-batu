@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS settings (
   nama_pemilik_rekening TEXT NOT NULL DEFAULT 'PERGERAKAN SEPEDAH PEADERAL',
   tanggal_tutup_po TIMESTAMPTZ NOT NULL DEFAULT '2026-09-20T23:59:59+07:00',
   tanggal_tutup_pendaftaran TIMESTAMPTZ NOT NULL DEFAULT '2026-09-25T23:59:59+07:00',
-  kontak_wa_panitia TEXT NOT NULL DEFAULT '6281298765432',
+  kontak_wa_panitia TEXT NOT NULL DEFAULT '6287745870767',
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -66,7 +66,7 @@ INSERT INTO settings (
   nama_bank, nama_pemilik_rekening, tanggal_tutup_po, tanggal_tutup_pendaftaran, kontak_wa_panitia
 ) VALUES (
   1, 120000, 135000, '/qris-peaderal.png', '5220394811',
-  'BCA', 'PERGERAKAN SEPEDAH PEADERAL', '2026-09-20T23:59:59+07:00', '2026-09-25T23:59:59+07:00', '6281298765432'
+  'BCA', 'PERGERAKAN SEPEDAH PEADERAL', '2026-09-20T23:59:59+07:00', '2026-09-25T23:59:59+07:00', '6287745870767'
 ) ON CONFLICT (id) DO NOTHING;
 
 -- 5. TABEL ADMIN_USERS (Superadmin & PIC Rudeboys / PEADERAL)

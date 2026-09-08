@@ -49,7 +49,7 @@ export default function FAQPage() {
     {
       id: 'faq-9',
       question: 'Di mana saya bisa mengunduh file GPX rute event?',
-      answer: 'File GPX rute akan dirilis resmi pada H-1 event (26 September 2026) di halaman utama website ini.'
+      answer: 'File GPX rute akan dirilis resmi pada H-1 event (26 September 2026) di website ini demi menjaga sterilisasi jalur event.'
     },
     {
       id: 'faq-10',
@@ -86,17 +86,17 @@ export default function FAQPage() {
           <p className="text-xs text-slate-500">Hubungi panitia resmi PEADERAL x Rudeboys Cyclist via WhatsApp.</p>
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
-              href="https://wa.me/6281298765432?text=Halo%20Panitia%20Tour%20de%20Gunung%20Batu%2C%20saya%20ingin%20bertanya"
+              href="https://wa.me/6287745870767?text=Halo%20Panitia%20Tour%20de%20Gunung%20Batu%2C%20saya%20ingin%20bertanya"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow text-sm space-x-2"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow text-sm space-x-2"
             >
               <PhoneCall className="w-4 h-4" />
-              <span>Chat WhatsApp Panitia</span>
+              <span>Chat WhatsApp: +62 877-4587-0767 (Rangga Rudeboys)</span>
             </a>
             <Link
               href="/daftar"
-              className="inline-flex items-center justify-center bg-brand-royal text-white font-bold px-6 py-3 rounded-xl shadow text-sm space-x-2"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-brand-royal text-white font-bold px-6 py-3 rounded-xl shadow text-sm space-x-2"
             >
               <span>Lanjut ke Pendaftaran Event</span>
               <ArrowRight className="w-4 h-4" />

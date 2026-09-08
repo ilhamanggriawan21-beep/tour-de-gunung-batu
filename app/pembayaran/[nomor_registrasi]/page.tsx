@@ -344,16 +344,18 @@ export default function PembayaranPage() {
 
                 <div className="pt-3 border-t text-[11px] text-slate-500 space-y-1.5">
                   <p>• Admin memverifikasi manual maksimal 1x24 jam setelah bukti diunggah.</p>
-                  <p className="flex items-center space-x-1">
-                    <Phone className="w-3 h-3 text-emerald-600" />
-                    <span>Konfirmasi WA Panitia: </span>
+                  <p className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <span className="flex items-center space-x-1">
+                      <Phone className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                      <span>WA Panitia (+62 877-4587-0767 - Rangga Rudeboys):</span>
+                    </span>
                     <a
-                      href={`https://wa.me/${settings?.kontak_wa_panitia || '6281298765432'}?text=${encodeURIComponent(`Halo Panitia, saya sudah transfer PO Jersey Tour de Gunung Batu dengan No. Registrasi ${nomorRegistrasi}.`)}`}
+                      href={`https://wa.me/${settings?.kontak_wa_panitia || '6287745870767'}?text=${encodeURIComponent(`Halo Panitia, saya sudah transfer PO Jersey Tour de Gunung Batu dengan No. Registrasi ${nomorRegistrasi}.`)}`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-emerald-600 font-bold underline"
                     >
-                      Kirim Pesan WhatsApp
+                      Kirim Pesan Konfirmasi WA
                     </a>
                   </p>
                 </div>
