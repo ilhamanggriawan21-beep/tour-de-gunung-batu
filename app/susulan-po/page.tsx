@@ -299,12 +299,12 @@ export default function SusulanPOPage() {
                         onChange={(e) => setJerseySpec({ ...jerseySpec, ukuran: e.target.value as any })}
                         className="w-full px-4 py-3 rounded-xl border border-slate-300 font-bold text-sm focus:ring-2 focus:ring-brand-royal"
                       >
-                        <option value="S">S (Lingkar Dada ±92cm)</option>
-                        <option value="M">M (Lingkar Dada ±96cm)</option>
-                        <option value="L">L (Lingkar Dada ±100cm)</option>
-                        <option value="XL">XL (Lingkar Dada ±104cm)</option>
-                        <option value="XXL">XXL (Lingkar Dada ±108cm)</option>
-                        <option value="3XL">3XL (Lingkar Dada ±116cm)</option>
+                        <option value="S">S (Lebar 48cm / Panjang 69cm)</option>
+                        <option value="M">M (Lebar 50cm / Panjang 71cm)</option>
+                        <option value="L">L (Lebar 52cm / Panjang 73cm)</option>
+                        <option value="XL">XL (Lebar 54cm / Panjang 75cm)</option>
+                        <option value="XXL">XXL / 2XL (Lebar 56cm / Panjang 77cm)</option>
+                        <option value="3XL">3XL (Lebar 58cm / Panjang 79cm)</option>
                       </select>
                     </div>
                     <div>
