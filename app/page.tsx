@@ -12,7 +12,8 @@ import {
   ArrowRight,
   Users,
   Shirt,
-  Award
+  Award,
+  Download
 } from 'lucide-react';
 import { getSettings, getWallOfHeroesData } from '@/lib/db';
 
@@ -90,7 +91,7 @@ export default async function HomePage() {
             </div>
             <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 text-brand-sky w-full sm:w-auto justify-center">
               <Mountain className="w-4 h-4 text-brand-yellow flex-shrink-0" />
-              <span>±60 KM PP • EG ±1000m+</span>
+              <span>±22,6 KM (Start → Finish) • EG ±700m</span>
             </div>
           </div>
 
@@ -259,21 +260,30 @@ export default async function HomePage() {
             <h3 className="font-bold text-base sm:text-lg text-brand-navy mb-2">Titik Kumpul &amp; Tujuan</h3>
             <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
               Titik Start: <strong>Tugu Tegar Beriman, Jonggol</strong><br />
-              Tujuan Destinasi: <strong>Gunung Batu, Jonggol</strong><br />
-              Total Jarak: <strong>±30 KM Berangkat + ±30 KM Pulang</strong>
+              Tujuan Destinasi: <strong>Kaki Gunung Batu, Jonggol</strong><br />
+              Jarak Rute: <strong>±22,6 KM (Start → Finish)</strong>
             </p>
           </div>
 
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-sky/30 shadow-card sm:col-span-2 md:col-span-1">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-royal/10 flex items-center justify-center text-brand-royal mb-3 sm:mb-4">
-              <Mountain className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-sky/30 shadow-card sm:col-span-2 md:col-span-1 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-royal/10 flex items-center justify-center text-brand-royal mb-3 sm:mb-4">
+                <Mountain className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <h3 className="font-bold text-base sm:text-lg text-brand-navy mb-2">Profil Rute &amp; Elevasi</h3>
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-3">
+                Elevation Gain: <strong>±700m (Start 87 mdpl → Puncak 632 mdpl)</strong><br />
+                Sifat Event: <strong>Self-Supported (Mandiri)</strong>
+              </p>
             </div>
-            <h3 className="font-bold text-base sm:text-lg text-brand-navy mb-2">Profil Rute &amp; Elevasi</h3>
-            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Elevation Gain: <strong>±1000m+</strong><br />
-              File GPX Rute Rilis: <strong>H-1 Event (26 September 2026)</strong><br />
-              Sifat Event: <strong>Self-Supported (Mandiri)</strong>
-            </p>
+            <a
+              href="/gpx/tour_de_gunung_batu.gpx"
+              download="TOUR_DE_GUNUNG_BATU.gpx"
+              className="mt-2 inline-flex items-center justify-center space-x-2 bg-brand-navy hover:bg-brand-royal text-brand-yellow hover:text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download File GPX Resmi</span>
+            </a>
           </div>
         </div>
       </section>

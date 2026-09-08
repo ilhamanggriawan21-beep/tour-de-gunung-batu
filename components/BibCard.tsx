@@ -80,7 +80,7 @@ export default function BibCard({
     // Footer info & Registration Code
     ctx.fillStyle = '#F4C716';
     ctx.font = '600 14px sans-serif';
-    ctx.fillText(`REG CODE: ${nomorRegistrasi} | ELEVATION GAIN ±1000M+`, 400, 465);
+    ctx.fillText(`REG CODE: ${nomorRegistrasi} | ELEVATION GAIN ±700M`, 400, 465);
 
     // Trigger Download
     const link = document.createElement('a');
@@ -127,7 +127,7 @@ export default function BibCard({
             #{nomorBib}
           </span>
           <p className="text-[10px] text-brand-sky/80 mt-1 italic">
-            "Nomor BIB #{nomorBib} — Bagian dari Elevasi Kolektif ±1000m+"
+            "Nomor BIB #{nomorBib} — Bagian dari Elevasi Kolektif ±700m"
           </p>
         </div>
 
