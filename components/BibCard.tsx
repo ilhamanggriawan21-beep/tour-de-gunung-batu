@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Download, Share2, Bike, Heart } from 'lucide-react';
+import { downloadBibCard } from '@/lib/downloadBib';
 
 interface BibCardProps {
   nomorBib: number;
@@ -21,72 +22,13 @@ export default function BibCard({
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleDownload = () => {
-    if (!cardRef.current) return;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = 800;
-    canvas.height = 500;
-
-    // Background Navy
-    ctx.fillStyle = '#0A1338';
-    ctx.fillRect(0, 0, 800, 500);
-
-    // Top Border Accent (Yellow & Royal Blue)
-    ctx.fillStyle = '#F4C716';
-    ctx.fillRect(0, 0, 800, 16);
-    ctx.fillStyle = '#1D3AAE';
-    ctx.fillRect(0, 16, 800, 12);
-
-    // Header Title
-    ctx.fillStyle = '#F4C716';
-    ctx.font = '900 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('PEADERAL x RUDEBOYS CYCLIST', 400, 60);
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '800 32px sans-serif';
-    ctx.fillText('TOUR DE GUNUNG BATU', 400, 100);
-
-    ctx.fillStyle = '#A8CBEE';
-    ctx.font = '600 16px sans-serif';
-    ctx.fillText('27 SEPTEMBER 2026 • JONGGOL → GUNUNG BATU', 400, 130);
-
-    // BIB Number Box
-    ctx.fillStyle = '#1D3AAE';
-    ctx.beginPath();
-    ctx.roundRect(150, 160, 500, 170, 20);
-    ctx.fill();
-    ctx.strokeStyle = '#F4C716';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    // Large BIB Number
-    ctx.fillStyle = '#F4C716';
-    ctx.font = '900 100px sans-serif';
-    ctx.fillText(`#${nomorBib}`, 400, 280);
-
-    // Participant Name
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '800 30px sans-serif';
-    ctx.fillText(namaLengkap.toUpperCase(), 400, 380);
-
-    // Community
-    ctx.fillStyle = '#A8CBEE';
-    ctx.font = '600 20px sans-serif';
-    ctx.fillText(`KOMUNITAS: ${(komunitas || 'UMUM').toUpperCase()}`, 400, 420);
-
-    // Footer info & Registration Code
-    ctx.fillStyle = '#F4C716';
-    ctx.font = '600 14px sans-serif';
-    ctx.fillText(`REG CODE: ${nomorRegistrasi} | ELEVATION GAIN ±700M`, 400, 465);
-
-    // Trigger Download
-    const link = document.createElement('a');
-    link.download = `BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    downloadBibCard({
+      nomorBib,
+      namaLengkap,
+      komunitas,
+      nomorRegistrasi,
+      jenisRegistrasi
+    });
   };
 
   const handleShareWA = () => {

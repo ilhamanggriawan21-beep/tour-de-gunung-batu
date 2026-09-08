@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopoBackground from '@/components/TopoBackground';
+import BibCard from '@/components/BibCard';
+import { downloadBibCard } from '@/lib/downloadBib';
 import {
   ShieldCheck,
   Users,
@@ -97,6 +99,7 @@ export default function AdminDashboardPage() {
 
   const [deleteRegistrantId, setDeleteRegistrantId] = useState<{ id: string; nama: string } | null>(null);
   const [deletePoId, setDeletePoId] = useState<{ id: string; nama: string } | null>(null);
+  const [selectedBibParticipant, setSelectedBibParticipant] = useState<any>(null);
 
   const openEditModal = (item: any) => {
     const r = item.registrant;
@@ -247,7 +250,6 @@ export default function AdminDashboardPage() {
   const isSuperAdmin = adminSession?.role === 'superadmin' || adminSession?.pihak === 'superadmin';
 
   const handleVerify = async (poId: string, newStatus: 'lunas' | 'menunggu_verifikasi' | 'perlu_klarifikasi') => {
-    // 1. Instant Optimistic UI Update (0ms delay!)
     const previousData = [...registrantsData];
     setRegistrantsData((prev) =>
       prev.map((item) => {
@@ -269,7 +271,6 @@ export default function AdminDashboardPage() {
     setMessage(`Status pembayaran langsung diubah menjadi "${newStatus.toUpperCase()}"!`);
     setTimeout(() => setMessage(''), 3500);
 
-    // 2. Background server sync
     try {
       const res = await fetch('/api/admin/verify', {
         method: 'POST',
@@ -398,7 +399,6 @@ export default function AdminDashboardPage() {
 
   if (!adminSession) return null;
 
-  // Filtered PO Queue
   const poList = registrantsData.filter((item) => item.jersey_po);
   const filteredPoList = poList.filter((item) => {
     const matchesFilter =
@@ -415,7 +415,6 @@ export default function AdminDashboardPage() {
     return matchesFilter && matchesSearch;
   });
 
-  // Filtered All Registrants
   const filteredAllRegistrants = registrantsData.filter((item) => {
     return (
       item.registrant.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -430,7 +429,6 @@ export default function AdminDashboardPage() {
       <TopoBackground />
 
       <div className="max-w-7xl mx-auto relative z-10 space-y-6">
-        {/* Header Admin Bar */}
         <div className="bg-brand-navy text-white p-6 rounded-3xl border border-brand-yellow/40 shadow-glow flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 rounded-xl bg-brand-royal text-brand-yellow flex items-center justify-center font-black text-xl border border-brand-yellow shadow-sm">
@@ -486,7 +484,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Tab Navigation */}
         <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-2xl border border-brand-sky/30 shadow-card">
           <button
             onClick={() => setActiveTab('verifikasi')}
@@ -518,7 +515,6 @@ export default function AdminDashboardPage() {
             <span>Pengaturan Pembayaran &amp; QRIS</span>
           </button>
 
-          {/* SUPERADMIN SPECIFIC TAB: KELOLA AKUN PIC */}
           {isSuperAdmin && (
             <button
               onClick={() => setActiveTab('kelola_pic')}
@@ -545,7 +541,6 @@ export default function AdminDashboardPage() {
           </button>
         </div>
 
-        {/* TAB 1: ANTREAN VERIFIKASI PEMBAYARAN */}
         {activeTab === 'verifikasi' && (
           <div className="bg-white p-6 rounded-3xl border border-brand-sky/40 shadow-card space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
@@ -556,7 +551,6 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
 
-              {/* Filter Pills */}
               <div className="flex flex-wrap items-center gap-2">
                 {[
                   { id: 'semua', label: 'Semua Status' },
@@ -579,7 +573,6 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Search Bar */}
             <div className="relative max-w-md">
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               <input
@@ -591,7 +584,6 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* Mobile & Tablet Card List (Zero Horizontal Scroll!) */}
             <div className="lg:hidden space-y-4">
               {filteredPoList.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl text-slate-400 font-medium text-xs">
@@ -608,7 +600,14 @@ export default function AdminDashboardPage() {
                       <div className="flex items-start justify-between gap-2 border-b pb-2">
                         <div>
                           <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">BIB #{r.nomor_bib} • {r.nomor_registrasi}</span>
+                          <button
+                            onClick={() => setSelectedBibParticipant(r)}
+                            className="text-[10px] text-brand-royal hover:underline font-mono inline-flex items-center space-x-1 font-bold bg-brand-royal/10 px-1.5 py-0.5 rounded border border-brand-royal/20 mt-0.5"
+                            title="Klik untuk Pratinjau & Unduh BIB"
+                          >
+                            <span>BIB #{r.nomor_bib}</span>
+                            <Download className="w-2.5 h-2.5" />
+                          </button>
                         </div>
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
@@ -697,6 +696,20 @@ export default function AdminDashboardPage() {
 
                         <div className="flex items-center space-x-1">
                           <button
+                            onClick={() => downloadBibCard({
+                              nomorBib: r.nomor_bib,
+                              namaLengkap: r.nama_lengkap,
+                              komunitas: r.komunitas,
+                              nomorRegistrasi: r.nomor_registrasi,
+                              jenisRegistrasi: r.jenis_registrasi
+                            })}
+                            className="bg-brand-navy hover:bg-brand-royal text-white font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 shadow-sm"
+                            title="Unduh Gambar BIB PNG"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>BIB</span>
+                          </button>
+                          <button
                             onClick={() => openEditModal(item)}
                             className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30"
                           >
@@ -725,7 +738,6 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
-            {/* Desktop Table (Zero Horizontal Scroll!) */}
             <div className="hidden lg:block">
               <table className="w-full text-left text-xs">
                 <thead className="bg-brand-navy text-white uppercase text-[11px] font-bold">
@@ -756,7 +768,14 @@ export default function AdminDashboardPage() {
                         <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3 px-3">
                             <span className="font-extrabold text-xs text-brand-navy block">{r.nama_lengkap}</span>
-                            <span className="text-[10px] text-slate-400 font-mono block">BIB #{r.nomor_bib} • {r.nomor_registrasi}</span>
+                            <button
+                              onClick={() => setSelectedBibParticipant(r)}
+                              className="text-[10px] text-brand-royal hover:underline font-mono inline-flex items-center space-x-1 font-bold bg-brand-royal/10 px-1.5 py-0.5 rounded border border-brand-royal/20 mt-0.5"
+                              title="Klik untuk Pratinjau & Unduh BIB"
+                            >
+                              <span>BIB #{r.nomor_bib}</span>
+                              <Download className="w-2.5 h-2.5" />
+                            </button>
                           </td>
                           <td className="py-3 px-3">
                             <span className="font-semibold text-slate-700 block text-xs">{r.komunitas || 'Umum'}</span>
@@ -838,6 +857,20 @@ export default function AdminDashboardPage() {
                           <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center space-x-1">
                               <button
+                                onClick={() => downloadBibCard({
+                                  nomorBib: r.nomor_bib,
+                                  namaLengkap: r.nama_lengkap,
+                                  komunitas: r.komunitas,
+                                  nomorRegistrasi: r.nomor_registrasi,
+                                  jenisRegistrasi: r.jenis_registrasi
+                                })}
+                                className="bg-brand-navy hover:bg-brand-royal text-white font-bold px-1.5 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 shadow-sm"
+                                title="Unduh Gambar BIB PNG"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>BIB</span>
+                              </button>
+                              <button
                                 onClick={() => openEditModal(item)}
                                 className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 border border-brand-royal/30"
                                 title="Edit"
@@ -871,7 +904,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* TAB 2: REKAP SEMUA PESERTA */}
         {activeTab === 'rekap' && (
           <div className="bg-white p-6 rounded-3xl border border-brand-sky/40 shadow-card space-y-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b pb-4">
@@ -893,7 +925,6 @@ export default function AdminDashboardPage() {
               </a>
             </div>
 
-            {/* Search */}
             <div className="relative max-w-md">
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               <input
@@ -905,7 +936,6 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* Mobile & Tablet Card List (Zero Horizontal Scroll!) */}
             <div className="lg:hidden space-y-4">
               {filteredAllRegistrants.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl text-slate-400 font-medium text-xs">
@@ -921,7 +951,14 @@ export default function AdminDashboardPage() {
                       <div className="flex items-start justify-between gap-2 border-b pb-2">
                         <div>
                           <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">BIB #{r.nomor_bib} • {r.nomor_registrasi}</span>
+                          <button
+                            onClick={() => setSelectedBibParticipant(r)}
+                            className="text-[10px] text-brand-royal hover:underline font-mono inline-flex items-center space-x-1 font-bold bg-brand-royal/10 px-1.5 py-0.5 rounded border border-brand-royal/20 mt-0.5"
+                            title="Klik untuk Pratinjau & Unduh BIB"
+                          >
+                            <span>BIB #{r.nomor_bib}</span>
+                            <Download className="w-2.5 h-2.5" />
+                          </button>
                         </div>
                         {p ? (
                           <span
@@ -966,6 +1003,20 @@ export default function AdminDashboardPage() {
 
                       <div className="flex items-center justify-end space-x-1.5 pt-2 border-t">
                         <button
+                          onClick={() => downloadBibCard({
+                            nomorBib: r.nomor_bib,
+                            namaLengkap: r.nama_lengkap,
+                            komunitas: r.komunitas,
+                            nomorRegistrasi: r.nomor_registrasi,
+                            jenisRegistrasi: r.jenis_registrasi
+                          })}
+                          className="bg-brand-navy hover:bg-brand-royal text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center space-x-1 shadow-sm"
+                          title="Unduh Gambar BIB PNG"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Unduh BIB</span>
+                        </button>
+                        <button
                           onClick={() => openEditModal(item)}
                           className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30"
                         >
@@ -995,7 +1046,6 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
-            {/* Desktop Table (Zero Horizontal Scroll!) */}
             <div className="hidden lg:block">
               <table className="w-full text-left text-xs">
                 <thead className="bg-brand-navy text-white uppercase text-[11px] font-bold">
@@ -1024,7 +1074,16 @@ export default function AdminDashboardPage() {
 
                       return (
                         <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3 px-3 font-mono font-bold text-slate-500">#{r.nomor_bib}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-500">
+                            <button
+                              onClick={() => setSelectedBibParticipant(r)}
+                              className="text-[11px] text-brand-royal hover:underline font-mono inline-flex items-center space-x-1 font-extrabold bg-brand-royal/10 px-1.5 py-0.5 rounded border border-brand-royal/20"
+                              title="Klik untuk Pratinjau & Unduh BIB"
+                            >
+                              <span>#{r.nomor_bib}</span>
+                              <Download className="w-2.5 h-2.5" />
+                            </button>
+                          </td>
                           <td className="py-3 px-3">
                             <span className="font-extrabold text-xs text-brand-navy block">{r.nama_lengkap}</span>
                             <span className="text-[10px] text-slate-400 font-mono">{r.nomor_registrasi}</span>
@@ -1050,6 +1109,20 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center space-x-1">
+                              <button
+                                onClick={() => downloadBibCard({
+                                  nomorBib: r.nomor_bib,
+                                  namaLengkap: r.nama_lengkap,
+                                  komunitas: r.komunitas,
+                                  nomorRegistrasi: r.nomor_registrasi,
+                                  jenisRegistrasi: r.jenis_registrasi
+                                })}
+                                className="bg-brand-navy hover:bg-brand-royal text-white font-bold px-1.5 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 shadow-sm"
+                                title="Unduh Gambar BIB PNG"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>BIB</span>
+                              </button>
                               <button
                                 onClick={() => openEditModal(item)}
                                 className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 border border-brand-royal/30"
@@ -1086,7 +1159,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* TAB 3: PENGATURAN PEMBAYARAN */}
         {activeTab === 'pengaturan' && (
           <form onSubmit={handleSaveSettings} className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-sky/40 shadow-card space-y-6">
             <h2 className="text-lg font-bold text-brand-navy border-b pb-3">
@@ -1208,10 +1280,8 @@ export default function AdminDashboardPage() {
           </form>
         )}
 
-        {/* TAB 4: MANAJEMEN AKUN PIC (SUPERADMIN ONLY) */}
         {activeTab === 'kelola_pic' && isSuperAdmin && (
           <div className="space-y-6">
-            {/* Create PIC Form */}
             <form onSubmit={handleCreatePIC} className="bg-white p-6 sm:p-8 rounded-3xl border-2 border-brand-yellow/50 shadow-card space-y-6">
               <div className="border-b pb-3">
                 <div className="flex items-center space-x-2 text-brand-navy">
@@ -1224,7 +1294,6 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="space-y-4 text-sm">
-                {/* Pihak Selector */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-2">Pilih Pihak / Organisasi PIC *</label>
                   <div className="grid grid-cols-2 gap-3 max-w-md">
@@ -1316,7 +1385,6 @@ export default function AdminDashboardPage() {
               </button>
             </form>
 
-            {/* List of Registered Admin / PIC Accounts */}
             <div className="bg-white p-6 rounded-3xl border border-brand-sky/40 shadow-card space-y-4">
               <h3 className="font-extrabold text-brand-navy text-base flex items-center space-x-2 border-b pb-3">
                 <Users className="w-5 h-5 text-brand-royal" />
@@ -1410,7 +1478,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* TAB 5: PROFIL ADMIN */}
         {activeTab === 'profil' && (
           <form onSubmit={handleSaveProfile} className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-sky/40 shadow-card space-y-6 max-w-xl">
             <h2 className="text-lg font-bold text-brand-navy border-b pb-3">
@@ -1452,7 +1519,6 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* Modal Preview Bukti Transfer */}
       {previewImage && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-4 space-y-3">
@@ -1489,7 +1555,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* MODAL EDIT DATA PESERTA & JERSEY */}
       {editingItem && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl my-8">
@@ -1507,7 +1572,6 @@ export default function AdminDashboardPage() {
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
-              {/* Section 1: Data Diri */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                 <h4 className="font-extrabold text-xs text-brand-navy uppercase tracking-wider">1. Informasi Peserta</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -1561,7 +1625,6 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Section 2: PO Jersey (if item has PO) */}
               {editingItem.jersey_po && (
                 <div className="bg-brand-royal/5 p-4 rounded-2xl border border-brand-royal/20 space-y-3">
                   <h4 className="font-extrabold text-xs text-brand-royal uppercase tracking-wider">2. Spesifikasi PO Jersey &amp; Pembayaran</h4>
@@ -1676,7 +1739,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* MODAL KONFIRMASI HAPUS PESERTA TOTAL */}
       {deleteRegistrantId && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-center">
@@ -1707,7 +1769,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* MODAL KONFIRMASI HAPUS PO JERSEY SAJA */}
       {deletePoId && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-center">
@@ -1734,6 +1795,30 @@ export default function AdminDashboardPage() {
                 Ya, Hapus PO
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {selectedBibParticipant && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative my-8">
+            <button
+              onClick={() => setSelectedBibParticipant(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="text-center pt-2">
+              <h3 className="font-black text-xl text-brand-navy">Kartu Digital BIB Peserta</h3>
+              <p className="text-xs text-slate-500">Pratinjau &amp; Unduh Gambar BIB Resmi</p>
+            </div>
+            <BibCard
+              nomorBib={selectedBibParticipant.nomor_bib}
+              namaLengkap={selectedBibParticipant.nama_lengkap}
+              komunitas={selectedBibParticipant.komunitas}
+              nomorRegistrasi={selectedBibParticipant.nomor_registrasi}
+              jenisRegistrasi={selectedBibParticipant.jenis_registrasi}
+            />
           </div>
         </div>
       )}
