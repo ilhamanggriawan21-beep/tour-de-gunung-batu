@@ -49,23 +49,19 @@ export default async function HomePage() {
         </div>
 
         <div className="max-w-5xl mx-auto text-center relative z-10 py-6 sm:py-10">
-          {/* Presenter Glass Pill Badge */}
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-white/10 via-white/15 to-white/10 backdrop-blur-xl px-4 sm:px-6 py-2 rounded-full border border-brand-yellow/40 shadow-[0_0_20px_rgba(244,199,22,0.25)] mb-6 sm:mb-8 group">
-            <span className="w-2 h-2 rounded-full bg-brand-yellow animate-ping" />
-            <p className="text-[11px] sm:text-xs md:text-sm font-black text-brand-yellow tracking-[0.2em] sm:tracking-[0.25em] uppercase drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">
-              PEADERAL × RUDEBOYS 2026 PRESENT
-            </p>
-          </div>
+          {/* Presenter Intro Line - Clean text without badge */}
+          <p className="text-xs sm:text-sm md:text-base font-black text-brand-yellow tracking-[0.25em] uppercase mb-4 sm:mb-6 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+            PEADERAL × RUDEBOYS 2026 PRESENT
+          </p>
 
           {/* 
-            LOGO EVENT — BESAR & DINAMIS sebagai banner utama identitas event.
-            Logo ini diberi container glassmorphism halus + glow ambient.
+            LOGO EVENT — BESAR & FREELY FLOATING tanpa kotak pembatas / badge
           */}
-          <div className="relative w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto mb-6 sm:mb-8 p-3 sm:p-5 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-500 hover:border-brand-yellow/40 hover:shadow-[0_0_50px_rgba(244,199,22,0.25)] group">
+          <div className="w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto mb-6 sm:mb-8">
             <img
               src="/images/logo_event.png"
               alt="TOUR DE GUNUNG BATU — Logo Utama Event"
-              className="w-full h-auto object-contain drop-shadow-[0_0_40px_rgba(255,255,255,0.4)] group-hover:scale-[1.02] transition-transform duration-500"
+              className="w-full h-auto object-contain drop-shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-[1.02] transition-transform duration-500"
             />
           </div>
 
@@ -82,13 +78,14 @@ export default async function HomePage() {
             Event bersepeda mandiri (<em className="text-brand-yellow font-semibold not-italic">self-supported</em>). Pendaftaran 100% GRATIS. Seluruh hasil pre-order jersey resmi disalurkan menjadi sepeda untuk anak yatim/piatu &amp; dhuafa.
           </p>
 
-          {/* Key Event Info Pills — Date & Location */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2.5 sm:gap-3 mb-6 sm:mb-8 text-xs sm:text-sm font-bold px-2">
-            <div className="flex items-center space-x-2.5 bg-gradient-to-r from-brand-yellow/20 to-amber-500/20 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-brand-yellow/40 text-brand-yellow w-full sm:w-auto justify-center shadow-lg">
+          {/* Key Event Info — Clean Open Text with Icons */}
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-6 mb-6 sm:mb-8 text-xs sm:text-sm font-bold px-2">
+            <div className="flex items-center space-x-2 text-brand-yellow">
               <Calendar className="w-4 h-4 text-brand-yellow flex-shrink-0" />
               <span>Minggu, 27 Sept 2026</span>
             </div>
-            <div className="flex items-center space-x-2.5 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-white w-full sm:w-auto justify-center shadow-lg">
+            <span className="hidden sm:inline text-white/30">•</span>
+            <div className="flex items-center space-x-2 text-white">
               <MapPin className="w-4 h-4 text-brand-sky flex-shrink-0" />
               <span>Tugu Tegar Beriman → Gunung Batu</span>
             </div>
@@ -146,8 +143,8 @@ export default async function HomePage() {
       <section className="py-10 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-10 border border-brand-sky/30 shadow-card relative overflow-hidden">
           <div className="text-center max-w-2xl sm:max-w-3xl mx-auto mb-6 sm:mb-8 space-y-2 sm:space-y-3">
-            <div className="inline-flex items-center space-x-2 text-brand-royal font-bold text-[10px] sm:text-xs uppercase tracking-widest bg-brand-royal/10 px-3 py-1 rounded-full">
-              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500 fill-rose-500" />
+            <div className="inline-flex items-center space-x-2 text-brand-royal font-extrabold text-xs uppercase tracking-widest">
+              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
               <span>Official Jersey &amp; Misi PEADERAL</span>
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-brand-navy font-display leading-tight">
@@ -160,12 +157,12 @@ export default async function HomePage() {
 
           {/* OFFICIAL JERSEY DESIGN IMAGE FRAME */}
           <div className="relative max-w-3xl sm:max-w-4xl mx-auto bg-gradient-to-b from-brand-navy via-brand-navyLight to-brand-royalDark p-3 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-brand-yellow/70 shadow-glow mb-6 sm:mb-8 overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-white text-[10px] sm:text-xs font-bold mb-2 sm:mb-3 px-1 sm:px-2 gap-1">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-white text-xs font-bold mb-2 sm:mb-3 px-1 sm:px-2 gap-1">
               <span className="text-brand-yellow uppercase tracking-wider flex items-center">
-                <Shirt className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 text-brand-yellow" />
+                <Shirt className="w-4 h-4 mr-1.5 text-brand-yellow" />
                 DESAIN RESMI JERSEY AMAL 2026
               </span>
-              <span className="bg-white/10 text-brand-sky px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-white/15 text-[9px] sm:text-[11px]">
+              <span className="text-brand-sky font-semibold">
                 Short &amp; Long Sleeve
               </span>
             </div>
