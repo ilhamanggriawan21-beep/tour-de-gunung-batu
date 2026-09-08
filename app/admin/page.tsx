@@ -426,7 +426,7 @@ export default function AdminDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 relative bg-brand-iceBg">
+    <div className="min-h-screen pt-24 sm:pt-28 md:pt-32 pb-12 px-3 sm:px-6 lg:px-8 relative bg-brand-iceBg">
       <TopoBackground />
 
       <div className="max-w-7xl mx-auto relative z-10 space-y-6">
@@ -591,25 +591,158 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
+            {/* Mobile & Tablet Card List (Zero Horizontal Scroll!) */}
+            <div className="lg:hidden space-y-4">
+              {filteredPoList.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl text-slate-400 font-medium text-xs">
+                  Tidak ada antrean pesanan PO jersey yang sesuai filter.
+                </div>
+              ) : (
+                filteredPoList.map((item) => {
+                  const r = item.registrant;
+                  const p = item.jersey_po;
+                  const status = p.status_pembayaran;
+
+                  return (
+                    <div key={p.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 border-b pb-2">
+                        <div>
+                          <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">BIB #{r.nomor_bib} • {r.nomor_registrasi}</span>
+                        </div>
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            status === 'lunas'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : status === 'perlu_klarifikasi'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}
+                        >
+                          {status === 'lunas' ? 'LUNAS' : status === 'perlu_klarifikasi' ? 'KLARIFIKASI' : 'MENUNGGU'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Komunitas &amp; WA:</span>
+                          <span className="font-semibold text-slate-700 block">{r.komunitas || 'Umum'}</span>
+                          <a
+                            href={`https://wa.me/${r.no_telepon.replace(/^0/, '62')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-emerald-600 hover:underline inline-flex items-center space-x-1"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>{r.no_telepon}</span>
+                          </a>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Jersey &amp; Total:</span>
+                          <span className="font-bold text-slate-800 block">
+                            {p.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve'} ({p.ukuran}) x{p.qty}
+                          </span>
+                          <span className="font-black text-brand-royal text-xs font-mono block">
+                            Rp {p.harga_total.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs pt-2 border-t flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500 truncate max-w-[65%]">
+                          {p.metode_ambil === 'ambil_langsung' ? 'Ambil di Lokasi' : `Kirim: ${p.alamat_pengiriman || '-'}`}
+                        </span>
+                        {p.bukti_transfer_url ? (
+                          <button
+                            onClick={() => setPreviewImage(p.bukti_transfer_url)}
+                            className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-royal bg-brand-royal/10 px-2.5 py-1 rounded-lg border border-brand-royal/20"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>Bukti</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-400 italic text-[10px]">No Proof</span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t">
+                        <div className="flex items-center space-x-1">
+                          {status !== 'lunas' ? (
+                            <>
+                              <button
+                                onClick={() => handleVerify(p.id, 'lunas')}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-[11px] flex items-center space-x-1 shadow-sm"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Lunas</span>
+                              </button>
+                              <button
+                                onClick={() => handleVerify(p.id, 'perlu_klarifikasi')}
+                                className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2 py-1.5 rounded-lg text-[11px]"
+                              >
+                                <span>Klarifikasi</span>
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleVerify(p.id, 'menunggu_verifikasi')}
+                              className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-2.5 py-1.5 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300"
+                            >
+                              <XCircle className="w-3 h-3" />
+                              <span>Batal Lunas</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => openEditModal(item)}
+                            className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30"
+                          >
+                            <Edit className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => setDeletePoId({ id: p.id, nama: r.nama_lengkap })}
+                            className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-amber-300"
+                          >
+                            <Shirt className="w-3 h-3" />
+                            <span>PO</span>
+                          </button>
+                          <button
+                            onClick={() => setDeleteRegistrantId({ id: r.id, nama: r.nama_lengkap })}
+                            className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table (Zero Horizontal Scroll!) */}
+            <div className="hidden lg:block">
               <table className="w-full text-left text-xs">
                 <thead className="bg-brand-navy text-white uppercase text-[11px] font-bold">
                   <tr>
-                    <th className="py-3 px-4">Peserta &amp; BIB</th>
-                    <th className="py-3 px-4">Kontak &amp; Komunitas</th>
-                    <th className="py-3 px-4">Spesifikasi Jersey</th>
-                    <th className="py-3 px-4">Total &amp; Metode</th>
-                    <th className="py-3 px-4 text-center">Bukti Transfer</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-center">Aksi Verifikasi</th>
-                    <th className="py-3 px-4 text-center">Kelola Data</th>
+                    <th className="py-3 px-3">Peserta &amp; BIB</th>
+                    <th className="py-3 px-3">Kontak &amp; Komunitas</th>
+                    <th className="py-3 px-3">Jersey &amp; Total</th>
+                    <th className="py-3 px-3 text-center">Bukti</th>
+                    <th className="py-3 px-3 text-center">Status</th>
+                    <th className="py-3 px-3 text-center">Verifikasi</th>
+                    <th className="py-3 px-3 text-center">Aksi Kelola</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredPoList.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                      <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
                         Tidak ada antrean pesanan PO jersey yang sesuai filter.
                       </td>
                     </tr>
@@ -621,12 +754,12 @@ export default function AdminDashboardPage() {
 
                       return (
                         <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
+                          <td className="py-3 px-3">
+                            <span className="font-extrabold text-xs text-brand-navy block">{r.nama_lengkap}</span>
                             <span className="text-[10px] text-slate-400 font-mono block">BIB #{r.nomor_bib} • {r.nomor_registrasi}</span>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="font-semibold text-slate-700 block">{r.komunitas || 'Umum'}</span>
+                          <td className="py-3 px-3">
+                            <span className="font-semibold text-slate-700 block text-xs">{r.komunitas || 'Umum'}</span>
                             <a
                               href={`https://wa.me/${r.no_telepon.replace(/^0/, '62')}`}
                               target="_blank"
@@ -637,36 +770,30 @@ export default function AdminDashboardPage() {
                               <span>{r.no_telepon}</span>
                             </a>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="font-bold text-slate-800 block">
-                              {p.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve'} ({p.ukuran})
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-800 block text-xs">
+                              {p.jenis_lengan === 'short_sleeve' ? 'Short' : 'Long'} ({p.ukuran}) x{p.qty}
                             </span>
-                            <span className="text-slate-500 text-[11px]">Jumlah: {p.qty} pcs</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="font-black text-brand-royal text-sm block font-mono">
+                            <span className="font-black text-brand-royal text-xs font-mono block">
                               Rp {p.harga_total.toLocaleString('id-ID')}
                             </span>
-                            <span className="text-[10px] text-slate-500 block">
-                              {p.metode_ambil === 'ambil_langsung' ? 'Ambil di Lokasi' : `Kirim: ${p.alamat_pengiriman || '-'}`}
-                            </span>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-3 text-center">
                             {p.bukti_transfer_url ? (
                               <button
                                 onClick={() => setPreviewImage(p.bukti_transfer_url)}
-                                className="inline-flex items-center space-x-1 text-xs font-bold text-brand-royal hover:underline bg-brand-royal/10 px-2.5 py-1 rounded-lg"
+                                className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-royal hover:underline bg-brand-royal/10 px-2 py-1 rounded-lg"
                               >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Lihat Bukti</span>
+                                <Eye className="w-3 h-3" />
+                                <span>Lihat</span>
                               </button>
                             ) : (
-                              <span className="text-slate-400 italic text-[11px]">Belum upload</span>
+                              <span className="text-slate-400 italic text-[10px]">Belum</span>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-3 text-center">
                             <span
-                              className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                                 status === 'lunas'
                                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                   : status === 'perlu_klarifikasi'
@@ -677,21 +804,21 @@ export default function AdminDashboardPage() {
                               {status === 'lunas' ? 'LUNAS' : status === 'perlu_klarifikasi' ? 'KLARIFIKASI' : 'MENUNGGU'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center space-x-1.5">
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center space-x-1">
                               {status !== 'lunas' ? (
                                 <>
                                   <button
                                     onClick={() => handleVerify(p.id, 'lunas')}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center space-x-1 shadow-sm cursor-pointer"
-                                    title="Tandai Pembayaran Lunas"
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 shadow-sm"
+                                    title="Tandai Lunas"
                                   >
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    <span>Sudah Bayar</span>
+                                    <CheckCircle className="w-3 h-3" />
+                                    <span>Lunas</span>
                                   </button>
                                   <button
                                     onClick={() => handleVerify(p.id, 'perlu_klarifikasi')}
-                                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs cursor-pointer"
+                                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-1.5 py-1 rounded-lg text-[11px]"
                                     title="Perlu Klarifikasi"
                                   >
                                     <span>Klarifikasi</span>
@@ -700,39 +827,36 @@ export default function AdminDashboardPage() {
                               ) : (
                                 <button
                                   onClick={() => handleVerify(p.id, 'menunggu_verifikasi')}
-                                  className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center space-x-1 border border-rose-300 cursor-pointer"
-                                  title="Batalkan Verifikasi Lunas jika salah klik"
+                                  className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 border border-rose-300"
                                 >
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  <span>Batalkan Verifikasi</span>
+                                  <XCircle className="w-3 h-3" />
+                                  <span>Batal</span>
                                 </button>
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center space-x-1">
                               <button
                                 onClick={() => openEditModal(item)}
-                                className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30 cursor-pointer"
-                                title="Edit Data Peserta & Jersey"
+                                className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 border border-brand-royal/30"
+                                title="Edit"
                               >
                                 <Edit className="w-3 h-3" />
                                 <span>Edit</span>
                               </button>
                               <button
                                 onClick={() => setDeletePoId({ id: p.id, nama: r.nama_lengkap })}
-                                className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-amber-300 cursor-pointer"
-                                title="Hapus Pesanan PO Jersey"
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-1.5 py-1 rounded-lg text-[11px] border border-amber-300"
+                                title="Hapus PO Jersey"
                               >
-                                <Shirt className="w-3 h-3" />
                                 <span>Hapus PO</span>
                               </button>
                               <button
                                 onClick={() => setDeleteRegistrantId({ id: r.id, nama: r.nama_lengkap })}
-                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300 cursor-pointer"
-                                title="Hapus Peserta Total"
+                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-1.5 py-1 rounded-lg text-[11px] border border-rose-300"
+                                title="Hapus Peserta"
                               >
-                                <Trash2 className="w-3 h-3" />
                                 <span>Hapus</span>
                               </button>
                             </div>
@@ -781,19 +905,109 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* All Registrants Table */}
-            <div className="overflow-x-auto">
+            {/* Mobile & Tablet Card List (Zero Horizontal Scroll!) */}
+            <div className="lg:hidden space-y-4">
+              {filteredAllRegistrants.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl text-slate-400 font-medium text-xs">
+                  Belum ada data pendaftar.
+                </div>
+              ) : (
+                filteredAllRegistrants.map((item) => {
+                  const r = item.registrant;
+                  const p = item.jersey_po;
+
+                  return (
+                    <div key={r.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 border-b pb-2">
+                        <div>
+                          <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">BIB #{r.nomor_bib} • {r.nomor_registrasi}</span>
+                        </div>
+                        {p ? (
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.status_pembayaran === 'lunas'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            PO ({p.status_pembayaran})
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Daftar Saja (Gratis)</span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Komunitas &amp; WA:</span>
+                          <span className="font-semibold text-slate-700 block">{r.komunitas || 'Umum'}</span>
+                          <a
+                            href={`https://wa.me/${r.no_telepon.replace(/^0/, '62')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-emerald-600 hover:underline inline-flex items-center space-x-1"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>{r.no_telepon}</span>
+                          </a>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Kontak Kerabat:</span>
+                          <span className="font-mono text-slate-600 text-[11px] block">{r.no_telepon_kerabat || '-'}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs pt-2 border-t">
+                        <span className="text-[10px] text-slate-400 block font-bold uppercase">Alamat Domisili:</span>
+                        <span className="text-slate-600 text-[11px]">{r.alamat_lengkap}</span>
+                      </div>
+
+                      <div className="flex items-center justify-end space-x-1.5 pt-2 border-t">
+                        <button
+                          onClick={() => openEditModal(item)}
+                          className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30"
+                        >
+                          <Edit className="w-3 h-3" />
+                          <span>Edit Data</span>
+                        </button>
+                        {p && (
+                          <button
+                            onClick={() => setDeletePoId({ id: p.id, nama: r.nama_lengkap })}
+                            className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-amber-300"
+                          >
+                            <Shirt className="w-3 h-3" />
+                            <span>Hapus PO</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteRegistrantId({ id: r.id, nama: r.nama_lengkap })}
+                          className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Hapus Total</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table (Zero Horizontal Scroll!) */}
+            <div className="hidden lg:block">
               <table className="w-full text-left text-xs">
                 <thead className="bg-brand-navy text-white uppercase text-[11px] font-bold">
                   <tr>
-                    <th className="py-3 px-4">BIB</th>
-                    <th className="py-3 px-4">Nama Lengkap</th>
-                    <th className="py-3 px-4">Komunitas</th>
-                    <th className="py-3 px-4">No. Telp</th>
-                    <th className="py-3 px-4">Kontak Kerabat</th>
-                    <th className="py-3 px-4">Alamat Domisili</th>
-                    <th className="py-3 px-4 text-center">Status PO Jersey</th>
-                    <th className="py-3 px-4 text-center">Aksi Kelola</th>
+                    <th className="py-3 px-3">BIB</th>
+                    <th className="py-3 px-3">Nama Lengkap</th>
+                    <th className="py-3 px-3">Komunitas</th>
+                    <th className="py-3 px-3">No. Telp</th>
+                    <th className="py-3 px-3">Kontak Kerabat</th>
+                    <th className="py-3 px-3">Alamat Domisili</th>
+                    <th className="py-3 px-3 text-center">Status PO</th>
+                    <th className="py-3 px-3 text-center">Aksi Kelola</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -810,19 +1024,19 @@ export default function AdminDashboardPage() {
 
                       return (
                         <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-slate-500">#{r.nomor_bib}</td>
-                          <td className="py-3 px-4">
-                            <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-500">#{r.nomor_bib}</td>
+                          <td className="py-3 px-3">
+                            <span className="font-extrabold text-xs text-brand-navy block">{r.nama_lengkap}</span>
                             <span className="text-[10px] text-slate-400 font-mono">{r.nomor_registrasi}</span>
                           </td>
-                          <td className="py-3 px-4 font-medium text-slate-700">{r.komunitas || 'Umum'}</td>
-                          <td className="py-3 px-4 font-mono">{r.no_telepon}</td>
-                          <td className="py-3 px-4 font-mono text-slate-500">{r.no_telepon_kerabat || '-'}</td>
-                          <td className="py-3 px-4 text-slate-600 max-w-xs truncate">{r.alamat_lengkap}</td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-3 font-medium text-slate-700">{r.komunitas || 'Umum'}</td>
+                          <td className="py-3 px-3 font-mono">{r.no_telepon}</td>
+                          <td className="py-3 px-3 font-mono text-slate-500">{r.no_telepon_kerabat || '-'}</td>
+                          <td className="py-3 px-3 text-slate-600 max-w-xs truncate">{r.alamat_lengkap}</td>
+                          <td className="py-3 px-3 text-center">
                             {p ? (
                               <span
-                                className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                   p.status_pembayaran === 'lunas'
                                     ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                     : 'bg-slate-100 text-slate-700'
@@ -831,15 +1045,15 @@ export default function AdminDashboardPage() {
                                 PO ({p.status_pembayaran})
                               </span>
                             ) : (
-                              <span className="text-[11px] text-slate-400">Daftar Saja (Gratis)</span>
+                              <span className="text-[11px] text-slate-400">Daftar Saja</span>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center space-x-1">
                               <button
                                 onClick={() => openEditModal(item)}
-                                className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30 cursor-pointer"
-                                title="Edit Data Peserta & Jersey"
+                                className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-0.5 border border-brand-royal/30"
+                                title="Edit"
                               >
                                 <Edit className="w-3 h-3" />
                                 <span>Edit</span>
@@ -847,19 +1061,17 @@ export default function AdminDashboardPage() {
                               {p && (
                                 <button
                                   onClick={() => setDeletePoId({ id: p.id, nama: r.nama_lengkap })}
-                                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-amber-300 cursor-pointer"
-                                  title="Hapus Pesanan PO Jersey"
+                                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-1.5 py-1 rounded-lg text-[11px] border border-amber-300"
+                                  title="Hapus PO Jersey"
                                 >
-                                  <Shirt className="w-3 h-3" />
                                   <span>Hapus PO</span>
                                 </button>
                               )}
                               <button
                                 onClick={() => setDeleteRegistrantId({ id: r.id, nama: r.nama_lengkap })}
-                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300 cursor-pointer"
+                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-1.5 py-1 rounded-lg text-[11px] border border-rose-300"
                                 title="Hapus Peserta Total"
                               >
-                                <Trash2 className="w-3 h-3" />
                                 <span>Hapus</span>
                               </button>
                             </div>
