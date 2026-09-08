@@ -2,8 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
 import CountdownTimer from '@/components/CountdownTimer';
-import ElevationChart from '@/components/ElevationChart';
-import RideGallery from '@/components/RideGallery';
+import SizeChart from '@/components/SizeChart';
 import {
   Bike,
   Heart,
@@ -141,11 +140,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ELEVATION PROFILE CHART SECTION */}
-      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <ElevationChart />
-      </section>
-
       {/* STORYTELLING AMAL & OFFICIAL JERSEY DISPLAY */}
       <section className="py-10 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-10 border border-brand-sky/30 shadow-card relative overflow-hidden">
@@ -234,6 +228,11 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* OFFICIAL JERSEY SIZE CHART SECTION */}
+      <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        <SizeChart />
+      </section>
+
       {/* SUSULAN PO JERSEY CTA BANNER */}
       <section className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="bg-gradient-to-r from-brand-royalDark to-brand-navy rounded-2xl p-5 sm:p-6 md:p-8 text-white border border-brand-yellow/40 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 shadow-glow">
@@ -253,11 +252,6 @@ export default async function HomePage() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-      </section>
-
-      {/* RIDE GALLERY & ROUTE SPOTS CAROUSEL */}
-      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <RideGallery />
       </section>
 
       {/* EVENT DETAILS & ROUTE INFO */}

@@ -4,7 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
-import { Bike, Shirt, Heart, ShieldCheck, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import SizeChart from '@/components/SizeChart';
+import { Bike, Shirt, Heart, ShieldCheck, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Ruler } from 'lucide-react';
 
 function DaftarFormContent() {
   const router = useRouter();
@@ -22,6 +23,7 @@ function DaftarFormContent() {
   const [error, setError] = useState('');
   const [isPoClosed, setIsPoClosed] = useState(false);
   const [isRegClosed, setIsRegClosed] = useState(false);
+  const [showSizeChart, setShowSizeChart] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -431,6 +433,7 @@ function DaftarFormContent() {
                       <option value="L">L (Lingkar Dada ±100cm)</option>
                       <option value="XL">XL (Lingkar Dada ±104cm)</option>
                       <option value="XXL">XXL (Lingkar Dada ±108cm)</option>
+                      <option value="3XL">3XL (Lingkar Dada ±116cm)</option>
                     </select>
                   </div>
                   <div>
@@ -444,6 +447,24 @@ function DaftarFormContent() {
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-royal focus:outline-none font-bold text-center"
                     />
                   </div>
+                </div>
+
+                {/* Size Chart Toggle & Expandable Component */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowSizeChart(!showSizeChart)}
+                    className="inline-flex items-center space-x-1.5 text-xs text-brand-royal hover:text-brand-navy font-bold bg-brand-royal/10 hover:bg-brand-royal/20 px-3 py-1.5 rounded-xl transition-all"
+                  >
+                    <Ruler className="w-4 h-4 text-brand-royal" />
+                    <span>{showSizeChart ? 'Sembunyikan Size Chart' : 'Lihat Tabel Size Chart (Panduan Ukuran)'}</span>
+                  </button>
+
+                  {showSizeChart && (
+                    <div className="mt-3">
+                      <SizeChart />
+                    </div>
+                  )}
                 </div>
 
                 {/* Metode Ambil */}

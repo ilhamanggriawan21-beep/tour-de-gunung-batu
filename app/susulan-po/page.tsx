@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
-import { Search, Shirt, Heart, AlertCircle, ArrowRight, UserCheck, CheckCircle, Bike } from 'lucide-react';
+import SizeChart from '@/components/SizeChart';
+import { Search, Shirt, Heart, AlertCircle, ArrowRight, UserCheck, CheckCircle, Bike, Ruler } from 'lucide-react';
 
 export default function SusulanPOPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function SusulanPOPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [foundData, setFoundData] = useState<any>(null);
+  const [showSizeChart, setShowSizeChart] = useState(false);
 
   // Jersey Spec State
   const [jerseySpec, setJerseySpec] = useState({
@@ -302,6 +304,7 @@ export default function SusulanPOPage() {
                         <option value="L">L (Lingkar Dada ±100cm)</option>
                         <option value="XL">XL (Lingkar Dada ±104cm)</option>
                         <option value="XXL">XXL (Lingkar Dada ±108cm)</option>
+                        <option value="3XL">3XL (Lingkar Dada ±116cm)</option>
                       </select>
                     </div>
                     <div>
@@ -315,6 +318,24 @@ export default function SusulanPOPage() {
                         className="w-full px-4 py-3 rounded-xl border border-slate-300 font-bold text-center text-sm focus:ring-2 focus:ring-brand-royal"
                       />
                     </div>
+                  </div>
+
+                  {/* Size Chart Toggle & Expandable Component */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowSizeChart(!showSizeChart)}
+                      className="inline-flex items-center space-x-1.5 text-xs text-brand-royal hover:text-brand-navy font-bold bg-brand-royal/10 hover:bg-brand-royal/20 px-3 py-1.5 rounded-xl transition-all"
+                    >
+                      <Ruler className="w-4 h-4 text-brand-royal" />
+                      <span>{showSizeChart ? 'Sembunyikan Size Chart' : 'Lihat Tabel Size Chart (Panduan Ukuran)'}</span>
+                    </button>
+
+                    {showSizeChart && (
+                      <div className="mt-3">
+                        <SizeChart />
+                      </div>
+                    )}
                   </div>
 
                   {/* Metode Ambil */}
