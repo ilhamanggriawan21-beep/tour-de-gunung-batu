@@ -43,32 +43,13 @@ export default function Navbar() {
           {/* Subtle Glow Behind Navbar */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-royal/30 via-brand-yellow/20 to-brand-royal/30 rounded-full blur-md opacity-50 -z-10 animate-pulse pointer-events-none" />
 
-          {/* Logo Branding - Dynamic Glass Pill */}
-          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group py-1">
-            <div className="relative p-1 rounded-xl bg-white/10 group-hover:bg-white/20 transition-all border border-white/15 shadow-inner">
-              <img
-                src="/images/logo_peaderal_x_rudeboys.png"
-                alt="Logo PEADERAL x RUDEBOYS"
-                className="h-7 sm:h-8 md:h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_10px_rgba(244,199,22,0.6)]"
-              />
-            </div>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center space-x-1">
-                <span className="font-black text-xs sm:text-sm tracking-wider text-brand-yellow font-display uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
-                  PEADERAL
-                </span>
-                <span className="text-brand-sky text-[11px] font-black">×</span>
-                <span className="font-black text-xs sm:text-sm tracking-wider text-white font-display uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
-                  RUDEBOYS
-                </span>
-              </div>
-              <div className="flex items-center space-x-1.5">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-[9px] sm:text-[10px] font-extrabold text-brand-sky tracking-widest uppercase">
-                  27 SEPT 2026
-                </span>
-              </div>
-            </div>
+          {/* Logo Branding - Clean Enlarged Logo without badge/text */}
+          <Link href="/" className="flex items-center justify-center group py-0.5">
+            <img
+              src="/images/logo_peaderal_x_rudeboys.png"
+              alt="Logo PEADERAL x RUDEBOYS"
+              className="h-9 sm:h-11 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_0_15px_rgba(244,199,22,0.6)]"
+            />
           </Link>
 
           {/* Desktop Navigation Links */}

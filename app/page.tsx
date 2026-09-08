@@ -69,15 +69,13 @@ export default async function HomePage() {
             />
           </div>
 
-          {/* Logo Kolaborasi Peaderal x Rudeboys — kecil di bawah logo utama */}
-          <div className="flex items-center justify-center mb-5 sm:mb-6">
-            <div className="bg-brand-navy/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 shadow-inner">
-              <img
-                src="/images/logo_peaderal_x_rudeboys.png"
-                alt="Logo PEADERAL x Rudeboys"
-                className="max-h-7 sm:max-h-9 md:max-h-11 w-auto object-contain drop-shadow-[0_0_15px_rgba(244,199,22,0.6)]"
-              />
-            </div>
+          {/* Logo Kolaborasi Peaderal x Rudeboys — Tanpa Badge, Besar & Di Tengah */}
+          <div className="flex items-center justify-center mb-6 sm:mb-8">
+            <img
+              src="/images/logo_peaderal_x_rudeboys.png"
+              alt="Logo PEADERAL x Rudeboys"
+              className="h-10 sm:h-14 md:h-16 w-auto object-contain drop-shadow-[0_0_20px_rgba(244,199,22,0.6)] hover:scale-105 transition-transform duration-300"
+            />
           </div>
 
           <p className="max-w-xl sm:max-w-2xl mx-auto text-xs sm:text-sm md:text-base text-slate-200 font-medium leading-relaxed mb-6 sm:mb-8 px-2">
