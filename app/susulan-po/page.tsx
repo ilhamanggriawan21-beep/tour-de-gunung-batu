@@ -256,7 +256,7 @@ export default function SusulanPOPage() {
                   {/* Jenis Lengan */}
                   <div>
                     <label className="block font-bold text-slate-700 text-sm mb-2">Pilih Jenis Lengan</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setJerseySpec({ ...jerseySpec, jenis_lengan: 'short_sleeve' })}
@@ -320,7 +320,7 @@ export default function SusulanPOPage() {
                   {/* Metode Ambil */}
                   <div>
                     <label className="block font-bold text-slate-700 text-sm mb-2">Metode Pengambilan</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setJerseySpec({ ...jerseySpec, metode_ambil: 'ambil_langsung' })}

@@ -348,7 +348,7 @@ function DaftarFormContent() {
                 {/* Jenis Lengan */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-2">Pilih Jenis Lengan</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, jenis_lengan: 'short_sleeve' })}
@@ -408,7 +408,7 @@ function DaftarFormContent() {
                 {/* Metode Ambil */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-2">Metode Pengambilan Jersey</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, metode_ambil: 'ambil_langsung' })}

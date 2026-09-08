@@ -231,13 +231,13 @@ export default function PembayaranPage() {
             {/* Rekening Transfer */}
             <div className="p-4 bg-brand-iceBg rounded-xl border border-brand-sky/30 text-xs space-y-1.5">
               <span className="font-bold text-slate-700 block">Transfer Manual Bank:</span>
-              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200">
-                <span className="font-mono font-bold text-brand-royal text-sm">
+              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 gap-2">
+                <span className="font-mono font-bold text-brand-royal text-xs sm:text-sm truncate">
                   {settings?.nama_bank} {settings?.nomor_rekening}
                 </span>
                 <button
                   onClick={handleCopyRekening}
-                  className="text-xs bg-brand-royal/10 text-brand-royal font-bold px-2 py-1 rounded flex items-center space-x-1 hover:bg-brand-royal/20"
+                  className="flex-shrink-0 text-xs bg-brand-royal/10 text-brand-royal font-bold px-2 py-1 rounded flex items-center space-x-1 hover:bg-brand-royal/20"
                 >
                   <Copy className="w-3 h-3" />
                   <span>{copied ? 'Tersalin!' : 'Salin'}</span>

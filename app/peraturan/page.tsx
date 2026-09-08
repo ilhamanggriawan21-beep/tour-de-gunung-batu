@@ -50,12 +50,12 @@ export default function PeraturanPage() {
               <li><strong>Jam Kumpul & Briefing:</strong> 07.00 WIB</li>
               <li><strong>Jam Roll Out (On Saddle):</strong> 07.30 WIB Tepat (Tidak menunggu peserta terlambat)</li>
               <li><strong>Destinasi Rute:</strong> Kaki Gunung Batu, Jonggol (Jarak: ±22,6 KM Start → Finish, Elevation Gain ±700m)</li>
-              <li className="flex items-center space-x-1.5 pt-1">
+              <li className="flex flex-col sm:flex-row sm:items-center gap-1.5 pt-1">
                 <strong>File GPX Rute:</strong>
                 <a
                   href="/gpx/tour_de_gunung_batu.gpx"
                   download="TOUR_DE_GUNUNG_BATU.gpx"
-                  className="inline-flex items-center space-x-1 bg-brand-royal/10 hover:bg-brand-royal hover:text-white text-brand-royal px-2.5 py-1 rounded-lg text-xs font-bold transition-all ml-1"
+                  className="inline-flex items-center space-x-1 bg-brand-royal/10 hover:bg-brand-royal hover:text-white text-brand-royal px-2.5 py-1 rounded-lg text-xs font-bold transition-all w-fit"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download File GPX Resmi (22,6 KM)</span>

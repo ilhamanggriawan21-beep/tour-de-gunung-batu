@@ -34,7 +34,7 @@ export default async function HomePage() {
         {/* Background: Gunung Batu Photo */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/images/gambar_gunung.png"
+            src="/images/gambar_gunung.jpg"
             alt="Gunung Batu Jonggol"
             className="w-full h-full object-cover object-center"
           />
