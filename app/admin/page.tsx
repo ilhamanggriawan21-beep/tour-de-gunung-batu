@@ -24,7 +24,11 @@ import {
   UserPlus,
   Trash2,
   Lock,
-  Sparkles
+  Sparkles,
+  Edit,
+  X,
+  MapPin,
+  AlertCircle
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -71,6 +75,114 @@ export default function AdminDashboardPage() {
   const [message, setMessage] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Edit & Delete State
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    registrantId: '',
+    nama_lengkap: '',
+    komunitas: '',
+    no_telepon: '',
+    no_telepon_kerabat: '',
+    alamat_lengkap: '',
+    po_id: '',
+    jenis_lengan: 'short_sleeve' as 'short_sleeve' | 'long_sleeve',
+    ukuran: 'L' as 'S' | 'M' | 'L' | 'XL' | 'XXL',
+    qty: 1,
+    metode_ambil: 'ambil_langsung' as 'ambil_langsung' | 'dikirim',
+    alamat_pengiriman: '',
+    status_pembayaran: 'menunggu_verifikasi' as 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa',
+    bukti_transfer_url: ''
+  });
+
+  const [deleteRegistrantId, setDeleteRegistrantId] = useState<{ id: string; nama: string } | null>(null);
+  const [deletePoId, setDeletePoId] = useState<{ id: string; nama: string } | null>(null);
+
+  const openEditModal = (item: any) => {
+    const r = item.registrant;
+    const p = item.jersey_po;
+    setEditingItem(item);
+    setEditForm({
+      registrantId: r.id,
+      nama_lengkap: r.nama_lengkap || '',
+      komunitas: r.komunitas || '',
+      no_telepon: r.no_telepon || '',
+      no_telepon_kerabat: r.no_telepon_kerabat || '',
+      alamat_lengkap: r.alamat_lengkap || '',
+      po_id: p ? p.id : '',
+      jenis_lengan: p ? p.jenis_lengan : 'short_sleeve',
+      ukuran: p ? p.ukuran : 'L',
+      qty: p ? p.qty : 1,
+      metode_ambil: p ? p.metode_ambil : 'ambil_langsung',
+      alamat_pengiriman: p ? (p.alamat_pengiriman || '') : '',
+      status_pembayaran: p ? p.status_pembayaran : 'menunggu_verifikasi',
+      bukti_transfer_url: p ? (p.bukti_transfer_url || '') : ''
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/registrant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`Data peserta "${editForm.nama_lengkap}" berhasil diperbarui!`);
+        setEditingItem(null);
+        setTimeout(() => setMessage(''), 3500);
+        fetchAdminData(false);
+      } else {
+        alert(data.error || 'Gagal memperbarui data peserta');
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi');
+    }
+  };
+
+  const confirmDeleteRegistrant = async () => {
+    if (!deleteRegistrantId) return;
+    try {
+      const res = await fetch(`/api/admin/registrant?registrantId=${deleteRegistrantId.id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      setDeleteRegistrantId(null);
+      if (data.success) {
+        setMessage(`Peserta "${deleteRegistrantId.nama}" berhasil dihapus total dari database.`);
+        setTimeout(() => setMessage(''), 3500);
+        fetchAdminData(false);
+      } else {
+        alert(data.error || 'Gagal menghapus data peserta');
+      }
+    } catch (err) {
+      setDeleteRegistrantId(null);
+      alert('Terjadi kesalahan koneksi');
+    }
+  };
+
+  const confirmDeletePo = async () => {
+    if (!deletePoId) return;
+    try {
+      const res = await fetch(`/api/admin/registrant?poId=${deletePoId.id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      setDeletePoId(null);
+      if (data.success) {
+        setMessage(`Pesanan PO Jersey milik "${deletePoId.nama}" berhasil dihapus.`);
+        setTimeout(() => setMessage(''), 3500);
+        fetchAdminData(false);
+      } else {
+        alert(data.error || 'Gagal menghapus pesanan PO jersey');
+      }
+    } catch (err) {
+      setDeletePoId(null);
+      alert('Terjadi kesalahan koneksi');
+    }
+  };
 
   const fetchAdminData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -491,12 +603,13 @@ export default function AdminDashboardPage() {
                     <th className="py-3 px-4 text-center">Bukti Transfer</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-center">Aksi Verifikasi</th>
+                    <th className="py-3 px-4 text-center">Kelola Data</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredPoList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
+                      <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                         Tidak ada antrean pesanan PO jersey yang sesuai filter.
                       </td>
                     </tr>
@@ -596,6 +709,34 @@ export default function AdminDashboardPage() {
                               )}
                             </div>
                           </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              <button
+                                onClick={() => openEditModal(item)}
+                                className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30 cursor-pointer"
+                                title="Edit Data Peserta & Jersey"
+                              >
+                                <Edit className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => setDeletePoId({ id: p.id, nama: r.nama_lengkap })}
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-amber-300 cursor-pointer"
+                                title="Hapus Pesanan PO Jersey"
+                              >
+                                <Shirt className="w-3 h-3" />
+                                <span>Hapus PO</span>
+                              </button>
+                              <button
+                                onClick={() => setDeleteRegistrantId({ id: r.id, nama: r.nama_lengkap })}
+                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300 cursor-pointer"
+                                title="Hapus Peserta Total"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Hapus</span>
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })
@@ -652,12 +793,13 @@ export default function AdminDashboardPage() {
                     <th className="py-3 px-4">Kontak Kerabat</th>
                     <th className="py-3 px-4">Alamat Domisili</th>
                     <th className="py-3 px-4 text-center">Status PO Jersey</th>
+                    <th className="py-3 px-4 text-center">Aksi Kelola</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredAllRegistrants.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
+                      <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                         Belum ada data pendaftar.
                       </td>
                     </tr>
@@ -691,6 +833,36 @@ export default function AdminDashboardPage() {
                             ) : (
                               <span className="text-[11px] text-slate-400">Daftar Saja (Gratis)</span>
                             )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              <button
+                                onClick={() => openEditModal(item)}
+                                className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-brand-royal/30 cursor-pointer"
+                                title="Edit Data Peserta & Jersey"
+                              >
+                                <Edit className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                              {p && (
+                                <button
+                                  onClick={() => setDeletePoId({ id: p.id, nama: r.nama_lengkap })}
+                                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-amber-300 cursor-pointer"
+                                  title="Hapus Pesanan PO Jersey"
+                                >
+                                  <Shirt className="w-3 h-3" />
+                                  <span>Hapus PO</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setDeleteRegistrantId({ id: r.id, nama: r.nama_lengkap })}
+                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-2 py-1 rounded-lg text-[11px] flex items-center space-x-1 border border-rose-300 cursor-pointer"
+                                title="Hapus Peserta Total"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Hapus</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1099,6 +1271,255 @@ export default function AdminDashboardPage() {
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
               >
                 Tutup Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT DATA PESERTA & JERSEY */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl my-8">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-extrabold text-lg text-brand-navy">Edit Data Peserta &amp; Jersey</h3>
+                <p className="text-xs text-slate-500 font-mono">BIB #{editingItem.registrant.nomor_bib} • {editingItem.registrant.nomor_registrasi}</p>
+              </div>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* Section 1: Data Diri */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <h4 className="font-extrabold text-xs text-brand-navy uppercase tracking-wider">1. Informasi Peserta</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Nama Lengkap</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.nama_lengkap}
+                      onChange={(e) => setEditForm({ ...editForm, nama_lengkap: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Komunitas / Club</label>
+                    <input
+                      type="text"
+                      value={editForm.komunitas}
+                      onChange={(e) => setEditForm({ ...editForm, komunitas: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">No. WhatsApp</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.no_telepon}
+                      onChange={(e) => setEditForm({ ...editForm, no_telepon: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">No. Telp Kerabat (Darurat)</label>
+                    <input
+                      type="text"
+                      value={editForm.no_telepon_kerabat}
+                      onChange={(e) => setEditForm({ ...editForm, no_telepon_kerabat: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1 text-xs">Alamat Domisili Lengkap</label>
+                  <textarea
+                    rows={2}
+                    value={editForm.alamat_lengkap}
+                    onChange={(e) => setEditForm({ ...editForm, alamat_lengkap: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Section 2: PO Jersey (if item has PO) */}
+              {editingItem.jersey_po && (
+                <div className="bg-brand-royal/5 p-4 rounded-2xl border border-brand-royal/20 space-y-3">
+                  <h4 className="font-extrabold text-xs text-brand-royal uppercase tracking-wider">2. Spesifikasi PO Jersey &amp; Pembayaran</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Jenis Lengan</label>
+                      <select
+                        value={editForm.jenis_lengan}
+                        onChange={(e) => setEditForm({ ...editForm, jenis_lengan: e.target.value as any })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                      >
+                        <option value="short_sleeve">Short Sleeve</option>
+                        <option value="long_sleeve">Long Sleeve</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Ukuran Jersey</label>
+                      <select
+                        value={editForm.ukuran}
+                        onChange={(e) => setEditForm({ ...editForm, ukuran: e.target.value as any })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                      >
+                        <option value="S">Size S</option>
+                        <option value="M">Size M</option>
+                        <option value="L">Size L</option>
+                        <option value="XL">Size XL</option>
+                        <option value="XXL">Size XXL</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Jumlah (Qty)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={editForm.qty}
+                        onChange={(e) => setEditForm({ ...editForm, qty: parseInt(e.target.value) || 1 })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Metode Pengambilan</label>
+                      <select
+                        value={editForm.metode_ambil}
+                        onChange={(e) => setEditForm({ ...editForm, metode_ambil: e.target.value as any })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                      >
+                        <option value="ambil_langsung">Ambil Langsung di Lokasi Event</option>
+                        <option value="dikirim">Dikirim ke Alamat</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Status Pembayaran</label>
+                      <select
+                        value={editForm.status_pembayaran}
+                        onChange={(e) => setEditForm({ ...editForm, status_pembayaran: e.target.value as any })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                      >
+                        <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+                        <option value="lunas">Lunas (Sudah Verifikasi)</option>
+                        <option value="perlu_klarifikasi">Perlu Klarifikasi</option>
+                        <option value="kedaluwarsa">Kedaluwarsa</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {editForm.metode_ambil === 'dikirim' && (
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1 text-xs">Alamat Pengiriman Jersey</label>
+                      <textarea
+                        rows={2}
+                        value={editForm.alamat_pengiriman}
+                        onChange={(e) => setEditForm({ ...editForm, alamat_pengiriman: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs">URL / Link Bukti Transfer</label>
+                    <input
+                      type="text"
+                      value={editForm.bukti_transfer_url}
+                      onChange={(e) => setEditForm({ ...editForm, bukti_transfer_url: e.target.value })}
+                      placeholder="https://... atau data:image/..."
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-[11px] bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-brand-royal hover:bg-brand-royalDark text-white text-xs font-extrabold shadow flex items-center space-x-1.5"
+                >
+                  <Save className="w-4 h-4 text-brand-yellow" />
+                  <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS PESERTA TOTAL */}
+      {deleteRegistrantId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-center">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+              <Trash2 className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-slate-900">Hapus Peserta Total?</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Apakah Anda yakin ingin menghapus data peserta <strong className="text-slate-800">"{deleteRegistrantId.nama}"</strong> secara permanen dari database?
+              </p>
+            </div>
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                onClick={() => setDeleteRegistrantId(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 w-1/2"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDeleteRegistrant}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow w-1/2"
+              >
+                Ya, Hapus Total
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS PO JERSEY SAJA */}
+      {deletePoId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-center">
+            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto">
+              <Shirt className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-slate-900">Hapus Pesanan PO Jersey?</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Hapus pesanan jersey milik <strong className="text-slate-800">"{deletePoId.nama}"</strong>? Status peserta ini akan tetap terdaftar sebagai <strong className="text-brand-royal">"Daftar Saja (Gratis)"</strong>.
+              </p>
+            </div>
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                onClick={() => setDeletePoId(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 w-1/2"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDeletePo}
+                className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold shadow w-1/2"
+              >
+                Ya, Hapus PO
               </button>
             </div>
           </div>

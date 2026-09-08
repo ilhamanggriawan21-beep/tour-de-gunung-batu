@@ -179,7 +179,10 @@ import {
   getSupabaseRegistrationDetails,
   updateSupabasePaymentStatus,
   getSupabaseWallOfHeroesData,
-  getSupabaseAllAdminData
+  getSupabaseAllAdminData,
+  deleteSupabaseRegistrant,
+  deleteSupabaseJerseyPO,
+  updateSupabaseRegistrantAndPO
 } from './supabase-db';
 
 function getLocalSettings(): Settings {
@@ -728,3 +731,124 @@ export async function getAllAdminData(): Promise<{
   }
   return getLocalAllAdminData();
 }
+
+export async function deleteRegistrant(registrantId: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    const res = await deleteSupabaseRegistrant(registrantId);
+    if (res) return true;
+  }
+  return deleteLocalRegistrant(registrantId);
+}
+
+export async function deleteJerseyPO(poId: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    const res = await deleteSupabaseJerseyPO(poId);
+    if (res) return true;
+  }
+  return deleteLocalJerseyPO(poId);
+}
+
+export async function updateRegistrantAndPO(data: {
+  registrantId: string;
+  nama_lengkap?: string;
+  komunitas?: string;
+  no_telepon?: string;
+  no_telepon_kerabat?: string;
+  alamat_lengkap?: string;
+  po_id?: string;
+  jenis_lengan?: 'short_sleeve' | 'long_sleeve';
+  ukuran?: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  qty?: number;
+  metode_ambil?: 'ambil_langsung' | 'dikirim';
+  alamat_pengiriman?: string;
+  status_pembayaran?: 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa';
+  bukti_transfer_url?: string;
+}): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    const res = await updateSupabaseRegistrantAndPO(data);
+    if (res) return true;
+  }
+  return updateLocalRegistrantAndPO(data);
+}
+
+function deleteLocalRegistrant(registrantId: string): boolean {
+  const db = readDB();
+  const regIdx = db.registrants.findIndex(r => r.id === registrantId);
+  if (regIdx === -1) return false;
+
+  db.registrants.splice(regIdx, 1);
+  db.jersey_pos = db.jersey_pos.filter(p => p.registrant_id !== registrantId);
+  writeDB(db);
+  return true;
+}
+
+function deleteLocalJerseyPO(poId: string): boolean {
+  const db = readDB();
+  const poIdx = db.jersey_pos.findIndex(p => p.id === poId);
+  if (poIdx === -1) return false;
+
+  const po = db.jersey_pos[poIdx];
+  const regIdx = db.registrants.findIndex(r => r.id === po.registrant_id);
+  if (regIdx !== -1) {
+    db.registrants[regIdx].jenis_registrasi = 'daftar_saja';
+  }
+
+  db.jersey_pos.splice(poIdx, 1);
+  writeDB(db);
+  return true;
+}
+
+function updateLocalRegistrantAndPO(data: {
+  registrantId: string;
+  nama_lengkap?: string;
+  komunitas?: string;
+  no_telepon?: string;
+  no_telepon_kerabat?: string;
+  alamat_lengkap?: string;
+  po_id?: string;
+  jenis_lengan?: 'short_sleeve' | 'long_sleeve';
+  ukuran?: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  qty?: number;
+  metode_ambil?: 'ambil_langsung' | 'dikirim';
+  alamat_pengiriman?: string;
+  status_pembayaran?: 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa';
+  bukti_transfer_url?: string;
+}): boolean {
+  const db = readDB();
+  const regIdx = db.registrants.findIndex(r => r.id === data.registrantId);
+  if (regIdx === -1) return false;
+
+  const reg = db.registrants[regIdx];
+  if (data.nama_lengkap !== undefined) reg.nama_lengkap = data.nama_lengkap.trim();
+  if (data.komunitas !== undefined) reg.komunitas = data.komunitas.trim() || 'Umum';
+  if (data.no_telepon !== undefined) reg.no_telepon = data.no_telepon.trim();
+  if (data.no_telepon_kerabat !== undefined) reg.no_telepon_kerabat = data.no_telepon_kerabat.trim();
+  if (data.alamat_lengkap !== undefined) reg.alamat_lengkap = data.alamat_lengkap.trim();
+
+  const poIdx = db.jersey_pos.findIndex(p => p.registrant_id === data.registrantId || (data.po_id && p.id === data.po_id));
+  if (poIdx !== -1) {
+    const po = db.jersey_pos[poIdx];
+    if (data.jenis_lengan !== undefined) po.jenis_lengan = data.jenis_lengan;
+    if (data.ukuran !== undefined) po.ukuran = data.ukuran;
+    if (data.qty !== undefined) po.qty = data.qty;
+    if (data.metode_ambil !== undefined) po.metode_ambil = data.metode_ambil;
+    if (data.alamat_pengiriman !== undefined) po.alamat_pengiriman = data.alamat_pengiriman;
+    if (data.status_pembayaran !== undefined) {
+      po.status_pembayaran = data.status_pembayaran;
+      if (data.status_pembayaran === 'lunas' && !po.paid_at) {
+        po.paid_at = new Date().toISOString();
+      }
+    }
+    if (data.bukti_transfer_url !== undefined) po.bukti_transfer_url = data.bukti_transfer_url;
+
+    const hargaSatuan = po.jenis_lengan === 'short_sleeve'
+      ? db.settings.harga_short_sleeve
+      : db.settings.harga_long_sleeve;
+    po.harga_satuan = hargaSatuan;
+    po.harga_total = hargaSatuan * po.qty;
+  }
+
+  writeDB(db);
+  return true;
+}
+
