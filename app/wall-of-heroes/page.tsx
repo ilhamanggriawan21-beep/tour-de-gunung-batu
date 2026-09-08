@@ -199,7 +199,7 @@ export default function WallOfHeroesPage() {
           </div>
         )}
 
-        {/* TAB CONTENT TABLES */}
+        {/* TAB CONTENT — Compact Card Row (mobile-first, no horizontal scroll) */}
         <div className="bg-white rounded-3xl border border-brand-sky/40 shadow-card overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-slate-500 text-sm">
@@ -207,196 +207,105 @@ export default function WallOfHeroesPage() {
               Memuat data Wall of Heroes...
             </div>
           ) : activeTab === 'peserta' ? (
-            /* TAB 1: ALL REGISTRANTS */
-            <div>
-              {/* Mobile Card View (block md:hidden) */}
-              <div className="block md:hidden divide-y divide-slate-100">
-                {filteredPeserta.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs">
-                    Tidak ada data peserta ditemukan.
-                  </div>
-                ) : (
-                  filteredPeserta.map((p: any) => (
-                    <div key={p.id} className="p-4 space-y-2 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-extrabold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
-                          #{p.nomor_bib}
-                        </span>
-                        {p.is_jersey_lunas ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-sm">
-                            <Shirt className="w-3 h-3 mr-1 text-amber-600 flex-shrink-0" />
-                            Jersey Amal (Lunas)
-                          </span>
-                        ) : p.jenis_registrasi === 'po_jersey' ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            <Shirt className="w-3 h-3 mr-1 text-amber-600 flex-shrink-0" />
-                            PO (Menunggu Verifikasi)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
-                            Peserta Saja
-                          </span>
-                        )}
+            /* TAB 1: ALL REGISTRANTS — Compact Card Row */
+            <div className="divide-y divide-slate-100">
+              {filteredPeserta.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  Tidak ada data peserta ditemukan.
+                </div>
+              ) : (
+                filteredPeserta.map((p: any) => {
+                  const isJerseyLunas = p.is_jersey_lunas;
+                  const isPo = p.jenis_registrasi === 'po_jersey';
+                  const bibBg = isJerseyLunas
+                    ? 'bg-amber-500 text-white'
+                    : isPo
+                    ? 'bg-amber-200 text-amber-900'
+                    : 'bg-brand-royal text-white';
+                  return (
+                    <div
+                      key={p.id}
+                      className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                        isJerseyLunas ? 'hover:bg-amber-50' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      {/* BIB Circle */}
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-mono font-black text-xs ${bibBg}`}>
+                        {p.nomor_bib}
                       </div>
-                      <div>
-                        <h4
-                          className={`font-extrabold text-base leading-tight ${
-                            p.is_jersey_lunas
-                              ? 'text-amber-600 font-display'
-                              : p.jenis_registrasi === 'po_jersey'
-                              ? 'text-amber-700'
-                              : 'text-brand-royal'
-                          }`}
-                        >
+
+                      {/* Name + Komunitas */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-bold text-sm leading-tight truncate ${
+                          isJerseyLunas ? 'text-amber-600' : isPo ? 'text-amber-700' : 'text-brand-navy'
+                        }`}>
                           {p.nama_lengkap}
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Komunitas: <strong className="text-slate-700">{p.komunitas || 'Umum'}</strong>
+                        </p>
+                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                          {p.komunitas || 'Umum'}
                         </p>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
 
-              {/* Desktop Table View (hidden md:block) */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="bg-brand-navy text-white text-xs uppercase font-extrabold tracking-wider">
-                    <tr>
-                      <th className="py-4 px-6">BIB</th>
-                      <th className="py-4 px-6">Nama Peserta</th>
-                      <th className="py-4 px-6">Komunitas / Team</th>
-                      <th className="py-4 px-6 text-center">Status Donasi PO Jersey</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-semibold">
-                    {filteredPeserta.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400">
-                          Tidak ada data peserta ditemukan.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredPeserta.map((p: any) => (
-                        <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-4 px-6 font-mono text-slate-500 font-bold">#{p.nomor_bib}</td>
-                          <td className="py-4 px-6">
-                            <span
-                              className={`font-extrabold text-base ${
-                                p.is_jersey_lunas
-                                  ? 'text-amber-600 font-display'
-                                  : p.jenis_registrasi === 'po_jersey'
-                                  ? 'text-amber-700'
-                                  : 'text-brand-royal'
-                              }`}
-                            >
-                              {p.nama_lengkap}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 text-slate-600 font-medium">
-                            {p.komunitas || 'Umum'}
-                          </td>
-                          <td className="py-4 px-6 text-center">
-                            {p.is_jersey_lunas ? (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-sm">
-                                <Shirt className="w-3.5 h-3.5 mr-1 text-amber-600" />
-                                Partisipan Jersey Amal (Lunas)
-                              </span>
-                            ) : p.jenis_registrasi === 'po_jersey' ? (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                <Shirt className="w-3.5 h-3.5 mr-1 text-amber-600" />
-                                PO Jersey (Menunggu Verifikasi)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
-                                Peserta Event Saja
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      {/* Status Badge */}
+                      {isJerseyLunas ? (
+                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
+                          <Shirt className="w-3 h-3" />
+                          <span className="hidden sm:inline">Jersey Lunas</span>
+                          <span className="sm:hidden">✓</span>
+                        </span>
+                      ) : isPo ? (
+                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                          <Shirt className="w-3 h-3" />
+                          <span className="hidden sm:inline">Menunggu</span>
+                          <span className="sm:hidden">⏳</span>
+                        </span>
+                      ) : (
+                        <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 whitespace-nowrap">
+                          <span className="hidden sm:inline">Peserta</span>
+                          <span className="sm:hidden">—</span>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           ) : (
-            /* TAB 2: VERIFIED JERSEY SUPPORTERS ONLY */
-            <div>
-              {/* Mobile Card View (block md:hidden) */}
-              <div className="block md:hidden divide-y divide-slate-100">
-                {filteredJersey.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs">
-                    Belum ada partisipan jersey yang terverifikasi Lunas.
-                  </div>
-                ) : (
-                  filteredJersey.map((j: any) => (
-                    <div key={j.id} className="p-4 space-y-2 hover:bg-amber-50/40 transition-colors">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-extrabold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
-                          #{j.nomor_bib}
-                        </span>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-navy text-brand-yellow">
-                          {j.jersey_spec_str}
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-base text-amber-600 font-display flex items-center space-x-1.5 leading-tight">
-                          <Heart className="w-4 h-4 text-rose-500 fill-rose-500 flex-shrink-0" />
-                          <span>{j.nama_lengkap}</span>
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Komunitas: <strong className="text-slate-700">{j.komunitas || 'Umum'}</strong>
-                        </p>
-                      </div>
+            /* TAB 2: VERIFIED JERSEY SUPPORTERS — Compact Card Row */
+            <div className="divide-y divide-slate-100">
+              {filteredJersey.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  Belum ada partisipan jersey yang terverifikasi Lunas.
+                </div>
+              ) : (
+                filteredJersey.map((j: any) => (
+                  <div
+                    key={j.id}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-amber-50/50 transition-colors"
+                  >
+                    {/* BIB Circle — gold for jersey supporters */}
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-mono font-black text-xs bg-amber-500 text-white">
+                      {j.nomor_bib}
                     </div>
-                  ))
-                )}
-              </div>
 
-              {/* Desktop Table View (hidden md:block) */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="bg-brand-navy text-white text-xs uppercase font-extrabold tracking-wider">
-                    <tr>
-                      <th className="py-4 px-6">BIB</th>
-                      <th className="py-4 px-6">Nama Donatur / Partisipan</th>
-                      <th className="py-4 px-6">Komunitas</th>
-                      <th className="py-4 px-6 text-center">Spesifikasi Jersey</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-semibold">
-                    {filteredJersey.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400">
-                          Belum ada partisipan jersey yang terverifikasi Lunas.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredJersey.map((j: any) => (
-                        <tr key={j.id} className="hover:bg-amber-50/40 transition-colors">
-                          <td className="py-4 px-6 font-mono text-slate-500 font-bold">#{j.nomor_bib}</td>
-                          <td className="py-4 px-6">
-                            <span className="font-extrabold text-base text-amber-600 font-display flex items-center space-x-1.5">
-                              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-                              <span>{j.nama_lengkap}</span>
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 text-slate-600 font-medium">
-                            {j.komunitas || 'Umum'}
-                          </td>
-                          <td className="py-4 px-6 text-center">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-brand-navy text-brand-yellow">
-                              {j.jersey_spec_str}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    {/* Name + Komunitas */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm leading-tight truncate text-amber-600 flex items-center gap-1">
+                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500 flex-shrink-0" />
+                        <span className="truncate">{j.nama_lengkap}</span>
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                        {j.komunitas || 'Umum'}
+                      </p>
+                    </div>
+
+                    {/* Jersey Spec Badge */}
+                    <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-navy text-brand-yellow whitespace-nowrap max-w-[90px] sm:max-w-none truncate">
+                      {j.jersey_spec_str}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
