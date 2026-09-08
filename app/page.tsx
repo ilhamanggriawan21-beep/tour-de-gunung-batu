@@ -142,7 +142,7 @@ export default async function HomePage() {
       </section>
 
       {/* ELEVATION PROFILE CHART SECTION */}
-      <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto -mt-6 sm:-mt-10 relative z-20">
+      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <ElevationChart />
       </section>
 
