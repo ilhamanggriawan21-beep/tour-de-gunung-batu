@@ -1,6 +1,22 @@
 import React from 'react';
 import TopoBackground from '@/components/TopoBackground';
-import { ShieldCheck, AlertTriangle, Bike, Clock, MapPin, PhoneCall, HelpCircle, ArrowRight } from 'lucide-react';
+import {
+  ShieldCheck,
+  AlertTriangle,
+  Bike,
+  Clock,
+  MapPin,
+  PhoneCall,
+  HelpCircle,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Wrench,
+  Droplets,
+  HeartPulse,
+  Trash2,
+  Zap
+} from 'lucide-react';
 import Link from 'next/link';
 
 export default function PeraturanPage() {
@@ -13,10 +29,10 @@ export default function PeraturanPage() {
         <div className="text-center">
           <div className="inline-flex items-center space-x-2 text-brand-royal font-bold text-xs uppercase bg-brand-royal/10 px-3.5 py-1 rounded-full mb-2">
             <ShieldCheck className="w-4 h-4 text-brand-royal" />
-            <span>Panduan & Aturan Resmi</span>
+            <span>Panduan &amp; Aturan Resmi</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold text-brand-navy font-display">
-            PERATURAN & WAIVER EVENT
+            PERATURAN &amp; WAIVER EVENT
           </h1>
           <p className="text-slate-600 text-sm mt-1">
             Harap dibaca dengan saksama oleh seluruh calon peserta Tour de Gunung Batu 2026.
@@ -36,13 +52,128 @@ export default function PeraturanPage() {
           </p>
         </div>
 
-        {/* Main Content Sections */}
+        {/* QUICK RULES: DO'S & DON'TS (Visual Gen-Z Friendly Cards) */}
+        <div className="space-y-4">
+          <div className="text-center sm:text-left">
+            <h2 className="text-xl sm:text-2xl font-black text-brand-navy font-display flex items-center justify-center sm:justify-start gap-2">
+              <Zap className="w-6 h-6 text-brand-yellow fill-brand-yellow" />
+              <span>Quick Rules (10 Detik Paham)</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Ringkasan hal wajib dan larangan utama demi keamanan &amp; kelancaran gowes bareng.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            {/* DO'S CARD (WAJIB BAWA & PATUHI) */}
+            <div className="bg-gradient-to-b from-emerald-500/10 to-emerald-500/5 rounded-3xl p-5 sm:p-6 border-2 border-emerald-500/30 shadow-card">
+              <div className="flex items-center space-x-2.5 text-emerald-700 font-extrabold text-base sm:text-lg mb-4 pb-3 border-b border-emerald-500/20">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                <span>WAJIB DIBAWA / DIPATUHI</span>
+              </div>
+
+              <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-emerald-200">
+                  <span className="text-xl flex-shrink-0">🪖</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Helm Standar Keselamatan</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Wajib terkunci di kepala selama di atas sepeda. No helmet, no ride.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-emerald-200">
+                  <span className="text-xl flex-shrink-0">🛠️</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Toolkit &amp; Ban Dalam Cadangan</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Pompa/CO2, sendok ban (tire lever), dan ban dalam sesuai ukuran roda.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-emerald-200">
+                  <span className="text-xl flex-shrink-0">💧</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">2 Bidon Air &amp; Nutrisi Cukup</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Jalur nanjak elevasi 700m membakar energi tinggi, jangan sampai dehidrasi.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-emerald-200">
+                  <span className="text-xl flex-shrink-0">🚲</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Sepeda Kondisi Prima</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Cek rem pakem, gear shifting lancar, dan tekanan ban sebelum hari H.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-emerald-200">
+                  <span className="text-xl flex-shrink-0">🆔</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Kartu Identitas &amp; Uang Tunai</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">KTP/SIM dan cash secukupnya untuk logistik warung di rute Jonggol.</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* DON'TS CARD (DILARANG & PERINGATAN) */}
+            <div className="bg-gradient-to-b from-rose-500/10 to-rose-500/5 rounded-3xl p-5 sm:p-6 border-2 border-rose-500/30 shadow-card">
+              <div className="flex items-center space-x-2.5 text-rose-700 font-extrabold text-base sm:text-lg mb-4 pb-3 border-b border-rose-500/20">
+                <XCircle className="w-6 h-6 text-rose-600 flex-shrink-0" />
+                <span>DILARANG / HINDARI</span>
+              </div>
+
+              <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-rose-200">
+                  <span className="text-xl flex-shrink-0">🏁</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Bukan Ajang Balapan (No Racing)</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Ini gowes kebersamaan. Jangan ugal-ugalan atau melanggar rambu jalan.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-rose-200">
+                  <span className="text-xl flex-shrink-0">🚯</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Dilarang Membuang Sampah Sembarangan</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Bungkus gel, botol plastik, dan tisu wajib dikantongi sendiri.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-rose-200">
+                  <span className="text-xl flex-shrink-0">⚠️</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Jangan Paksakan Diri</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Prinsip utama: <em>"Yakin Lanjut, Ragu Putar Balik"</em>. Keselamatan nomor 1.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-rose-200">
+                  <span className="text-xl flex-shrink-0">🚫</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Tidak Ada Mobil Sweeper / Evakuasi Khusus</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Event bersifat self-supported mandiri, saling tolong menolong sesama pesepeda.</span>
+                  </div>
+                </li>
+
+                <li className="flex items-start space-x-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-rose-200">
+                  <span className="text-xl flex-shrink-0">🧭</span>
+                  <div>
+                    <strong className="text-slate-900 block font-bold">Jangan Memotong Jalur Resmi</strong>
+                    <span className="text-slate-500 text-[11px] sm:text-xs">Tetap ikuti rute GPX resmi demi keselamatan dan memudahkan koordinasi.</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Sections (Legal / Waiver Detail) */}
         <div className="bg-white p-6 sm:p-10 rounded-3xl border border-brand-sky/40 shadow-card space-y-8 text-slate-700 leading-relaxed text-sm sm:text-base">
           {/* Section 1: Jadwal & Lokasi */}
           <section className="space-y-3">
             <h3 className="text-xl font-bold text-brand-navy flex items-center space-x-2 border-b pb-2">
               <Clock className="w-5 h-5 text-brand-royal" />
-              <span>1. Jadwal & Titik Kumpul</span>
+              <span>1. Jadwal &amp; Titik Kumpul</span>
             </h3>
             <ul className="list-disc list-inside space-y-1.5 pl-2 text-slate-600">
               <li><strong>Hari / Tanggal:</strong> Minggu, 27 September 2026</li>

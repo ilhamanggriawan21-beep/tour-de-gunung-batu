@@ -71,8 +71,17 @@ function DaftarFormContent() {
     e.preventDefault();
     setError('');
 
-    if (!formData.nama_lengkap.trim() || !formData.alamat_lengkap.trim() || !formData.no_telepon.trim()) {
-      setError('Mohon lengkapi Nama Lengkap, Alamat Lengkap, dan Nomor Telepon.');
+    if (!formData.nama_lengkap.trim() || !formData.no_telepon.trim()) {
+      setError('Mohon lengkapi Nama Lengkap dan Nomor Telepon WhatsApp.');
+      return;
+    }
+
+    if (!formData.alamat_lengkap.trim()) {
+      setError(
+        formData.jenis_registrasi === 'po_jersey'
+          ? 'Mohon isi Alamat Lengkap untuk pengiriman jersey.'
+          : 'Mohon isi Kota / Kabupaten domisili Anda.'
+      );
       return;
     }
 
@@ -270,17 +279,49 @@ function DaftarFormContent() {
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Alamat Lengkap *</label>
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="Jalan, RT/RW, Kelurahan, Kecamatan, Kota/Kabupaten"
-                  value={formData.alamat_lengkap}
-                  onChange={(e) => setFormData({ ...formData, alamat_lengkap: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-royal focus:outline-none"
-                />
-              </div>
+              {formData.jenis_registrasi === 'daftar_saja' ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">Kota / Kabupaten Domisili *</label>
+                    <span className="text-[11px] text-emerald-700 font-bold bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                      Cepat &amp; Praktis
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Bogor / Jakarta Selatan / Depok / Bekasi"
+                    value={formData.alamat_lengkap}
+                    onChange={(e) => setFormData({ ...formData, alamat_lengkap: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-royal focus:outline-none"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    *Cukup isi kota/kabupaten domisili Anda untuk pendataan peserta gowes mandiri.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Alamat Lengkap (Untuk Pengiriman Jersey &amp; Validasi) *
+                    </label>
+                    <span className="text-[11px] text-amber-700 font-bold bg-amber-100/80 px-2.5 py-0.5 rounded-full">
+                      Wajib Pengiriman
+                    </span>
+                  </div>
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Jalan, No. Rumah, RT/RW, Kelurahan, Kecamatan, Kota/Kabupaten, Kode Pos"
+                    value={formData.alamat_lengkap}
+                    onChange={(e) => setFormData({ ...formData, alamat_lengkap: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-royal focus:outline-none"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    *Diperlukan untuk kelengkapan administrasi pengiriman jersey resmi.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -439,7 +480,18 @@ function DaftarFormContent() {
                 {/* Alamat Pengiriman jika dikirim */}
                 {formData.metode_ambil === 'dikirim' && (
                   <div className="pt-2">
-                    <label className="block font-bold text-slate-700 mb-1">Alamat Pengiriman Jersey *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-700">Alamat Pengiriman Jersey *</label>
+                      {formData.alamat_lengkap.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, alamat_pengiriman: formData.alamat_lengkap })}
+                          className="text-[11px] text-brand-royal hover:text-brand-navy font-bold bg-brand-royal/10 hover:bg-brand-royal/20 px-2.5 py-0.5 rounded-lg transition-all"
+                        >
+                          Gunakan alamat di atas
+                        </button>
+                      )}
+                    </div>
                     <textarea
                       required={formData.metode_ambil === 'dikirim'}
                       rows={2}

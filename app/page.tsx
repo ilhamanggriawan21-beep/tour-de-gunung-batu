@@ -2,6 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
 import CountdownTimer from '@/components/CountdownTimer';
+import ElevationChart from '@/components/ElevationChart';
+import RideGallery from '@/components/RideGallery';
 import {
   Bike,
   Heart,
@@ -139,6 +141,11 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ELEVATION PROFILE CHART SECTION */}
+      <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto -mt-6 sm:-mt-10 relative z-20">
+        <ElevationChart />
+      </section>
+
       {/* STORYTELLING AMAL & OFFICIAL JERSEY DISPLAY */}
       <section className="py-10 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-10 border border-brand-sky/30 shadow-card relative overflow-hidden">
@@ -246,6 +253,11 @@ export default async function HomePage() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
+      </section>
+
+      {/* RIDE GALLERY & ROUTE SPOTS CAROUSEL */}
+      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        <RideGallery />
       </section>
 
       {/* EVENT DETAILS & ROUTE INFO */}
