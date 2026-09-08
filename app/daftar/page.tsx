@@ -23,7 +23,7 @@ function DaftarFormContent() {
   const [error, setError] = useState('');
   const [isPoClosed, setIsPoClosed] = useState(false);
   const [isRegClosed, setIsRegClosed] = useState(false);
-  const [showSizeChart, setShowSizeChart] = useState(false);
+  const [showSizeChart, setShowSizeChart] = useState(true);
 
   // Form State
   const [formData, setFormData] = useState({

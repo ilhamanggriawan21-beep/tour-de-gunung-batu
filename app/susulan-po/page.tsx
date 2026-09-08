@@ -14,7 +14,7 @@ export default function SusulanPOPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [foundData, setFoundData] = useState<any>(null);
-  const [showSizeChart, setShowSizeChart] = useState(false);
+  const [showSizeChart, setShowSizeChart] = useState(true);
 
   // Jersey Spec State
   const [jerseySpec, setJerseySpec] = useState({
