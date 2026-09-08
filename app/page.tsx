@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { getSettings, getWallOfHeroesData } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Dynamic server render
 
 export default async function HomePage() {

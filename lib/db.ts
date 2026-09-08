@@ -463,9 +463,11 @@ function getLocalWallOfHeroesData(): {
 } {
   const db = readDB();
 
-  // Calculate Lunas jersey registrant IDs
+  // Calculate PO mappings
+  const poMap = new Map<string, JerseyPO>();
   const lunasPoMap = new Map<string, JerseyPO>();
   db.jersey_pos.forEach(po => {
+    poMap.set(po.registrant_id, po);
     if (po.status_pembayaran === 'lunas') {
       lunasPoMap.set(po.registrant_id, po);
     }
@@ -474,14 +476,19 @@ function getLocalWallOfHeroesData(): {
   const total_peserta = db.registrants.length;
   const total_partisipan_jersey = lunasPoMap.size;
 
-  const peserta_terdaftar = db.registrants.map(r => ({
-    id: r.id,
-    nama_lengkap: r.nama_lengkap,
-    komunitas: r.komunitas || 'Umum',
-    nomor_bib: r.nomor_bib,
-    is_jersey_lunas: lunasPoMap.has(r.id),
-    created_at: r.created_at
-  }));
+  const peserta_terdaftar = db.registrants.map(r => {
+    const po = poMap.get(r.id);
+    return {
+      id: r.id,
+      nama_lengkap: r.nama_lengkap,
+      komunitas: r.komunitas || 'Umum',
+      nomor_bib: r.nomor_bib,
+      jenis_registrasi: r.jenis_registrasi,
+      status_pembayaran: po ? po.status_pembayaran : null,
+      is_jersey_lunas: lunasPoMap.has(r.id),
+      created_at: r.created_at
+    };
+  });
 
   const partisipan_jersey: Array<{
     id: string;

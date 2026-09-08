@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { registerParticipant, getSettings } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -42,6 +45,14 @@ export async function POST(req: Request) {
     }
 
     const result = await registerParticipant(body);
+
+    // Instant revalidation for all pages
+    try {
+      revalidatePath('/wall-of-heroes');
+      revalidatePath('/');
+      revalidatePath('/admin');
+    } catch (e) {}
+
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     return NextResponse.json(

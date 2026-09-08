@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { addLateJerseyPO, getSettings } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +32,13 @@ export async function POST(req: Request) {
         { status: 444 }
       );
     }
+
+    // Revalidate paths
+    try {
+      revalidatePath('/wall-of-heroes');
+      revalidatePath('/');
+      revalidatePath('/admin');
+    } catch (e) {}
 
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {

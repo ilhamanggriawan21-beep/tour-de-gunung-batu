@@ -72,12 +72,18 @@ export default function AdminDashboardPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const fetchAdminData = async () => {
-    setLoading(true);
+  const fetchAdminData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
-      const res = await fetch('/api/admin/data');
+      const res = await fetch(`/api/admin/data?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const d = await res.json();
-      setLoading(false);
+      if (showLoading) setLoading(false);
       if (d.success) {
         setRegistrantsData(d.registrants_with_po || []);
         if (d.settings) {
@@ -87,13 +93,19 @@ export default function AdminDashboardPage() {
       }
       fetchAdminsList();
     } catch (err) {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   const fetchAdminsList = async () => {
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await fetch(`/api/admin/users?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const d = await res.json();
       if (d.success) {
         setAdminsList(d.admins || []);
@@ -113,12 +125,39 @@ export default function AdminDashboardPage() {
       nama_pic: session.nama_pic || '',
       kontak_pic: session.kontak_pic || ''
     });
-    fetchAdminData();
+    fetchAdminData(true);
+
+    const handleFocus = () => fetchAdminData(false);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [router]);
 
   const isSuperAdmin = adminSession?.role === 'superadmin' || adminSession?.pihak === 'superadmin';
 
   const handleVerify = async (poId: string, newStatus: 'lunas' | 'menunggu_verifikasi' | 'perlu_klarifikasi') => {
+    // 1. Instant Optimistic UI Update (0ms delay!)
+    const previousData = [...registrantsData];
+    setRegistrantsData((prev) =>
+      prev.map((item) => {
+        if (item.jersey_po && item.jersey_po.id === poId) {
+          return {
+            ...item,
+            jersey_po: {
+              ...item.jersey_po,
+              status_pembayaran: newStatus,
+              verified_by: adminSession?.nama_pic || adminSession?.pihak || 'Admin',
+              verified_at: new Date().toISOString()
+            }
+          };
+        }
+        return item;
+      })
+    );
+
+    setMessage(`Status pembayaran langsung diubah menjadi "${newStatus.toUpperCase()}"!`);
+    setTimeout(() => setMessage(''), 3500);
+
+    // 2. Background server sync
     try {
       const res = await fetch('/api/admin/verify', {
         method: 'POST',
@@ -130,14 +169,14 @@ export default function AdminDashboardPage() {
         })
       });
       const data = await res.json();
-      if (data.success) {
-        setMessage(`Status pembayaran berhasil diperbarui menjadi "${newStatus.toUpperCase()}"!`);
-        setTimeout(() => setMessage(''), 4000);
-        fetchAdminData();
-      } else {
+      if (!data.success) {
+        setRegistrantsData(previousData);
         alert(data.error || 'Gagal mengubah status');
+      } else {
+        fetchAdminData(false);
       }
     } catch (err) {
+      setRegistrantsData(previousData);
       alert('Terjadi kesalahan koneksi');
     }
   };
@@ -303,7 +342,7 @@ export default function AdminDashboardPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={fetchAdminData}
+              onClick={() => fetchAdminData(true)}
               className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl border border-white/20 flex items-center space-x-1.5"
               title="Refresh Data"
             >

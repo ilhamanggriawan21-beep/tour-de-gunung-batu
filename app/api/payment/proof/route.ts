@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { uploadPaymentProof, getRegistrationDetails } from '@/lib/db';
+import { revalidatePath } from 'next/cache';
+import { uploadPaymentProof } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -14,6 +17,12 @@ export async function POST(req: Request) {
     if (!updatedPo) {
       return NextResponse.json({ success: false, error: 'Data PO Jersey tidak ditemukan untuk nomor registrasi ini' }, { status: 404 });
     }
+
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/wall-of-heroes');
+      revalidatePath('/');
+    } catch (e) {}
 
     return NextResponse.json({ success: true, jersey_po: updatedPo });
   } catch (error: any) {

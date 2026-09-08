@@ -400,22 +400,33 @@ export async function getSupabaseWallOfHeroesData() {
   if (!supabase) return null;
 
   const { data: registrants } = await supabase.from('registrants').select('*').order('nomor_bib', { ascending: true });
-  const { data: jersey_pos } = await supabase.from('jersey_pos').select('*').eq('status_pembayaran', 'lunas');
+  const { data: jersey_pos } = await supabase.from('jersey_pos').select('*');
 
   const regs = registrants || [];
   const pos = jersey_pos || [];
 
+  const poMap = new Map<string, any>();
   const lunasPoMap = new Map<string, any>();
-  pos.forEach((p: any) => lunasPoMap.set(p.registrant_id, p));
+  pos.forEach((p: any) => {
+    poMap.set(p.registrant_id, p);
+    if (p.status_pembayaran === 'lunas') {
+      lunasPoMap.set(p.registrant_id, p);
+    }
+  });
 
-  const peserta_terdaftar = regs.map((r: any) => ({
-    id: r.id,
-    nama_lengkap: r.nama_lengkap,
-    komunitas: r.komunitas || 'Umum',
-    nomor_bib: r.nomor_bib,
-    is_jersey_lunas: lunasPoMap.has(r.id),
-    created_at: r.created_at
-  }));
+  const peserta_terdaftar = regs.map((r: any) => {
+    const po = poMap.get(r.id);
+    return {
+      id: r.id,
+      nama_lengkap: r.nama_lengkap,
+      komunitas: r.komunitas || 'Umum',
+      nomor_bib: r.nomor_bib,
+      jenis_registrasi: r.jenis_registrasi,
+      status_pembayaran: po ? po.status_pembayaran : null,
+      is_jersey_lunas: lunasPoMap.has(r.id),
+      created_at: r.created_at
+    };
+  });
 
   const partisipan_jersey: any[] = [];
   regs.forEach((r: any) => {
