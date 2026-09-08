@@ -155,9 +155,9 @@ export default async function HomePage() {
             {/* Constrained Container for High Resolution Image */}
             <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-white/5 border border-white/10 p-1 sm:p-2 flex items-center justify-center">
               <img
-                src="/images/design_jersey.png"
+                src="/images/design_jersey.jpg?v=20260908"
                 alt="Desain Official Jersey PEADERAL x RUDEBOYS"
-                className="max-h-[280px] sm:max-h-[420px] md:max-h-[500px] w-auto h-auto object-contain mx-auto rounded-lg"
+                className="max-h-[280px] sm:max-h-[420px] md:max-h-[500px] w-auto h-auto object-contain mx-auto rounded-lg shadow-lg"
               />
             </div>
 

@@ -337,7 +337,7 @@ function DaftarFormContent() {
                 </span>
                 <div className="max-h-[300px] sm:max-h-[350px] w-full flex items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
                   <img
-                    src="/images/design_jersey.png"
+                    src="/images/design_jersey.jpg?v=20260908"
                     alt="Official Jersey Design Frame"
                     className="max-h-[290px] sm:max-h-[340px] w-auto h-auto object-contain mx-auto"
                   />

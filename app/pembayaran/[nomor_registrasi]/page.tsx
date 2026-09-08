@@ -215,12 +215,12 @@ export default function PembayaranPage() {
 
             {/* QRIS Statis Image - Clean & Prominent without badge */}
             <div className="text-center py-2">
-              <p className="text-xs font-bold text-slate-800 mb-3">Scan Kode QRIS Statis Panitia (PEADERAL):</p>
+              <p className="text-xs font-bold text-slate-800 mb-3">Scan Kode QRIS Statis Panitia:</p>
               <div className="flex justify-center">
                 <img
-                  src={settings?.qris_image_url || '/qris-peaderal.png'}
+                  src={`${settings?.qris_image_url || '/qris-peaderal.png'}?v=20260908`}
                   alt="QRIS Statis Panitia"
-                  className="w-64 sm:w-72 md:w-80 h-auto mx-auto block"
+                  className="w-64 sm:w-72 md:w-80 h-auto mx-auto block rounded-xl shadow-sm border border-slate-100"
                 />
               </div>
               <p className="text-[11px] text-slate-500 mt-3 font-medium">

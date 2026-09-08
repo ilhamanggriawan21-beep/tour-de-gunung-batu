@@ -74,7 +74,7 @@ const DEFAULT_SETTINGS: Settings = {
   qris_image_url: '/qris-peaderal.png',
   nomor_rekening: '5220394811',
   nama_bank: 'BCA',
-  nama_pemilik_rekening: 'PERGERAKAN SEPEDAH PEADERAL',
+  nama_pemilik_rekening: 'BENGKEL SEPEDA STEELSYNDICATE',
   tanggal_tutup_po: '2026-09-20T23:59:59',
   tanggal_tutup_pendaftaran: '2026-09-25T23:59:59',
   kontak_wa_panitia: '6281298765432'
