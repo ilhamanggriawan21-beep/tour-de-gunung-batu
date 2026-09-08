@@ -3,6 +3,7 @@ import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
 import CountdownTimer from '@/components/CountdownTimer';
 import SizeChart from '@/components/SizeChart';
+import PeaderalImpactGallery from '@/components/PeaderalImpactGallery';
 import {
   Bike,
   Heart,
@@ -225,6 +226,9 @@ export default async function HomePage() {
               </p>
             </div>
           </div>
+
+          {/* PEADERAL BIKE DONATION REAL IMPACT REELS GALLERY */}
+          <PeaderalImpactGallery />
         </div>
       </section>
 
