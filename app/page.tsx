@@ -79,8 +79,8 @@ export default async function HomePage() {
             Event bersepeda mandiri (<em className="text-white font-semibold">self-supported</em>). Pendaftaran 100% GRATIS. Seluruh hasil pre-order jersey resmi disalurkan menjadi sepeda untuk anak yatim/piatu &amp; dhuafa.
           </p>
 
-          {/* Key Event Metrics Pills */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8 sm:mb-10 text-xs sm:text-sm font-bold px-2">
+          {/* Key Event Info Pills — Date & Location */}
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8 text-xs sm:text-sm font-bold px-2">
             <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 text-brand-yellow w-full sm:w-auto justify-center">
               <Calendar className="w-4 h-4 text-brand-yellow flex-shrink-0" />
               <span>Minggu, 27 Sept 2026</span>
@@ -89,9 +89,24 @@ export default async function HomePage() {
               <MapPin className="w-4 h-4 text-brand-sky flex-shrink-0" />
               <span>Tugu Tegar Beriman → Gunung Batu</span>
             </div>
-            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 text-brand-sky w-full sm:w-auto justify-center">
-              <Mountain className="w-4 h-4 text-brand-yellow flex-shrink-0" />
-              <span>±22,6 KM (Start → Finish) • EG ±700m</span>
+          </div>
+
+          {/* Route Stats — Large Display Cards */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-lg sm:max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-3 sm:p-5 text-center flex flex-col items-center justify-center">
+              <Bike className="w-5 h-5 sm:w-7 sm:h-7 text-brand-sky mb-1 sm:mb-2" />
+              <span className="text-2xl sm:text-4xl font-black text-white font-display leading-none">22.6</span>
+              <span className="text-[10px] sm:text-xs font-bold text-brand-sky uppercase tracking-wider mt-1">KM Total</span>
+            </div>
+            <div className="bg-brand-yellow/20 backdrop-blur-md rounded-2xl border border-brand-yellow/40 p-3 sm:p-5 text-center flex flex-col items-center justify-center">
+              <Mountain className="w-5 h-5 sm:w-7 sm:h-7 text-brand-yellow mb-1 sm:mb-2" />
+              <span className="text-2xl sm:text-4xl font-black text-brand-yellow font-display leading-none">700<span className="text-base sm:text-xl">m</span></span>
+              <span className="text-[10px] sm:text-xs font-bold text-brand-yellow/80 uppercase tracking-wider mt-1">Elevation Gain</span>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-3 sm:p-5 text-center flex flex-col items-center justify-center">
+              <Award className="w-5 h-5 sm:w-7 sm:h-7 text-emerald-400 mb-1 sm:mb-2" />
+              <span className="text-2xl sm:text-4xl font-black text-white font-display leading-none">FREE</span>
+              <span className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider mt-1">Pendaftaran</span>
             </div>
           </div>
 

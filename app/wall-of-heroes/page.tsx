@@ -300,7 +300,7 @@ export default function WallOfHeroesPage() {
                     </div>
 
                     {/* Jersey Spec Badge */}
-                    <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-navy text-brand-yellow whitespace-nowrap max-w-[90px] sm:max-w-none truncate">
+                    <span className="flex-shrink-0 inline-flex items-center px-2 py-1 rounded-full text-[10px] font-extrabold bg-brand-navy text-brand-yellow text-center leading-tight whitespace-normal text-right">
                       {j.jersey_spec_str}
                     </span>
                   </div>
