@@ -70,15 +70,15 @@ export default function BibCard({
               </div>
             </div>
 
-            {/* 3. ROUTE BANNER (Placed exactly along the bottom boundary of the white box: top-[68.5%]) */}
-            <div className="absolute top-[68.5%] w-full bg-[#0A1338]/95 py-1 px-2 text-center border-y border-brand-yellow/50 shadow-md">
+            {/* 3. ROUTE BANNER (Shifted slightly down to top-[71%] along the bottom border of the white box) */}
+            <div className="absolute top-[71%] w-full bg-[#0A1338]/95 py-1 px-2 text-center border-y border-brand-yellow/50 shadow-md">
               <span className="text-[7px] sm:text-[9px] md:text-[11px] font-black text-brand-yellow tracking-widest block uppercase">
                 JONGGOL → GUNUNG BATU &nbsp;•&nbsp; ELEVATION GAIN ±700M &nbsp;•&nbsp; SELF-SUPPORTED
               </span>
             </div>
 
-            {/* 4. PROMINENT PRIDE BADGES (Placed below the banner at top-[83.5%] with LARGER SIZE) */}
-            <div className="absolute top-[83.5%] transform -translate-y-1/2 flex items-center justify-center flex-wrap gap-1.5 sm:gap-2.5 px-3 w-full">
+            {/* 4. PROMINENT PRIDE BADGES (Shifted slightly down to top-[85.5%] in the photo section) */}
+            <div className="absolute top-[85.5%] transform -translate-y-1/2 flex items-center justify-center flex-wrap gap-1.5 sm:gap-2.5 px-3 w-full">
               <span className="bg-[#1D3AAE] text-white text-[8px] sm:text-[11px] md:text-[13px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg border border-white/20 truncate max-w-[55%] uppercase tracking-wide">
                 KOMUNITAS: {(komunitas || 'UMUM').toUpperCase()}
               </span>
