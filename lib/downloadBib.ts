@@ -22,12 +22,12 @@ export async function generateBibCanvas(data: {
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT" (Placed below top-right logo at h * 0.23)
-      const badgeW = 340;
-      const badgeH = 40;
-      const badgeX = w - badgeW - w * 0.045;
-      const badgeY = h * 0.23 - badgeH / 2;
-      const radius = 20;
+      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT" (Shifted lower to h * 0.315 so it sits clear below top-right logos)
+      const badgeW = 320;
+      const badgeH = 38;
+      const badgeX = w - badgeW - w * 0.04;
+      const badgeY = h * 0.315 - badgeH / 2;
+      const radius = 19;
 
       ctx.fillStyle = '#0A1338';
       ctx.beginPath();

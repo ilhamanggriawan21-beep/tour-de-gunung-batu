@@ -50,9 +50,9 @@ export default function BibCard({
           {/* OVERLAY ELEMENTS (Custom Layout based on user design directive) */}
           <div className="absolute inset-0 pointer-events-none">
             
-            {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT (Placed directly below PEADERAL x RUDEBOYS logos) */}
-            <div className="absolute top-[23.5%] right-[4%] transform -translate-y-1/2">
-              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[12px] font-black px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
+            {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT (Lowered to top-[31.5%] so it never overlaps the top-right logos) */}
+            <div className="absolute top-[31.5%] right-[4%] transform -translate-y-1/2 z-10">
+              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[11.5px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
                 OFFICIAL PARTICIPANT
               </span>
             </div>
