@@ -14,42 +14,37 @@ export async function generateBibCanvas(data: {
   canvas.height = 1410;
 
   return new Promise(async (resolve) => {
-    // Load Sakana custom font for canvas - robust loading with verification
+    // Load Sakana custom font for canvas via fetch + ArrayBuffer (most reliable method)
     let fontLoaded = false;
     if (typeof document !== 'undefined' && 'fonts' in document) {
       try {
-        // Check if font is already loaded
-        if (document.fonts.check('900 48px Sakana')) {
-          fontLoaded = true;
-        } else {
-          const sakanaFont = new FontFace('Sakana', 'url(/fonts/Sakana.ttf)');
-          const loadedFont = await sakanaFont.load();
-          document.fonts.add(loadedFont);
-          // Wait for all fonts to be ready
-          await document.fonts.ready;
-          // Verify font is actually available
-          fontLoaded = document.fonts.check('900 48px Sakana');
-        }
-      } catch (e) {
-        console.warn('Custom font Sakana load notice:', e);
-      }
+        // Fetch font file as ArrayBuffer for reliable loading
+        const fontResponse = await fetch('/fonts/Sakana.ttf');
+        const fontBuffer = await fontResponse.arrayBuffer();
+        const sakanaFont = new FontFace('SakanaCanvas', fontBuffer);
+        const loadedFont = await sakanaFont.load();
+        document.fonts.add(loadedFont);
+        await document.fonts.ready;
 
-      // If font still not detected, retry once with a small delay
-      if (!fontLoaded) {
-        try {
-          const sakanaRetry = new FontFace('Sakana', 'url(/fonts/Sakana.ttf)');
-          const retryFont = await sakanaRetry.load();
-          document.fonts.add(retryFont);
-          await document.fonts.ready;
-          await new Promise(r => setTimeout(r, 100));
-          fontLoaded = document.fonts.check('900 48px Sakana');
-        } catch (e) {
-          console.warn('Sakana font retry failed:', e);
+        // Canvas warmup: draw invisible text to force font rasterization
+        const warmupCanvas = document.createElement('canvas');
+        warmupCanvas.width = 1;
+        warmupCanvas.height = 1;
+        const warmupCtx = warmupCanvas.getContext('2d');
+        if (warmupCtx) {
+          warmupCtx.font = '900 48px SakanaCanvas';
+          warmupCtx.fillText('0', 0, 0);
         }
+
+        // Small delay to ensure font engine has fully processed
+        await new Promise(r => setTimeout(r, 150));
+        fontLoaded = true;
+      } catch (e) {
+        console.warn('Sakana font loading failed, using fallback:', e);
       }
     }
 
-    const bibFontFamily = fontLoaded ? 'Sakana, sans-serif' : 'sans-serif';
+    const bibFontFamily = fontLoaded ? 'SakanaCanvas, sans-serif' : 'sans-serif';
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
