@@ -75,9 +75,9 @@ export async function generateBibCanvas(data: {
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
       ctx.fillText(cleanName, w / 2, h * 0.61);
 
-      // 3. ROUTE BANNER (Shifted further down to h * 0.73)
+      // 3. ROUTE BANNER (Shifted 2% further down to h * 0.75)
       const bannerH = 46;
-      const bannerY = h * 0.73 - bannerH / 2;
+      const bannerY = h * 0.75 - bannerH / 2;
       ctx.fillStyle = 'rgba(10, 19, 56, 0.95)';
       ctx.fillRect(0, bannerY, w, bannerH);
       ctx.fillStyle = '#F4C716';
@@ -86,7 +86,7 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
 
-      // 4. PROMINENT PRIDE BADGES (Shifted further down to h * 0.885)
+      // 4. PROMINENT PRIDE BADGES (Shifted 2% further down to h * 0.905)
       const komName = (data.komunitas || 'UMUM').toUpperCase();
       const regCode = data.nomorRegistrasi || '';
       const isPo = data.jenisRegistrasi === 'po_jersey';
@@ -103,7 +103,7 @@ export async function generateBibCanvas(data: {
 
       const totalRowW = komWidth + regWidth + (isPo ? poWidth + gap : 0);
       let startX = (w - totalRowW) / 2;
-      const pillsY = h * 0.885 - 28;
+      const pillsY = h * 0.905 - 28;
       const pillH = 56;
 
       // Komunitas Pill
