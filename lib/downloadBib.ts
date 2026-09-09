@@ -14,16 +14,42 @@ export async function generateBibCanvas(data: {
   canvas.height = 1410;
 
   return new Promise(async (resolve) => {
-    // Load Sakana custom font for canvas
+    // Load Sakana custom font for canvas - robust loading with verification
+    let fontLoaded = false;
     if (typeof document !== 'undefined' && 'fonts' in document) {
       try {
-        const sakanaFont = new FontFace('Sakana', 'url(/fonts/Sakana.ttf)');
-        const loadedFont = await sakanaFont.load();
-        document.fonts.add(loadedFont);
+        // Check if font is already loaded
+        if (document.fonts.check('900 48px Sakana')) {
+          fontLoaded = true;
+        } else {
+          const sakanaFont = new FontFace('Sakana', 'url(/fonts/Sakana.ttf)');
+          const loadedFont = await sakanaFont.load();
+          document.fonts.add(loadedFont);
+          // Wait for all fonts to be ready
+          await document.fonts.ready;
+          // Verify font is actually available
+          fontLoaded = document.fonts.check('900 48px Sakana');
+        }
       } catch (e) {
         console.warn('Custom font Sakana load notice:', e);
       }
+
+      // If font still not detected, retry once with a small delay
+      if (!fontLoaded) {
+        try {
+          const sakanaRetry = new FontFace('Sakana', 'url(/fonts/Sakana.ttf)');
+          const retryFont = await sakanaRetry.load();
+          document.fonts.add(retryFont);
+          await document.fonts.ready;
+          await new Promise(r => setTimeout(r, 100));
+          fontLoaded = document.fonts.check('900 48px Sakana');
+        } catch (e) {
+          console.warn('Sakana font retry failed:', e);
+        }
+      }
     }
+
+    const bibFontFamily = fontLoaded ? 'Sakana, sans-serif' : 'sans-serif';
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -61,7 +87,7 @@ export async function generateBibCanvas(data: {
       // 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name using Sakana Font)
       // Main BIB Number (Huge Sakana Font)
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 330px Sakana, sans-serif';
+      ctx.font = `900 330px ${bibFontFamily}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
