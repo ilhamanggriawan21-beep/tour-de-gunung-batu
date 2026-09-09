@@ -57,14 +57,14 @@ export default function BibCard({
               </span>
             </div>
 
-            {/* 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name) */}
+            {/* 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name using Sakana Font) */}
             <div className="absolute top-[37%] bottom-[32%] left-[5%] right-[5%] flex flex-col items-center justify-center">
               {/* Main BIB Number */}
               <div className="text-center w-full my-auto">
-                <span className="text-6xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-display tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none">
+                <span className="text-6xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-sakana tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none">
                   {String(nomorBib).padStart(3, '0')}
                 </span>
-                <h3 className="text-sm sm:text-xl md:text-2xl font-black text-[#0A1338] uppercase tracking-wide truncate max-w-[90%] mx-auto mt-1 sm:mt-2">
+                <h3 className="text-sm sm:text-xl md:text-2xl font-black text-[#0A1338] font-sakana uppercase tracking-wide truncate max-w-[90%] mx-auto mt-1 sm:mt-2">
                   {namaLengkap}
                 </h3>
               </div>

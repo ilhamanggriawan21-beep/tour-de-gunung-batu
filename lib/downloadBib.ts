@@ -13,7 +13,18 @@ export async function generateBibCanvas(data: {
   canvas.width = 2000;
   canvas.height = 1410;
 
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    // Load Sakana custom font for canvas
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      try {
+        const sakanaFont = new FontFace('Sakana', 'url(/fonts/Sakana.ttf)');
+        const loadedFont = await sakanaFont.load();
+        document.fonts.add(loadedFont);
+      } catch (e) {
+        console.warn('Custom font Sakana load notice:', e);
+      }
+    }
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = '/bib-template-revisi.png?v=3';
@@ -47,10 +58,10 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText('OFFICIAL PARTICIPANT', badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-      // 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name)
-      // Main BIB Number (Huge 260px font)
+      // 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name using Sakana Font)
+      // Main BIB Number (Huge Sakana Font)
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 260px sans-serif';
+      ctx.font = '900 230px Sakana, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
@@ -67,9 +78,9 @@ export async function generateBibCanvas(data: {
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
 
-      // Participant Full Name
+      // Participant Full Name (Sakana Font)
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 60px sans-serif';
+      ctx.font = '900 52px Sakana, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();

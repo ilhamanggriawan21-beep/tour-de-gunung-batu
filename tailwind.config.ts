@@ -24,6 +24,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Impact", "sans-serif"],
+        sakana: ["Sakana", "sans-serif"],
       },
       boxShadow: {
         glass: "0 8px 32px 0 rgba(29, 58, 174, 0.15)",
