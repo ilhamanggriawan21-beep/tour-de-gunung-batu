@@ -81,40 +81,82 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText('OFFICIAL PARTICIPANT', badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-      // 2. PURE WHITE BOX ZONE - BIB Number with Sakana Font
-      ctx.fillStyle = '#0A1338';
-      ctx.font = `330px ${bibFontFamily}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      // 2. PURE WHITE BOX ZONE - BIB Number with Sakana Font & Participant Name
+      const formattedBib = String(data.nomorBib).padStart(3, '0');
+      const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
 
-      // Golden shadow
+      // Font sizes scaled to canvas height (1410px) matching web view proportions
+      const bibFontSize = 360;
+      let nameFontSize = 68;
+      const gapBetween = 36;
+
+      // Ensure participant name fits horizontally within 82% of canvas width
+      ctx.font = `900 ${nameFontSize}px sans-serif`;
+      const maxNameWidth = w * 0.82;
+      let nameWidth = ctx.measureText(cleanName).width;
+      if (nameWidth > maxNameWidth) {
+        nameFontSize = Math.floor(nameFontSize * (maxNameWidth / nameWidth));
+        ctx.font = `900 ${nameFontSize}px sans-serif`;
+      }
+
+      // Measure exact visual heights
+      ctx.font = `${bibFontSize}px ${bibFontFamily}`;
+      const bibMetrics = ctx.measureText(formattedBib);
+      const bibAscent = bibMetrics.actualBoundingBoxAscent || (bibFontSize * 0.72);
+      const bibDescent = bibMetrics.actualBoundingBoxDescent || (bibFontSize * 0.08);
+      const bibVisualHeight = bibAscent + bibDescent;
+
+      ctx.font = `900 ${nameFontSize}px sans-serif`;
+      const nameMetrics = ctx.measureText(cleanName);
+      const nameAscent = nameMetrics.actualBoundingBoxAscent || (nameFontSize * 0.72);
+      const nameDescent = nameMetrics.actualBoundingBoxDescent || (nameFontSize * 0.15);
+      const nameVisualHeight = nameAscent + nameDescent;
+
+      // Define the white box vertical target zone
+      // White box zone starts below logos (~h * 0.365) and ends above route banner (~h * 0.735)
+      const zoneTop = h * 0.365;
+      const zoneBottom = h * 0.735;
+      const zoneCenter = (zoneTop + zoneBottom) / 2;
+
+      // Calculate total block height and vertical start position for perfect centering
+      const totalBlockHeight = bibVisualHeight + gapBetween + nameVisualHeight;
+      const blockStartY = zoneCenter - (totalBlockHeight / 2);
+
+      // 1) Draw BIB Number
+      ctx.fillStyle = '#0A1338';
+      ctx.font = `${bibFontSize}px ${bibFontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
+      // Golden subtle glow/shadow matching web preview drop-shadow
       ctx.shadowColor = 'rgba(244, 199, 22, 0.4)';
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 16;
       ctx.shadowOffsetY = 6;
 
-      const formattedBib = String(data.nomorBib).padStart(3, '0');
-      ctx.fillText(formattedBib, w / 2, h * 0.47);
+      const bibBaselineY = blockStartY + bibAscent;
+      ctx.fillText(formattedBib, w / 2, bibBaselineY);
 
-      // Reset shadow
+      // Reset shadow before drawing name
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
 
-      // Participant Full Name (Sakana Font)
+      // 2) Draw Participant Name
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 42px sans-serif';
+      ctx.font = `900 ${nameFontSize}px sans-serif`;
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
-      ctx.fillText(cleanName, w / 2, h * 0.55);
+      ctx.textBaseline = 'alphabetic';
+
+      const nameBaselineY = blockStartY + bibVisualHeight + gapBetween + nameAscent;
+      ctx.fillText(cleanName, w / 2, nameBaselineY);
 
       // 3. ROUTE BANNER (Shifted 2% further down to h * 0.75)
-      const bannerH = 46;
+      const bannerH = 48;
       const bannerY = h * 0.75 - bannerH / 2;
       ctx.fillStyle = 'rgba(10, 19, 56, 0.95)';
       ctx.fillRect(0, bannerY, w, bannerH);
       ctx.fillStyle = '#F4C716';
-      ctx.font = '900 22px sans-serif';
+      ctx.font = '900 24px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
