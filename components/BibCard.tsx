@@ -47,33 +47,33 @@ export default function BibCard({
             className="w-full h-full object-cover select-none"
           />
 
-          {/* OVERLAY ELEMENTS (Positioned relative to template aspect ratio) */}
+          {/* OVERLAY ELEMENTS (Strictly contained within the clean white zone: 37% to 70% height) */}
           <div className="absolute inset-0 pointer-events-none flex flex-col items-center">
             
-            {/* Top Pill Badge: OFFICIAL PARTICIPANT (Lowered slightly to top-[34%] to avoid logo text overlap) */}
-            <div className="absolute top-[34%] transform -translate-y-1/2">
-              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[12px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-full border border-brand-yellow/80 shadow-md uppercase tracking-widest">
+            {/* 1. Top Label: OFFICIAL PARTICIPANT (Placed at 40% inside white box, well below header logo text) */}
+            <div className="absolute top-[40.5%] transform -translate-y-1/2">
+              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[11px] font-black px-3 py-0.5 sm:px-4 sm:py-1 rounded-full border border-brand-yellow/80 shadow-sm uppercase tracking-widest">
                 OFFICIAL PARTICIPANT
               </span>
             </div>
 
-            {/* Main BIB Number (Padded 3-digits without hash symbol for official race look) */}
-            <div className="absolute top-[47.5%] transform -translate-y-1/2 text-center w-full">
-              <span className="text-6xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-display tracking-tight drop-shadow-[0_2px_10px_rgba(244,199,22,0.35)]">
+            {/* 2. Main Large BIB Number (Placed at 50% height - dead center of white box) */}
+            <div className="absolute top-[50.5%] transform -translate-y-1/2 text-center w-full">
+              <span className="text-5xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-display tracking-tight drop-shadow-[0_2px_8px_rgba(244,199,22,0.3)]">
                 {String(nomorBib).padStart(3, '0')}
               </span>
             </div>
 
-            {/* Participant Name */}
-            <div className="absolute top-[59%] transform -translate-y-1/2 text-center w-full px-4">
-              <h3 className="text-xs sm:text-lg md:text-xl font-black text-[#0A1338] uppercase tracking-wide truncate max-w-[90%] mx-auto">
+            {/* 3. Participant Full Name (Placed at 60.5% height) */}
+            <div className="absolute top-[60.5%] transform -translate-y-1/2 text-center w-full px-4">
+              <h3 className="text-xs sm:text-base md:text-lg font-black text-[#0A1338] uppercase tracking-wide truncate max-w-[85%] mx-auto">
                 {namaLengkap}
               </h3>
             </div>
 
-            {/* Row 1 Badges: Community & Reg Code */}
-            <div className="absolute top-[66%] transform -translate-y-1/2 flex items-center justify-center gap-1.5 sm:gap-2 px-2 w-full">
-              <span className="bg-[#1D3AAE] text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md shadow-sm truncate max-w-[50%]">
+            {/* 4. Badges Row: Community & Reg Code (Placed at 66.5% height - near bottom of white box) */}
+            <div className="absolute top-[66.5%] transform -translate-y-1/2 flex items-center justify-center gap-1.5 sm:gap-2 px-2 w-full">
+              <span className="bg-[#1D3AAE] text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md shadow-sm truncate max-w-[45%]">
                 {(komunitas || 'UMUM').toUpperCase()}
               </span>
               <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] font-mono font-bold px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md shadow-sm">
@@ -84,13 +84,6 @@ export default function BibCard({
                   <Heart className="w-2.5 h-2.5 mr-0.5 fill-[#0A1338]" /> PO JERSEY
                 </span>
               )}
-            </div>
-
-            {/* Subtle Route Info (Integrated seamlessly at top of footer photo) */}
-            <div className="absolute top-[73.5%] w-full bg-[#0A1338]/85 py-1 px-2 text-center backdrop-blur-[2px]">
-              <span className="text-[7px] sm:text-[9px] md:text-[10px] font-extrabold text-brand-yellow tracking-wider block uppercase">
-                JONGGOL → GUNUNG BATU &nbsp;•&nbsp; ELEVATION GAIN ±700M &nbsp;•&nbsp; SELF-SUPPORTED
-              </span>
             </div>
 
           </div>

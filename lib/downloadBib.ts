@@ -22,12 +22,12 @@ export async function generateBibCanvas(data: {
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. Top Pill Badge: "OFFICIAL PARTICIPANT"
-      const badgeW = 460;
-      const badgeH = 46;
+      // 1. Top Pill Badge: "OFFICIAL PARTICIPANT" (Placed at h * 0.405 inside white box)
+      const badgeW = 420;
+      const badgeH = 42;
       const badgeX = (w - badgeW) / 2;
-      const badgeY = h * 0.335;
-      const radius = 23;
+      const badgeY = h * 0.405 - badgeH / 2;
+      const radius = 21;
 
       ctx.fillStyle = '#0A1338';
       ctx.beginPath();
@@ -38,68 +38,68 @@ export async function generateBibCanvas(data: {
       }
       ctx.fill();
       ctx.strokeStyle = '#F4C716';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2;
       ctx.stroke();
 
       ctx.fillStyle = '#F4C716';
-      ctx.font = '900 22px sans-serif';
+      ctx.font = '900 20px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('OFFICIAL PARTICIPANT', w / 2, badgeY + badgeH / 2);
 
-      // 2. Main Large BIB Number (3-digit padded format: 088)
+      // 2. Main Large BIB Number (Placed at h * 0.505 - dead center of white box)
       ctx.fillStyle = '#0A1338';
       ctx.font = '900 230px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       // Subtle drop shadow for numbers
-      ctx.shadowColor = 'rgba(244, 199, 22, 0.35)';
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(244, 199, 22, 0.3)';
+      ctx.shadowBlur = 10;
       ctx.shadowOffsetY = 4;
 
       const formattedBib = String(data.nomorBib).padStart(3, '0');
-      ctx.fillText(formattedBib, w / 2, h * 0.475);
+      ctx.fillText(formattedBib, w / 2, h * 0.505);
 
       // Reset shadow
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
 
-      // 3. Participant Full Name
+      // 3. Participant Full Name (Placed at h * 0.605)
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 54px sans-serif';
+      ctx.font = '900 50px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
-      ctx.fillText(cleanName, w / 2, h * 0.585);
+      ctx.fillText(cleanName, w / 2, h * 0.605);
 
-      // 4. Community & Reg Code Row
+      // 4. Community & Reg Code Row (Placed at h * 0.665)
       const komName = (data.komunitas || 'UMUM').toUpperCase();
       const regCode = data.nomorRegistrasi || '';
       const isPo = data.jenisRegistrasi === 'po_jersey';
 
       // Render pills row
-      const fontBadges = 'bold 28px sans-serif';
+      const fontBadges = 'bold 26px sans-serif';
       ctx.font = fontBadges;
       const komText = komName;
       const regText = `REG: ${regCode}`;
 
-      const komWidth = ctx.measureText(komText).width + 44;
-      const regWidth = ctx.measureText(regText).width + 44;
-      const poWidth = isPo ? 220 : 0;
+      const komWidth = ctx.measureText(komText).width + 40;
+      const regWidth = ctx.measureText(regText).width + 40;
+      const poWidth = isPo ? 200 : 0;
       const gap = 16;
 
       const totalRowW = komWidth + regWidth + (isPo ? poWidth + gap : 0);
       let startX = (w - totalRowW) / 2;
-      const pillsY = h * 0.655;
-      const pillH = 50;
+      const pillsY = h * 0.665 - 23;
+      const pillH = 46;
 
       // Komunitas Pill
       ctx.fillStyle = '#1D3AAE';
       ctx.beginPath();
       if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(startX, pillsY, komWidth, pillH, 14);
+        (ctx as any).roundRect(startX, pillsY, komWidth, pillH, 12);
       } else {
         ctx.fillRect(startX, pillsY, komWidth, pillH);
       }
@@ -116,7 +116,7 @@ export async function generateBibCanvas(data: {
       ctx.fillStyle = '#0A1338';
       ctx.beginPath();
       if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(startX, pillsY, regWidth, pillH, 14);
+        (ctx as any).roundRect(startX, pillsY, regWidth, pillH, 12);
       } else {
         ctx.fillRect(startX, pillsY, regWidth, pillH);
       }
@@ -131,28 +131,16 @@ export async function generateBibCanvas(data: {
         ctx.fillStyle = '#F4C716';
         ctx.beginPath();
         if (typeof (ctx as any).roundRect === 'function') {
-          (ctx as any).roundRect(startX, pillsY, poWidth, pillH, 14);
+          (ctx as any).roundRect(startX, pillsY, poWidth, pillH, 12);
         } else {
           ctx.fillRect(startX, pillsY, poWidth, pillH);
         }
         ctx.fill();
 
         ctx.fillStyle = '#0A1338';
-        ctx.font = '800 24px sans-serif';
+        ctx.font = '800 22px sans-serif';
         ctx.fillText('♥ PO JERSEY', startX + poWidth / 2, pillsY + pillH / 2);
       }
-
-      // 5. Footer Route Banner Bar
-      const bannerH = 46;
-      const bannerY = h * 0.73;
-      ctx.fillStyle = 'rgba(10, 19, 56, 0.88)';
-      ctx.fillRect(0, bannerY, w, bannerH);
-
-      ctx.fillStyle = '#F4C716';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
 
       resolve(canvas);
     };
