@@ -42,8 +42,8 @@ export default function BibCard({
         <div className="relative w-full aspect-[21014/14808] rounded-2xl overflow-hidden shadow-2xl border-2 border-brand-yellow/60 group bg-slate-900">
           {/* Base Template Image */}
           <img
-            src="/images/bib-template.png"
-            alt="Tour de Gunung Batu BIB Template"
+            src="/bib-template-revisi.png?v=3"
+            alt="Tour de Gunung Batu BIB Template REVISI"
             className="w-full h-full object-cover select-none"
           />
 
