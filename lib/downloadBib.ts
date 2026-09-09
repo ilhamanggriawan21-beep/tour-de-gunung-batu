@@ -14,37 +14,39 @@ export async function generateBibCanvas(data: {
   canvas.height = 1410;
 
   return new Promise(async (resolve) => {
-    // Load Sakana custom font for canvas via fetch + ArrayBuffer (most reliable method)
+    // Load Sakana custom font for canvas via fetch + ArrayBuffer
     let fontLoaded = false;
     if (typeof document !== 'undefined' && 'fonts' in document) {
       try {
-        // Fetch font file as ArrayBuffer for reliable loading
         const fontResponse = await fetch('/fonts/Sakana.ttf');
         const fontBuffer = await fontResponse.arrayBuffer();
-        const sakanaFont = new FontFace('SakanaCanvas', fontBuffer);
+        // Register with weight range '1 999' so any weight request matches this single-weight font
+        const sakanaFont = new FontFace('SakanaCanvas', fontBuffer, {
+          weight: '1 999',
+          style: 'normal',
+        });
         const loadedFont = await sakanaFont.load();
         document.fonts.add(loadedFont);
         await document.fonts.ready;
 
-        // Canvas warmup: draw invisible text to force font rasterization
+        // Canvas warmup: force font rasterization
         const warmupCanvas = document.createElement('canvas');
-        warmupCanvas.width = 1;
-        warmupCanvas.height = 1;
+        warmupCanvas.width = 10;
+        warmupCanvas.height = 10;
         const warmupCtx = warmupCanvas.getContext('2d');
         if (warmupCtx) {
-          warmupCtx.font = '900 48px SakanaCanvas';
-          warmupCtx.fillText('0', 0, 0);
+          warmupCtx.font = '48px SakanaCanvas';
+          warmupCtx.fillText('012345', 0, 10);
         }
 
-        // Small delay to ensure font engine has fully processed
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, 200));
         fontLoaded = true;
       } catch (e) {
         console.warn('Sakana font loading failed, using fallback:', e);
       }
     }
 
-    const bibFontFamily = fontLoaded ? 'SakanaCanvas, sans-serif' : 'sans-serif';
+    const bibFontFamily = fontLoaded ? 'SakanaCanvas' : 'sans-serif';
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -54,7 +56,7 @@ export async function generateBibCanvas(data: {
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT" (Shifted slightly up to h * 0.285 for sweeter aesthetic)
+      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT"
       const badgeW = 320;
       const badgeH = 38;
       const badgeX = w - badgeW - w * 0.04;
@@ -79,10 +81,9 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText('OFFICIAL PARTICIPANT', badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-      // 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name using Sakana Font)
-      // Main BIB Number (Huge Sakana Font)
+      // 2. PURE WHITE BOX ZONE - BIB Number with Sakana Font
       ctx.fillStyle = '#0A1338';
-      ctx.font = `900 330px ${bibFontFamily}`;
+      ctx.font = `330px ${bibFontFamily}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
