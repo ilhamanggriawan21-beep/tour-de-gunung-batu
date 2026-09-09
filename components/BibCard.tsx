@@ -51,43 +51,43 @@ export default function BibCard({
           <div className="absolute inset-0 pointer-events-none">
             
             {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT (Placed directly below PEADERAL x RUDEBOYS logos) */}
-            <div className="absolute top-[23%] right-[4.5%] transform -translate-y-1/2">
-              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[11px] md:text-[13px] font-black px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
+            <div className="absolute top-[23.5%] right-[4%] transform -translate-y-1/2">
+              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[12px] font-black px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
                 OFFICIAL PARTICIPANT
               </span>
             </div>
 
             {/* 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name) */}
-            <div className="absolute top-[37%] bottom-[30%] left-[5%] right-[5%] flex flex-col items-center justify-center">
+            <div className="absolute top-[37%] bottom-[32%] left-[5%] right-[5%] flex flex-col items-center justify-center">
               {/* Main BIB Number */}
               <div className="text-center w-full my-auto">
-                <span className="text-6xl sm:text-8xl md:text-9xl font-black text-[#0A1338] font-display tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none">
+                <span className="text-6xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-display tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none">
                   {String(nomorBib).padStart(3, '0')}
                 </span>
-                <h3 className="text-base sm:text-2xl md:text-3xl font-black text-[#0A1338] uppercase tracking-wide truncate max-w-[90%] mx-auto mt-2 sm:mt-3">
+                <h3 className="text-sm sm:text-xl md:text-2xl font-black text-[#0A1338] uppercase tracking-wide truncate max-w-[90%] mx-auto mt-1 sm:mt-2">
                   {namaLengkap}
                 </h3>
               </div>
             </div>
 
-            {/* 3. ROUTE BANNER (Placed exactly along the bottom boundary of the white box: top-[70%]) */}
-            <div className="absolute top-[70%] w-full bg-[#0A1338]/95 py-1 sm:py-1.5 px-2 text-center border-y border-brand-yellow/50 shadow-md">
-              <span className="text-[7px] sm:text-[10px] md:text-[12px] font-black text-brand-yellow tracking-widest block uppercase">
+            {/* 3. ROUTE BANNER (Placed exactly along the bottom boundary of the white box: top-[68.5%]) */}
+            <div className="absolute top-[68.5%] w-full bg-[#0A1338]/95 py-1 px-2 text-center border-y border-brand-yellow/50 shadow-md">
+              <span className="text-[7px] sm:text-[9px] md:text-[11px] font-black text-brand-yellow tracking-widest block uppercase">
                 JONGGOL → GUNUNG BATU &nbsp;•&nbsp; ELEVATION GAIN ±700M &nbsp;•&nbsp; SELF-SUPPORTED
               </span>
             </div>
 
-            {/* 4. PROMINENT PRIDE BADGES (Placed below the banner in the photo section with LARGER SIZE) */}
-            <div className="absolute top-[81%] transform -translate-y-1/2 flex items-center justify-center flex-wrap gap-2 sm:gap-3 px-3 w-full">
-              <span className="bg-[#1D3AAE] text-white text-[9px] sm:text-[13px] md:text-[15px] font-black px-3 py-1 sm:px-4 sm:py-1.5 rounded-xl shadow-lg border border-white/20 truncate max-w-[55%] uppercase tracking-wide">
+            {/* 4. PROMINENT PRIDE BADGES (Placed below the banner at top-[83.5%] with LARGER SIZE) */}
+            <div className="absolute top-[83.5%] transform -translate-y-1/2 flex items-center justify-center flex-wrap gap-1.5 sm:gap-2.5 px-3 w-full">
+              <span className="bg-[#1D3AAE] text-white text-[8px] sm:text-[11px] md:text-[13px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg border border-white/20 truncate max-w-[55%] uppercase tracking-wide">
                 KOMUNITAS: {(komunitas || 'UMUM').toUpperCase()}
               </span>
-              <span className="bg-[#0A1338] text-brand-yellow text-[9px] sm:text-[13px] md:text-[15px] font-mono font-black px-3 py-1 sm:px-4 sm:py-1.5 rounded-xl shadow-lg border border-brand-yellow/60">
+              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[11px] md:text-[13px] font-mono font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg border border-brand-yellow/60">
                 REG: {nomorRegistrasi}
               </span>
               {jenisRegistrasi === 'po_jersey' && (
-                <span className="bg-brand-yellow text-[#0A1338] text-[9px] sm:text-[13px] md:text-[15px] font-black px-3 py-1 sm:px-4 sm:py-1.5 rounded-xl shadow-lg flex items-center border border-[#0A1338]">
-                  <Heart className="w-3 h-3 sm:w-4 sm:h-4 mr-1 fill-[#0A1338]" /> PO JERSEY
+                <span className="bg-brand-yellow text-[#0A1338] text-[8px] sm:text-[11px] md:text-[13px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg flex items-center border border-[#0A1338]">
+                  <Heart className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 mr-1 fill-[#0A1338]" /> PO JERSEY
                 </span>
               )}
             </div>
