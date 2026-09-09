@@ -3,6 +3,12 @@
 import React, { useRef } from 'react';
 import { Download, Share2, Bike, Heart } from 'lucide-react';
 import { downloadBibCard } from '@/lib/downloadBib';
+import localFont from 'next/font/local';
+
+const sakanaFont = localFont({
+  src: '../public/fonts/Sakana.ttf',
+  display: 'swap',
+});
 
 interface BibCardProps {
   nomorBib: number;
@@ -50,7 +56,7 @@ export default function BibCard({
           {/* OVERLAY ELEMENTS (Custom Layout based on user design directive) */}
           <div className="absolute inset-0 pointer-events-none">
             
-            {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT (Shifted slightly up to top-[28.5%] for sweeter aesthetic) */}
+            {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT */}
             <div className="absolute top-[28.5%] right-[4%] transform -translate-y-1/2 z-10">
               <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[11.5px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
                 OFFICIAL PARTICIPANT
@@ -61,10 +67,10 @@ export default function BibCard({
             <div className="absolute top-[37%] bottom-[32%] left-[5%] right-[5%] flex flex-col items-center justify-center">
               {/* Main BIB Number */}
               <div className="text-center w-full my-auto">
-                <span className="text-6xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-sakana tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none">
+                <span className={`${sakanaFont.className} text-6xl sm:text-7xl md:text-8xl text-[#0A1338] tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none`}>
                   {String(nomorBib).padStart(3, '0')}
                 </span>
-                <h3 className="text-sm sm:text-xl md:text-2xl font-black text-[#0A1338] font-sakana uppercase tracking-wide truncate max-w-[90%] mx-auto mt-1 sm:mt-2">
+                <h3 className={`${sakanaFont.className} text-base sm:text-2xl md:text-3xl text-[#0A1338] uppercase tracking-wide truncate max-w-[90%] mx-auto mt-1 sm:mt-2`}>
                   {namaLengkap}
                 </h3>
               </div>
