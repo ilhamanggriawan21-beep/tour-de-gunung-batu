@@ -61,7 +61,7 @@ export async function generateBibCanvas(data: {
       // 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name using Sakana Font)
       // Main BIB Number (Huge Sakana Font)
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 230px Sakana, sans-serif';
+      ctx.font = '900 330px Sakana, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
@@ -71,7 +71,7 @@ export async function generateBibCanvas(data: {
       ctx.shadowOffsetY = 6;
 
       const formattedBib = String(data.nomorBib).padStart(3, '0');
-      ctx.fillText(formattedBib, w / 2, h * 0.48);
+      ctx.fillText(formattedBib, w / 2, h * 0.47);
 
       // Reset shadow
       ctx.shadowColor = 'transparent';
@@ -80,11 +80,11 @@ export async function generateBibCanvas(data: {
 
       // Participant Full Name (Sakana Font)
       ctx.fillStyle = '#0A1338';
-      ctx.font = '900 52px Sakana, sans-serif';
+      ctx.font = '900 42px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
-      ctx.fillText(cleanName, w / 2, h * 0.61);
+      ctx.fillText(cleanName, w / 2, h * 0.55);
 
       // 3. ROUTE BANNER (Shifted 2% further down to h * 0.75)
       const bannerH = 46;
