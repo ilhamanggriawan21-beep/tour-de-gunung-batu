@@ -38,69 +38,63 @@ export default function BibCard({
 
   return (
     <div className="w-full max-w-xl mx-auto my-6">
-      {/* BIB Card Frame */}
-      <div
-        ref={cardRef}
-        className="bg-gradient-to-b from-brand-navy via-brand-navyLight to-brand-royalDark rounded-3xl p-6 sm:p-8 border-4 border-brand-yellow shadow-glow text-center text-white relative overflow-hidden"
-      >
-        {/* Topographic Lines Decor */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#1D3AAE_1px,transparent_1px)] [background-size:16px_16px]" />
+        {/* BIB Template Container with 1.419 Aspect Ratio */}
+        <div className="relative w-full aspect-[21014/14808] rounded-2xl overflow-hidden shadow-2xl border-2 border-brand-yellow/60 group bg-slate-900">
+          {/* Base Template Image */}
+          <img
+            src="/images/bib-template.png"
+            alt="Tour de Gunung Batu BIB Template"
+            className="w-full h-full object-cover select-none"
+          />
 
-        {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-brand-sky/20 pb-4 mb-4">
-          <div className="text-left">
-            <span className="font-extrabold text-xs text-brand-yellow tracking-widest block font-display">
-              PEADERAL x RUDEBOYS
-            </span>
-            <span className="font-bold text-lg sm:text-xl text-white block">TOUR DE GUNUNG BATU</span>
-          </div>
-          <div className="text-right">
-            <span className="text-[10px] text-brand-sky uppercase font-semibold block">TANGGAL EVENT</span>
-            <span className="text-xs font-extrabold text-brand-yellow block">27 SEPT 2026</span>
-          </div>
-        </div>
-
-        {/* Big BIB Number Display */}
-        <div className="my-6 py-6 px-4 bg-brand-royal/60 rounded-2xl border-2 border-brand-yellow/80 shadow-inner relative">
-          <span className="text-[11px] text-brand-sky font-bold uppercase tracking-widest block mb-1">
-            OFFICIAL PARTICIPANT BIB NUMBER
-          </span>
-          <span className="text-6xl sm:text-7xl font-extrabold text-brand-yellow font-display tracking-tight drop-shadow-md">
-            #{nomorBib}
-          </span>
-          <p className="text-[10px] text-brand-sky/80 mt-1 italic">
-            "Nomor BIB #{nomorBib} — Bagian dari Elevasi Kolektif ±700m"
-          </p>
-        </div>
-
-        {/* Participant Specs */}
-        <div className="space-y-1 mb-6">
-          <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-wide uppercase">
-            {namaLengkap}
-          </h3>
-          <p className="text-sm font-semibold text-brand-sky">
-            KOMUNITAS: <span className="text-white">{komunitas || 'UMUM'}</span>
-          </p>
-          <div className="pt-2 flex items-center justify-center space-x-2">
-            <span className="text-xs font-mono bg-black/40 text-brand-sky px-3 py-1 rounded-full border border-white/10">
-              REG: {nomorRegistrasi}
-            </span>
-            {jenisRegistrasi === 'po_jersey' && (
-              <span className="text-xs font-bold bg-brand-yellow text-brand-navy px-3 py-1 rounded-full flex items-center">
-                <Heart className="w-3 h-3 mr-1 fill-brand-navy" /> Partisipan PO Jersey
+          {/* OVERLAY ELEMENTS (Positioned relative to template aspect ratio) */}
+          <div className="absolute inset-0 pointer-events-none flex flex-col items-center">
+            
+            {/* Top Pill Badge: OFFICIAL PARTICIPANT (Lowered slightly to top-[34%] to avoid logo text overlap) */}
+            <div className="absolute top-[34%] transform -translate-y-1/2">
+              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[12px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-full border border-brand-yellow/80 shadow-md uppercase tracking-widest">
+                OFFICIAL PARTICIPANT
               </span>
-            )}
+            </div>
+
+            {/* Main BIB Number (Padded 3-digits without hash symbol for official race look) */}
+            <div className="absolute top-[47.5%] transform -translate-y-1/2 text-center w-full">
+              <span className="text-6xl sm:text-7xl md:text-8xl font-black text-[#0A1338] font-display tracking-tight drop-shadow-[0_2px_10px_rgba(244,199,22,0.35)]">
+                {String(nomorBib).padStart(3, '0')}
+              </span>
+            </div>
+
+            {/* Participant Name */}
+            <div className="absolute top-[59%] transform -translate-y-1/2 text-center w-full px-4">
+              <h3 className="text-xs sm:text-lg md:text-xl font-black text-[#0A1338] uppercase tracking-wide truncate max-w-[90%] mx-auto">
+                {namaLengkap}
+              </h3>
+            </div>
+
+            {/* Row 1 Badges: Community & Reg Code */}
+            <div className="absolute top-[66%] transform -translate-y-1/2 flex items-center justify-center gap-1.5 sm:gap-2 px-2 w-full">
+              <span className="bg-[#1D3AAE] text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md shadow-sm truncate max-w-[50%]">
+                {(komunitas || 'UMUM').toUpperCase()}
+              </span>
+              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] font-mono font-bold px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md shadow-sm">
+                REG: {nomorRegistrasi}
+              </span>
+              {jenisRegistrasi === 'po_jersey' && (
+                <span className="bg-brand-yellow text-[#0A1338] text-[8px] sm:text-[10px] font-black px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md shadow-sm flex items-center">
+                  <Heart className="w-2.5 h-2.5 mr-0.5 fill-[#0A1338]" /> PO JERSEY
+                </span>
+              )}
+            </div>
+
+            {/* Subtle Route Info (Integrated seamlessly at top of footer photo) */}
+            <div className="absolute top-[73.5%] w-full bg-[#0A1338]/85 py-1 px-2 text-center backdrop-blur-[2px]">
+              <span className="text-[7px] sm:text-[9px] md:text-[10px] font-extrabold text-brand-yellow tracking-wider block uppercase">
+                JONGGOL → GUNUNG BATU &nbsp;•&nbsp; ELEVATION GAIN ±700M &nbsp;•&nbsp; SELF-SUPPORTED
+              </span>
+            </div>
+
           </div>
         </div>
-
-        {/* Card Footer */}
-        <div className="pt-4 border-t border-brand-sky/20 flex items-center justify-between text-[11px] text-brand-sky">
-          <span className="flex items-center">
-            <Bike className="w-3.5 h-3.5 mr-1 text-brand-yellow" /> JONGGOL → GUNUNG BATU
-          </span>
-          <span>SELF-SUPPORTED EVENT</span>
-        </div>
-      </div>
 
       {/* Buttons Action */}
       <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
