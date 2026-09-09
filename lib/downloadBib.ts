@@ -248,21 +248,92 @@ export async function generateBibCanvas(data: {
   });
 }
 
-export async function downloadBibCard(data: {
-  nomorBib: number;
-  namaLengkap: string;
-  komunitas?: string;
-  nomorRegistrasi: string;
-  jenisRegistrasi?: string;
-}) {
+export async function saveOrShareImage(
+  blob: Blob,
+  filename: string,
+  title: string = 'Nomor BIB',
+  onIosFallback?: (dataUrl: string) => void
+): Promise<{ success: boolean; method: string }> {
+  const isIOS = typeof navigator !== 'undefined' && (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+
+  const file = new File([blob], filename, { type: 'image/png' });
+
+  // 1. Primary iOS & mobile sharing: Web Share API with files (opens iOS Save Image to Photos sheet)
+  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: title,
+        text: `Nomor BIB ${title} - Tour de Gunung Batu 2026`,
+      });
+      return { success: true, method: 'share' };
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        // User cancelled share sheet safely
+        return { success: true, method: 'cancelled' };
+      }
+      console.warn('Web Share failed, attempting fallback:', err);
+    }
+  }
+
+  // 2. iOS fallback: if share API is not available or restricted (e.g. in-app browsers)
+  if (isIOS) {
+    const reader = new FileReader();
+    const dataUrl = await new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+
+    if (onIosFallback) {
+      onIosFallback(dataUrl);
+      return { success: true, method: 'modal' };
+    }
+
+    const blobUrl = URL.createObjectURL(blob);
+    const opened = window.open(blobUrl, '_blank');
+    if (!opened) {
+      window.location.href = blobUrl;
+    }
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    return { success: true, method: 'open' };
+  }
+
+  // 3. Desktop & Android standard direct download
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+  return { success: true, method: 'download' };
+}
+
+export async function downloadBibCard(
+  data: {
+    nomorBib: number;
+    namaLengkap: string;
+    komunitas?: string;
+    nomorRegistrasi: string;
+    jenisRegistrasi?: string;
+  },
+  onIosFallback?: (dataUrl: string) => void
+) {
   try {
     const canvas = await generateBibCanvas(data);
-    const link = document.createElement('a');
-    link.download = `BIB_TOUR_DE_GUNUNG_BATU_${data.nomorBib}.png`;
-    link.href = canvas.toDataURL('image/png');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Canvas toBlob failed');
+
+    await saveOrShareImage(
+      blob,
+      `BIB_TOUR_DE_GUNUNG_BATU_${data.nomorBib}.png`,
+      `BIB #${data.nomorBib}`,
+      onIosFallback
+    );
   } catch (err) {
     console.error('Failed to download BIB PNG:', err);
     alert('Gagal mengunduh gambar BIB. Silakan coba kembali.');

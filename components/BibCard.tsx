@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Download, Share2, Bike, Heart, Loader2 } from 'lucide-react';
-import { downloadBibCard } from '@/lib/downloadBib';
+import { Download, Share2, Bike, Heart, Loader2, X } from 'lucide-react';
+import { downloadBibCard, saveOrShareImage, generateBibCanvas } from '@/lib/downloadBib';
 import localFont from 'next/font/local';
-import { toPng } from 'html-to-image';
+import { toBlob } from 'html-to-image';
 
 const sakanaFont = localFont({
   src: '../public/fonts/Sakana.ttf',
@@ -28,48 +28,58 @@ export default function BibCard({
 }: BibCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const [iosModalUrl, setIosModalUrl] = useState<string | null>(null);
 
   const handleDownload = async () => {
     if (downloading) return;
     setDownloading(true);
 
-    if (!cardRef.current) {
-      await downloadBibCard({
-        nomorBib,
-        namaLengkap,
-        komunitas,
-        nomorRegistrasi,
-        jenisRegistrasi
-      });
-      setDownloading(false);
-      return;
-    }
-
     try {
       if (typeof document !== 'undefined' && 'fonts' in document) {
         await document.fonts.ready;
       }
-      // Capture element with 3x pixel ratio for crystal clear high resolution (approx 1728px x 1218px)
-      const dataUrl = await toPng(cardRef.current, {
-        cacheBust: true,
-        pixelRatio: 3,
-      });
 
-      const link = document.createElement('a');
-      link.download = `BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      let blob: Blob | null = null;
+
+      if (cardRef.current) {
+        try {
+          blob = await toBlob(cardRef.current, {
+            cacheBust: true,
+            pixelRatio: 3,
+          });
+        } catch (e) {
+          console.warn('toBlob direct element capture failed, falling back to canvas:', e);
+        }
+      }
+
+      if (!blob) {
+        const canvas = await generateBibCanvas({
+          nomorBib,
+          namaLengkap,
+          komunitas,
+          nomorRegistrasi,
+          jenisRegistrasi,
+        });
+        blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      }
+
+      if (!blob) throw new Error('Gagal menghasilkan file gambar.');
+
+      await saveOrShareImage(
+        blob,
+        `BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`,
+        `BIB #${nomorBib}`,
+        (url) => setIosModalUrl(url)
+      );
     } catch (err) {
-      console.error('html-to-image failed, falling back to canvas:', err);
+      console.error('Download error:', err);
       await downloadBibCard({
         nomorBib,
         namaLengkap,
         komunitas,
         nomorRegistrasi,
-        jenisRegistrasi
-      });
+        jenisRegistrasi,
+      }, (url) => setIosModalUrl(url));
     } finally {
       setDownloading(false);
     }
@@ -169,6 +179,55 @@ export default function BibCard({
           <span>Bagikan ke WhatsApp</span>
         </button>
       </div>
+
+      {/* iOS / Fallback Save Image Modal */}
+      {iosModalUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-brand-yellow/50 rounded-3xl p-5 max-w-lg w-full text-center text-white shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setIosModalUrl(null)}
+              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-colors"
+              aria-label="Tutup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-3 text-left">
+              <span className="text-xs font-black text-brand-yellow uppercase tracking-wider block">
+                Petunjuk Simpan Gambar (iPhone / iPad)
+              </span>
+              <p className="text-xs text-slate-300 mt-1">
+                <strong>Tekan dan tahan</strong> gambar BIB di bawah ini, lalu pilih <strong>"Simpan ke Foto" (Save to Photos)</strong> atau <strong>"Bagikan"</strong>.
+              </p>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-4 bg-slate-950">
+              <img
+                src={iosModalUrl}
+                alt={`Nomor BIB ${nomorBib}`}
+                className="w-full h-auto object-contain select-auto"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <a
+                href={iosModalUrl}
+                download={`BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`}
+                className="w-full bg-brand-yellow hover:bg-amber-400 text-brand-navy font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Buka / Unduh File Gambar</span>
+              </a>
+              <button
+                onClick={() => setIosModalUrl(null)}
+                className="w-full bg-white/10 hover:bg-white/20 text-slate-300 py-2 rounded-xl text-xs font-semibold"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
