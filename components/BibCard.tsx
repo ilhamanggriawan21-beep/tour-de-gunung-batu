@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { Download, Share2, Bike, Heart } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Download, Share2, Bike, Heart, Loader2 } from 'lucide-react';
 import { downloadBibCard } from '@/lib/downloadBib';
 import localFont from 'next/font/local';
+import { toPng } from 'html-to-image';
 
 const sakanaFont = localFont({
   src: '../public/fonts/Sakana.ttf',
@@ -26,15 +27,52 @@ export default function BibCard({
   jenisRegistrasi
 }: BibCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
 
-  const handleDownload = () => {
-    downloadBibCard({
-      nomorBib,
-      namaLengkap,
-      komunitas,
-      nomorRegistrasi,
-      jenisRegistrasi
-    });
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+
+    if (!cardRef.current) {
+      await downloadBibCard({
+        nomorBib,
+        namaLengkap,
+        komunitas,
+        nomorRegistrasi,
+        jenisRegistrasi
+      });
+      setDownloading(false);
+      return;
+    }
+
+    try {
+      if (typeof document !== 'undefined' && 'fonts' in document) {
+        await document.fonts.ready;
+      }
+      // Capture element with 3x pixel ratio for crystal clear high resolution (approx 1728px x 1218px)
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 3,
+      });
+
+      const link = document.createElement('a');
+      link.download = `BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('html-to-image failed, falling back to canvas:', err);
+      await downloadBibCard({
+        nomorBib,
+        namaLengkap,
+        komunitas,
+        nomorRegistrasi,
+        jenisRegistrasi
+      });
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleShareWA = () => {
@@ -45,7 +83,10 @@ export default function BibCard({
   return (
     <div className="w-full max-w-xl mx-auto my-6">
         {/* BIB Template Container with 1.419 Aspect Ratio */}
-        <div className="relative w-full aspect-[21014/14808] rounded-2xl overflow-hidden shadow-2xl border-2 border-brand-yellow/60 group bg-slate-900">
+        <div
+          ref={cardRef}
+          className="relative w-full aspect-[21014/14808] rounded-2xl overflow-hidden shadow-2xl border-2 border-brand-yellow/60 group bg-slate-900"
+        >
           {/* Base Template Image */}
           <img
             src="/bib-template-revisi.png?v=3"
@@ -105,10 +146,20 @@ export default function BibCard({
       <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
         <button
           onClick={handleDownload}
-          className="w-full sm:w-auto bg-brand-yellow hover:bg-amber-400 text-brand-navy font-bold px-6 py-3 rounded-xl shadow-glow transition-transform hover:scale-105 flex items-center justify-center space-x-2 text-sm"
+          disabled={downloading}
+          className="w-full sm:w-auto bg-brand-yellow hover:bg-amber-400 text-brand-navy font-bold px-6 py-3 rounded-xl shadow-glow transition-transform hover:scale-105 flex items-center justify-center space-x-2 text-sm disabled:opacity-75 disabled:cursor-not-allowed"
         >
-          <Download className="w-4 h-4" />
-          <span>Unduh Nomor BIB (PNG)</span>
+          {downloading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Memproses Gambar BIB...</span>
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              <span>Unduh Nomor BIB (PNG)</span>
+            </>
+          )}
         </button>
         <button
           onClick={handleShareWA}

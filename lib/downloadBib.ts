@@ -86,9 +86,9 @@ export async function generateBibCanvas(data: {
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
 
       // Font sizes scaled to canvas height (1410px) matching web view proportions
-      const bibFontSize = 360;
-      let nameFontSize = 68;
-      const gapBetween = 36;
+      const bibFontSize = 460;
+      let nameFontSize = 76;
+      const gapBetween = -10;
 
       // Ensure participant name fits horizontally within 82% of canvas width
       ctx.font = `900 ${nameFontSize}px sans-serif`;
