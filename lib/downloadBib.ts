@@ -9,9 +9,9 @@ export async function generateBibCanvas(data: {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
 
-  // High Resolution 2K Canvas dimensions matching template aspect ratio (~1.419)
-  canvas.width = 2000;
-  canvas.height = 1410;
+  // High Resolution Canvas matching native template dimensions (2482x1749)
+  canvas.width = 2482;
+  canvas.height = 1749;
 
   return new Promise(async (resolve) => {
     // Load Sakana custom font for canvas via fetch + ArrayBuffer
@@ -20,7 +20,6 @@ export async function generateBibCanvas(data: {
       try {
         const fontResponse = await fetch('/fonts/Sakana.ttf');
         const fontBuffer = await fontResponse.arrayBuffer();
-        // Register with weight range '1 999' so any weight request matches this single-weight font
         const sakanaFont = new FontFace('SakanaCanvas', fontBuffer, {
           weight: '1 999',
           style: 'normal',
@@ -57,40 +56,62 @@ export async function generateBibCanvas(data: {
       const h = canvas.height;
 
       // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT"
-      const badgeW = 320;
-      const badgeH = 38;
+      const badgeFont = '900 40px sans-serif';
+      ctx.font = badgeFont;
+      const badgeText = 'OFFICIAL PARTICIPANT';
+      const badgeTextW = ctx.measureText(badgeText).width;
+      const badgeW = badgeTextW + 72;
+      const badgeH = 68;
       const badgeX = w - badgeW - w * 0.04;
       const badgeY = h * 0.285 - badgeH / 2;
-      const radius = 19;
 
       ctx.fillStyle = '#0A1338';
       ctx.beginPath();
       if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(badgeX, badgeY, badgeW, badgeH, radius);
+        (ctx as any).roundRect(badgeX, badgeY, badgeW, badgeH, badgeH / 2);
       } else {
         ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
       }
       ctx.fill();
       ctx.strokeStyle = '#F4C716';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.stroke();
 
       ctx.fillStyle = '#F4C716';
-      ctx.font = '900 20px sans-serif';
+      ctx.font = badgeFont;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('OFFICIAL PARTICIPANT', badgeX + badgeW / 2, badgeY + badgeH / 2);
+      ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
 
       // 2. PURE WHITE BOX ZONE - BIB Number with Sakana Font & Participant Name
       const formattedBib = String(data.nomorBib).padStart(3, '0');
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
 
-      // Font sizes scaled to canvas height (1410px) matching web view proportions
-      const bibFontSize = 500;
-      let nameFontSize = 74;
-      const gapBetween = 12;
+      // Proportional font sizes and explicit vertical coordinates
+      const bibFontSize = Math.round(h * 0.185); // 324px at 1749 height
+      const bibBaselineY = Math.round(h * 0.545); // 953px at 1749 height (perfectly centered vertically)
 
-      // Ensure participant name fits horizontally within 82% of canvas width
+      // Draw BIB Number with Sakana Font
+      ctx.fillStyle = '#0A1338';
+      ctx.font = `${bibFontSize}px ${bibFontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
+      // Subtle golden glow shadow matching web preview
+      ctx.shadowColor = 'rgba(244, 199, 22, 0.4)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 6;
+      ctx.fillText(formattedBib, w / 2, bibBaselineY);
+
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Draw Participant Name
+      let nameFontSize = Math.round(h * 0.044); // 77px at 1749 height
+      const nameBaselineY = Math.round(h * 0.615); // 1075px at 1749 height
+
       ctx.font = `900 ${nameFontSize}px sans-serif`;
       const maxNameWidth = w * 0.82;
       let nameWidth = ctx.measureText(cleanName).width;
@@ -99,141 +120,132 @@ export async function generateBibCanvas(data: {
         ctx.font = `900 ${nameFontSize}px sans-serif`;
       }
 
-      // Measure exact visual heights
-      ctx.font = `${bibFontSize}px ${bibFontFamily}`;
-      const bibMetrics = ctx.measureText(formattedBib);
-      const bibAscent = bibMetrics.actualBoundingBoxAscent || (bibFontSize * 0.72);
-      const bibDescent = bibMetrics.actualBoundingBoxDescent || (bibFontSize * 0.08);
-      const bibVisualHeight = bibAscent + bibDescent;
-
-      ctx.font = `900 ${nameFontSize}px sans-serif`;
-      const nameMetrics = ctx.measureText(cleanName);
-      const nameAscent = nameMetrics.actualBoundingBoxAscent || (nameFontSize * 0.72);
-      const nameDescent = nameMetrics.actualBoundingBoxDescent || (nameFontSize * 0.15);
-      const nameVisualHeight = nameAscent + nameDescent;
-
-      // Define the white box vertical target zone
-      // White box zone starts below logos (~h * 0.365) and ends above route banner (~h * 0.735)
-      const zoneTop = h * 0.365;
-      const zoneBottom = h * 0.735;
-      const zoneCenter = (zoneTop + zoneBottom) / 2;
-
-      // Calculate total block height and vertical start position for perfect centering
-      const totalBlockHeight = bibVisualHeight + gapBetween + nameVisualHeight;
-      const blockStartY = zoneCenter - (totalBlockHeight / 2);
-
-      // 1) Draw BIB Number
       ctx.fillStyle = '#0A1338';
-      ctx.font = `${bibFontSize}px ${bibFontFamily}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
-
-      // Golden subtle glow/shadow matching web preview drop-shadow
-      ctx.shadowColor = 'rgba(244, 199, 22, 0.4)';
-      ctx.shadowBlur = 16;
-      ctx.shadowOffsetY = 6;
-
-      const bibBaselineY = blockStartY + bibAscent;
-      ctx.fillText(formattedBib, w / 2, bibBaselineY);
-
-      // Reset shadow before drawing name
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-
-      // 2) Draw Participant Name
-      ctx.fillStyle = '#0A1338';
-      ctx.font = `900 ${nameFontSize}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-
-      const nameBaselineY = blockStartY + bibVisualHeight + gapBetween + nameAscent;
       ctx.fillText(cleanName, w / 2, nameBaselineY);
 
-      // 3. ROUTE BANNER (Shifted 2% further down to h * 0.75)
-      const bannerH = 48;
-      const bannerY = h * 0.75 - bannerH / 2;
+      // 3. ROUTE BANNER (top-[75%])
+      const bannerH = 60;
+      const bannerY = Math.round(h * 0.75 - bannerH / 2);
       ctx.fillStyle = 'rgba(10, 19, 56, 0.95)';
       ctx.fillRect(0, bannerY, w, bannerH);
+
+      // Subtle gold border lines on top & bottom of banner
+      ctx.fillStyle = 'rgba(244, 199, 22, 0.6)';
+      ctx.fillRect(0, bannerY, w, 2);
+      ctx.fillRect(0, bannerY + bannerH - 2, w, 2);
+
       ctx.fillStyle = '#F4C716';
-      ctx.font = '900 24px sans-serif';
+      ctx.font = '900 28px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
 
-      // 4. PROMINENT PRIDE BADGES (Always 1 single line centered in photo section)
+      // 4. PROMINENT PRIDE BADGES (Always strictly 1 single horizontal row)
       const komName = (data.komunitas || 'UMUM').toUpperCase();
       const regCode = data.nomorRegistrasi || '';
       const isPo = data.jenisRegistrasi === 'po_jersey';
 
-      const fontBadges = '900 30px sans-serif';
+      const fontBadges = '900 32px sans-serif';
       ctx.font = fontBadges;
       const komText = `KOMUNITAS: ${komName}`;
       const regText = `REG: ${regCode}`;
+      const poText = '♥ PO JERSEY';
 
-      const komWidth = ctx.measureText(komText).width + 56;
-      const regWidth = ctx.measureText(regText).width + 56;
-      const poWidth = isPo ? 250 : 0;
-      const gap = 20;
+      const komTextW = ctx.measureText(komText).width;
+      const regTextW = ctx.measureText(regText).width;
+      const poTextW = isPo ? ctx.measureText(poText).width : 0;
 
-      const totalRowW = komWidth + regWidth + (isPo ? poWidth + gap : 0);
-      let startX = (w - totalRowW) / 2;
-      const pillsY = h * 0.905 - 28;
-      const pillH = 56;
+      const pillPadX = 36;
+      const komWidth = komTextW + pillPadX * 2;
+      const regWidth = regTextW + pillPadX * 2;
+      const poWidth = isPo ? poTextW + pillPadX * 2 : 0;
+      const gap = 24;
 
-      // Komunitas Pill
+      let totalRowW = komWidth + regWidth + (isPo ? poWidth + gap : 0);
+
+      // Auto-scale pills if total width exceeds 94% of canvas width
+      let scaleBadges = 1;
+      if (totalRowW > w * 0.94) {
+        scaleBadges = (w * 0.94) / totalRowW;
+      }
+
+      const pillH = Math.round(66 * scaleBadges);
+      const pillsY = Math.round(h * 0.905 - pillH / 2);
+      const pillRadius = Math.round(18 * scaleBadges);
+
+      const scaledKomW = Math.round(komWidth * scaleBadges);
+      const scaledRegW = Math.round(regWidth * scaleBadges);
+      const scaledPoW = Math.round(poWidth * scaleBadges);
+      const scaledGap = Math.round(gap * scaleBadges);
+
+      const finalRowW = scaledKomW + scaledRegW + (isPo ? scaledPoW + scaledGap : 0);
+      let startX = Math.round((w - finalRowW) / 2);
+
+      ctx.font = `900 ${Math.round(32 * scaleBadges)}px sans-serif`;
+
+      // 1) Komunitas Pill
       ctx.fillStyle = '#1D3AAE';
       ctx.beginPath();
       if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(startX, pillsY, komWidth, pillH, 16);
+        (ctx as any).roundRect(startX, pillsY, scaledKomW, pillH, pillRadius);
       } else {
-        ctx.fillRect(startX, pillsY, komWidth, pillH);
+        ctx.fillRect(startX, pillsY, scaledKomW, pillH);
       }
       ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
       ctx.fillStyle = '#FFFFFF';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(komText, startX + komWidth / 2, pillsY + pillH / 2);
+      ctx.fillText(komText, startX + scaledKomW / 2, pillsY + pillH / 2);
 
-      startX += komWidth + gap;
+      startX += scaledKomW + scaledGap;
 
-      // Reg Code Pill
+      // 2) Reg Code Pill
       ctx.fillStyle = '#0A1338';
       ctx.beginPath();
       if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(startX, pillsY, regWidth, pillH, 16);
+        (ctx as any).roundRect(startX, pillsY, scaledRegW, pillH, pillRadius);
       } else {
-        ctx.fillRect(startX, pillsY, regWidth, pillH);
+        ctx.fillRect(startX, pillsY, scaledRegW, pillH);
       }
       ctx.fill();
+      ctx.strokeStyle = 'rgba(244, 199, 22, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
       ctx.fillStyle = '#F4C716';
-      ctx.fillText(regText, startX + regWidth / 2, pillsY + pillH / 2);
+      ctx.fillText(regText, startX + scaledRegW / 2, pillsY + pillH / 2);
 
       if (isPo) {
-        startX += regWidth + gap;
-        // PO Jersey Badge Pill
+        startX += scaledRegW + scaledGap;
+        // 3) PO Jersey Pill
         ctx.fillStyle = '#F4C716';
         ctx.beginPath();
         if (typeof (ctx as any).roundRect === 'function') {
-          (ctx as any).roundRect(startX, pillsY, poWidth, pillH, 16);
+          (ctx as any).roundRect(startX, pillsY, scaledPoW, pillH, pillRadius);
         } else {
-          ctx.fillRect(startX, pillsY, poWidth, pillH);
+          ctx.fillRect(startX, pillsY, scaledPoW, pillH);
         }
         ctx.fill();
+        ctx.strokeStyle = '#0A1338';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
         ctx.fillStyle = '#0A1338';
-        ctx.font = '900 28px sans-serif';
-        ctx.fillText('♥ PO JERSEY', startX + poWidth / 2, pillsY + pillH / 2);
+        ctx.fillText(poText, startX + scaledPoW / 2, pillsY + pillH / 2);
       }
 
       // 5. OUTER GOLDEN BORDER (Matching web preview card style)
       ctx.strokeStyle = '#F4C716';
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 12;
       ctx.beginPath();
       if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(5, 5, w - 10, h - 10, 36);
+        (ctx as any).roundRect(6, 6, w - 12, h - 12, 40);
       }
       ctx.stroke();
 
