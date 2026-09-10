@@ -97,7 +97,7 @@ export default function BibCard({
             <div className="absolute top-[37%] bottom-[32%] left-[4%] right-[4%] flex flex-col items-center justify-center">
               {/* Main BIB Number */}
               <div className="text-center w-full my-auto">
-                <span className={`${sakanaFont.className} text-[6.5rem] sm:text-[8rem] md:text-[10rem] text-[#0A1338] tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-[0.9]`}>
+                <span className={`${sakanaFont.className} text-[6.8rem] sm:text-[8.5rem] md:text-[10.5rem] text-[#0A1338] tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-[0.9]`}>
                   {String(nomorBib).padStart(3, '0')}
                 </span>
                 <h3 className="text-sm sm:text-xl md:text-2xl text-[#0A1338] font-black uppercase tracking-wide truncate max-w-[90%] mx-auto mt-0.5 sm:mt-1">
