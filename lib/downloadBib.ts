@@ -86,9 +86,9 @@ export async function generateBibCanvas(data: {
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
 
       // Font sizes scaled to canvas height (1410px) matching web view proportions
-      const bibFontSize = 460;
-      let nameFontSize = 76;
-      const gapBetween = -10;
+      const bibFontSize = 500;
+      let nameFontSize = 74;
+      const gapBetween = 12;
 
       // Ensure participant name fits horizontally within 82% of canvas width
       ctx.font = `900 ${nameFontSize}px sans-serif`;
@@ -161,12 +161,12 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
 
-      // 4. PROMINENT PRIDE BADGES (Shifted 2% further down to h * 0.905)
+      // 4. PROMINENT PRIDE BADGES (Always 1 single line centered in photo section)
       const komName = (data.komunitas || 'UMUM').toUpperCase();
       const regCode = data.nomorRegistrasi || '';
       const isPo = data.jenisRegistrasi === 'po_jersey';
 
-      const fontBadges = '900 32px sans-serif';
+      const fontBadges = '900 30px sans-serif';
       ctx.font = fontBadges;
       const komText = `KOMUNITAS: ${komName}`;
       const regText = `REG: ${regCode}`;
@@ -228,13 +228,29 @@ export async function generateBibCanvas(data: {
         ctx.fillText('♥ PO JERSEY', startX + poWidth / 2, pillsY + pillH / 2);
       }
 
+      // 5. OUTER GOLDEN BORDER (Matching web preview card style)
+      ctx.strokeStyle = '#F4C716';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      if (typeof (ctx as any).roundRect === 'function') {
+        (ctx as any).roundRect(5, 5, w - 10, h - 10, 36);
+      }
+      ctx.stroke();
+
       resolve(canvas);
     };
 
     img.onload = () => {
       const ctx2 = canvas.getContext('2d');
       if (ctx2) {
+        ctx2.save();
+        ctx2.beginPath();
+        if (typeof (ctx2 as any).roundRect === 'function') {
+          (ctx2 as any).roundRect(0, 0, canvas.width, canvas.height, 36);
+          ctx2.clip();
+        }
         ctx2.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx2.restore();
       }
       renderText();
     };

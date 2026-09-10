@@ -4,7 +4,6 @@ import React, { useRef, useState } from 'react';
 import { Download, Share2, Bike, Heart, Loader2, X } from 'lucide-react';
 import { downloadBibCard, saveOrShareImage, generateBibCanvas } from '@/lib/downloadBib';
 import localFont from 'next/font/local';
-import { toBlob } from 'html-to-image';
 
 const sakanaFont = localFont({
   src: '../public/fonts/Sakana.ttf',
@@ -39,30 +38,16 @@ export default function BibCard({
         await document.fonts.ready;
       }
 
-      let blob: Blob | null = null;
+      // Generate pristine 2K canvas directly - guarantees 1-row badges, large 500px font, and zero dark glitches
+      const canvas = await generateBibCanvas({
+        nomorBib,
+        namaLengkap,
+        komunitas,
+        nomorRegistrasi,
+        jenisRegistrasi,
+      });
 
-      if (cardRef.current) {
-        try {
-          blob = await toBlob(cardRef.current, {
-            cacheBust: true,
-            pixelRatio: 3,
-          });
-        } catch (e) {
-          console.warn('toBlob direct element capture failed, falling back to canvas:', e);
-        }
-      }
-
-      if (!blob) {
-        const canvas = await generateBibCanvas({
-          nomorBib,
-          namaLengkap,
-          komunitas,
-          nomorRegistrasi,
-          jenisRegistrasi,
-        });
-        blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      }
-
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Gagal menghasilkan file gambar.');
 
       await saveOrShareImage(
@@ -73,13 +58,7 @@ export default function BibCard({
       );
     } catch (err) {
       console.error('Download error:', err);
-      await downloadBibCard({
-        nomorBib,
-        namaLengkap,
-        komunitas,
-        nomorRegistrasi,
-        jenisRegistrasi,
-      }, (url) => setIosModalUrl(url));
+      alert('Gagal memproses gambar BIB. Silakan coba kembali.');
     } finally {
       setDownloading(false);
     }
@@ -115,13 +94,13 @@ export default function BibCard({
             </div>
 
             {/* 2. PURE WHITE BOX ZONE (Only Large BIB Number & Participant Name using Sakana Font) */}
-            <div className="absolute top-[37%] bottom-[32%] left-[5%] right-[5%] flex flex-col items-center justify-center">
+            <div className="absolute top-[37%] bottom-[32%] left-[4%] right-[4%] flex flex-col items-center justify-center">
               {/* Main BIB Number */}
               <div className="text-center w-full my-auto">
-                <span className={`${sakanaFont.className} text-[4rem] sm:text-[6.5rem] md:text-[8rem] text-[#0A1338] tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-none`}>
+                <span className={`${sakanaFont.className} text-[5rem] sm:text-[6.5rem] md:text-[8.5rem] text-[#0A1338] tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-[0.9]`}>
                   {String(nomorBib).padStart(3, '0')}
                 </span>
-                <h3 className="text-xs sm:text-lg md:text-2xl text-[#0A1338] font-black uppercase tracking-wide truncate max-w-[90%] mx-auto mt-0 sm:-mt-1 md:-mt-2">
+                <h3 className="text-xs sm:text-lg md:text-2xl text-[#0A1338] font-black uppercase tracking-wide truncate max-w-[90%] mx-auto mt-0.5 sm:mt-1">
                   {namaLengkap}
                 </h3>
               </div>
@@ -134,17 +113,17 @@ export default function BibCard({
               </span>
             </div>
 
-            {/* 4. PROMINENT PRIDE BADGES (Shifted 2% further down to top-[90.5%] in the photo section) */}
-            <div className="absolute top-[90.5%] transform -translate-y-1/2 flex items-center justify-center flex-wrap gap-1.5 sm:gap-2.5 px-3 w-full">
-              <span className="bg-[#1D3AAE] text-white text-[8px] sm:text-[11px] md:text-[13px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg border border-white/20 truncate max-w-[55%] uppercase tracking-wide">
+            {/* 4. PROMINENT PRIDE BADGES (Always 1 single line on all screens) */}
+            <div className="absolute top-[90.5%] transform -translate-y-1/2 flex items-center justify-center flex-nowrap gap-1 sm:gap-2 px-2 w-full max-w-full">
+              <span className="bg-[#1D3AAE] text-white text-[7.5px] xs:text-[9px] sm:text-[11px] md:text-[13px] font-black px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl shadow-md border border-white/20 truncate max-w-[46%] uppercase tracking-wide whitespace-nowrap shrink-0">
                 KOMUNITAS: {(komunitas || 'UMUM').toUpperCase()}
               </span>
-              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[11px] md:text-[13px] font-mono font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg border border-brand-yellow/60">
+              <span className="bg-[#0A1338] text-brand-yellow text-[7.5px] xs:text-[9px] sm:text-[11px] md:text-[13px] font-mono font-black px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl shadow-md border border-brand-yellow/60 whitespace-nowrap shrink-0">
                 REG: {nomorRegistrasi}
               </span>
               {jenisRegistrasi === 'po_jersey' && (
-                <span className="bg-brand-yellow text-[#0A1338] text-[8px] sm:text-[11px] md:text-[13px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-xl shadow-lg flex items-center border border-[#0A1338]">
-                  <Heart className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 mr-1 fill-[#0A1338]" /> PO JERSEY
+                <span className="bg-brand-yellow text-[#0A1338] text-[7.5px] xs:text-[9px] sm:text-[11px] md:text-[13px] font-black px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl shadow-md flex items-center border border-[#0A1338] whitespace-nowrap shrink-0">
+                  <Heart className="w-2 h-2 sm:w-3 sm:h-3 mr-0.5 fill-[#0A1338]" /> PO JERSEY
                 </span>
               )}
             </div>
