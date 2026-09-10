@@ -55,13 +55,13 @@ export async function generateBibCanvas(data: {
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT" (Proportionally Enlarged)
-      const badgeFont = '900 52px sans-serif';
+      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT" (+15% Scaling)
+      const badgeFont = '900 60px sans-serif';
       ctx.font = badgeFont;
       const badgeText = 'OFFICIAL PARTICIPANT';
       const badgeTextW = ctx.measureText(badgeText).width;
-      const badgeW = badgeTextW + 88;
-      const badgeH = 84;
+      const badgeW = badgeTextW + 100;
+      const badgeH = 96;
       const badgeX = w - badgeW - w * 0.04;
       const badgeY = h * 0.285 - badgeH / 2;
 
@@ -83,13 +83,13 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-      // 2. PURE WHITE BOX ZONE - BIB Number with Sakana Font & Participant Name
+      // 2. PURE WHITE BOX ZONE - BIB Number with Sakana Font & Participant Name (+15% Scaling)
       const formattedBib = String(data.nomorBib).padStart(3, '0');
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
 
-      // Bold, prominent font sizes with safe margins (clears logo above and banner below)
-      const bibFontSize = 510; // Exactly 510px Sakana font as requested
-      const bibBaselineY = 1020; // Top of number at ~670px (safely ~95px below logo)
+      // Bold, prominent font sizes (+15% scaling: 510 -> 585)
+      const bibFontSize = 585; // +15% enlarged Sakana font (height ~402px)
+      const bibBaselineY = 1030; // Top of number at ~628px (safely ~53px below logo)
 
       // Draw BIB Number with Sakana Font
       ctx.fillStyle = '#0A1338';
@@ -99,8 +99,8 @@ export async function generateBibCanvas(data: {
 
       // Subtle golden glow shadow matching web preview
       ctx.shadowColor = 'rgba(244, 199, 22, 0.45)';
-      ctx.shadowBlur = 24;
-      ctx.shadowOffsetY = 7;
+      ctx.shadowBlur = 26;
+      ctx.shadowOffsetY = 8;
       ctx.fillText(formattedBib, w / 2, bibBaselineY);
 
       // Reset shadow
@@ -108,9 +108,9 @@ export async function generateBibCanvas(data: {
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
 
-      // Draw Participant Name
-      let nameFontSize = 100; // Proportionally enlarged bold name
-      const nameBaselineY = 1128; // Cleanly placed below number, safely ~150px above route banner
+      // Draw Participant Name (+15% scaling: 100 -> 115)
+      let nameFontSize = 115;
+      const nameBaselineY = 1148; // Cleanly placed below number, safely ~120px above route banner
 
       ctx.font = `900 ${nameFontSize}px sans-serif`;
       const maxNameWidth = w * 0.82;
@@ -125,29 +125,29 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(cleanName, w / 2, nameBaselineY);
 
-      // 3. ROUTE BANNER (top-[75%], Proportionally Enlarged)
-      const bannerH = 78;
+      // 3. ROUTE BANNER (top-[75%], +15% Scaling)
+      const bannerH = 90;
       const bannerY = Math.round(h * 0.75 - bannerH / 2);
       ctx.fillStyle = 'rgba(10, 19, 56, 0.95)';
       ctx.fillRect(0, bannerY, w, bannerH);
 
       // Subtle gold border lines on top & bottom of banner
       ctx.fillStyle = 'rgba(244, 199, 22, 0.65)';
-      ctx.fillRect(0, bannerY, w, 3);
-      ctx.fillRect(0, bannerY + bannerH - 3, w, 3);
+      ctx.fillRect(0, bannerY, w, 3.5);
+      ctx.fillRect(0, bannerY + bannerH - 3.5, w, 3.5);
 
       ctx.fillStyle = '#F4C716';
-      ctx.font = '900 38px sans-serif';
+      ctx.font = '900 44px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
 
-      // 4. PROMINENT PRIDE BADGES (Always strictly 1 single horizontal row, Proportionally Enlarged)
+      // 4. PROMINENT PRIDE BADGES (Always strictly 1 single horizontal row, +15% Scaling)
       const komName = (data.komunitas || 'UMUM').toUpperCase();
       const regCode = data.nomorRegistrasi || '';
       const isPo = data.jenisRegistrasi === 'po_jersey';
 
-      const fontBadges = '900 44px sans-serif';
+      const fontBadges = '900 50px sans-serif';
       ctx.font = fontBadges;
       const komText = `KOMUNITAS: ${komName}`;
       const regText = `REG: ${regCode}`;
@@ -157,11 +157,11 @@ export async function generateBibCanvas(data: {
       const regTextW = ctx.measureText(regText).width;
       const poTextW = isPo ? ctx.measureText(poText).width : 0;
 
-      const pillPadX = 46;
+      const pillPadX = 54;
       const komWidth = komTextW + pillPadX * 2;
       const regWidth = regTextW + pillPadX * 2;
       const poWidth = isPo ? poTextW + pillPadX * 2 : 0;
-      const gap = 28;
+      const gap = 32;
 
       let totalRowW = komWidth + regWidth + (isPo ? poWidth + gap : 0);
 
@@ -171,9 +171,9 @@ export async function generateBibCanvas(data: {
         scaleBadges = (w * 0.94) / totalRowW;
       }
 
-      const pillH = Math.round(86 * scaleBadges);
+      const pillH = Math.round(100 * scaleBadges);
       const pillsY = Math.round(h * 0.905 - pillH / 2);
-      const pillRadius = Math.round(22 * scaleBadges);
+      const pillRadius = Math.round(26 * scaleBadges);
 
       const scaledKomW = Math.round(komWidth * scaleBadges);
       const scaledRegW = Math.round(regWidth * scaleBadges);
@@ -183,7 +183,7 @@ export async function generateBibCanvas(data: {
       const finalRowW = scaledKomW + scaledRegW + (isPo ? scaledPoW + scaledGap : 0);
       let startX = Math.round((w - finalRowW) / 2);
 
-      const activeBadgeFontSize = Math.round(44 * scaleBadges);
+      const activeBadgeFontSize = Math.round(50 * scaleBadges);
       ctx.font = `900 ${activeBadgeFontSize}px sans-serif`;
 
       // 1) Komunitas Pill
