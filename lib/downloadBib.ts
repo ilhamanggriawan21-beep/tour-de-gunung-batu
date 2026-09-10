@@ -55,13 +55,13 @@ export async function generateBibCanvas(data: {
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT"
-      const badgeFont = '900 40px sans-serif';
+      // 1. TOP-RIGHT BADGE: "OFFICIAL PARTICIPANT" (Proportionally Enlarged)
+      const badgeFont = '900 52px sans-serif';
       ctx.font = badgeFont;
       const badgeText = 'OFFICIAL PARTICIPANT';
       const badgeTextW = ctx.measureText(badgeText).width;
-      const badgeW = badgeTextW + 72;
-      const badgeH = 68;
+      const badgeW = badgeTextW + 88;
+      const badgeH = 84;
       const badgeX = w - badgeW - w * 0.04;
       const badgeY = h * 0.285 - badgeH / 2;
 
@@ -74,7 +74,7 @@ export async function generateBibCanvas(data: {
       }
       ctx.fill();
       ctx.strokeStyle = '#F4C716';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.stroke();
 
       ctx.fillStyle = '#F4C716';
@@ -125,29 +125,29 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(cleanName, w / 2, nameBaselineY);
 
-      // 3. ROUTE BANNER (top-[75%])
-      const bannerH = 60;
+      // 3. ROUTE BANNER (top-[75%], Proportionally Enlarged)
+      const bannerH = 78;
       const bannerY = Math.round(h * 0.75 - bannerH / 2);
       ctx.fillStyle = 'rgba(10, 19, 56, 0.95)';
       ctx.fillRect(0, bannerY, w, bannerH);
 
       // Subtle gold border lines on top & bottom of banner
-      ctx.fillStyle = 'rgba(244, 199, 22, 0.6)';
-      ctx.fillRect(0, bannerY, w, 2);
-      ctx.fillRect(0, bannerY + bannerH - 2, w, 2);
+      ctx.fillStyle = 'rgba(244, 199, 22, 0.65)';
+      ctx.fillRect(0, bannerY, w, 3);
+      ctx.fillRect(0, bannerY + bannerH - 3, w, 3);
 
       ctx.fillStyle = '#F4C716';
-      ctx.font = '900 28px sans-serif';
+      ctx.font = '900 38px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
 
-      // 4. PROMINENT PRIDE BADGES (Always strictly 1 single horizontal row)
+      // 4. PROMINENT PRIDE BADGES (Always strictly 1 single horizontal row, Proportionally Enlarged)
       const komName = (data.komunitas || 'UMUM').toUpperCase();
       const regCode = data.nomorRegistrasi || '';
       const isPo = data.jenisRegistrasi === 'po_jersey';
 
-      const fontBadges = '900 32px sans-serif';
+      const fontBadges = '900 44px sans-serif';
       ctx.font = fontBadges;
       const komText = `KOMUNITAS: ${komName}`;
       const regText = `REG: ${regCode}`;
@@ -157,11 +157,11 @@ export async function generateBibCanvas(data: {
       const regTextW = ctx.measureText(regText).width;
       const poTextW = isPo ? ctx.measureText(poText).width : 0;
 
-      const pillPadX = 36;
+      const pillPadX = 46;
       const komWidth = komTextW + pillPadX * 2;
       const regWidth = regTextW + pillPadX * 2;
       const poWidth = isPo ? poTextW + pillPadX * 2 : 0;
-      const gap = 24;
+      const gap = 28;
 
       let totalRowW = komWidth + regWidth + (isPo ? poWidth + gap : 0);
 
@@ -171,9 +171,9 @@ export async function generateBibCanvas(data: {
         scaleBadges = (w * 0.94) / totalRowW;
       }
 
-      const pillH = Math.round(66 * scaleBadges);
+      const pillH = Math.round(86 * scaleBadges);
       const pillsY = Math.round(h * 0.905 - pillH / 2);
-      const pillRadius = Math.round(18 * scaleBadges);
+      const pillRadius = Math.round(22 * scaleBadges);
 
       const scaledKomW = Math.round(komWidth * scaleBadges);
       const scaledRegW = Math.round(regWidth * scaleBadges);
@@ -183,7 +183,8 @@ export async function generateBibCanvas(data: {
       const finalRowW = scaledKomW + scaledRegW + (isPo ? scaledPoW + scaledGap : 0);
       let startX = Math.round((w - finalRowW) / 2);
 
-      ctx.font = `900 ${Math.round(32 * scaleBadges)}px sans-serif`;
+      const activeBadgeFontSize = Math.round(44 * scaleBadges);
+      ctx.font = `900 ${activeBadgeFontSize}px sans-serif`;
 
       // 1) Komunitas Pill
       ctx.fillStyle = '#1D3AAE';
@@ -194,8 +195,8 @@ export async function generateBibCanvas(data: {
         ctx.fillRect(startX, pillsY, scaledKomW, pillH);
       }
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 3;
       ctx.stroke();
 
       ctx.fillStyle = '#FFFFFF';
@@ -214,8 +215,8 @@ export async function generateBibCanvas(data: {
         ctx.fillRect(startX, pillsY, scaledRegW, pillH);
       }
       ctx.fill();
-      ctx.strokeStyle = 'rgba(244, 199, 22, 0.6)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(244, 199, 22, 0.7)';
+      ctx.lineWidth = 3;
       ctx.stroke();
 
       ctx.fillStyle = '#F4C716';
@@ -233,7 +234,7 @@ export async function generateBibCanvas(data: {
         }
         ctx.fill();
         ctx.strokeStyle = '#0A1338';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.stroke();
 
         ctx.fillStyle = '#0A1338';

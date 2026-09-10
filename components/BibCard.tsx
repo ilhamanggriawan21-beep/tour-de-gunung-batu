@@ -88,7 +88,7 @@ export default function BibCard({
             
             {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT */}
             <div className="absolute top-[28.5%] right-[4%] transform -translate-y-1/2 z-10">
-              <span className="bg-[#0A1338] text-brand-yellow text-[8px] sm:text-[10px] md:text-[11.5px] font-black px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
+              <span className="bg-[#0A1338] text-brand-yellow text-[9px] sm:text-[11px] md:text-[13px] font-black px-3 py-0.5 sm:px-4 sm:py-1 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
                 OFFICIAL PARTICIPANT
               </span>
             </div>
@@ -107,23 +107,23 @@ export default function BibCard({
             </div>
 
             {/* 3. ROUTE BANNER (Shifted 2% further down to top-[75%]) */}
-            <div className="absolute top-[75%] w-full bg-[#0A1338]/95 py-1 px-2 text-center border-y border-brand-yellow/50 shadow-md">
-              <span className="text-[7px] sm:text-[9px] md:text-[11px] font-black text-brand-yellow tracking-widest block uppercase">
+            <div className="absolute top-[75%] w-full bg-[#0A1338]/95 py-1 sm:py-1.5 px-2 text-center border-y border-brand-yellow/50 shadow-md">
+              <span className="text-[8px] sm:text-[10.5px] md:text-[13px] font-black text-brand-yellow tracking-widest block uppercase">
                 JONGGOL → GUNUNG BATU &nbsp;•&nbsp; ELEVATION GAIN ±700M &nbsp;•&nbsp; SELF-SUPPORTED
               </span>
             </div>
 
             {/* 4. PROMINENT PRIDE BADGES (Always 1 single line on all screens) */}
-            <div className="absolute top-[90.5%] transform -translate-y-1/2 flex items-center justify-center flex-nowrap gap-1 sm:gap-2 px-2 w-full max-w-full">
-              <span className="bg-[#1D3AAE] text-white text-[7.5px] xs:text-[9px] sm:text-[11px] md:text-[13px] font-black px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl shadow-md border border-white/20 truncate max-w-[46%] uppercase tracking-wide whitespace-nowrap shrink-0">
+            <div className="absolute top-[90.5%] transform -translate-y-1/2 flex items-center justify-center flex-nowrap gap-1.5 sm:gap-2.5 px-2 w-full max-w-full">
+              <span className="bg-[#1D3AAE] text-white text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[15px] font-black px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-lg sm:rounded-xl shadow-md border border-white/20 truncate max-w-[46%] uppercase tracking-wide whitespace-nowrap shrink-0">
                 KOMUNITAS: {(komunitas || 'UMUM').toUpperCase()}
               </span>
-              <span className="bg-[#0A1338] text-brand-yellow text-[7.5px] xs:text-[9px] sm:text-[11px] md:text-[13px] font-mono font-black px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl shadow-md border border-brand-yellow/60 whitespace-nowrap shrink-0">
+              <span className="bg-[#0A1338] text-brand-yellow text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[15px] font-mono font-black px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-lg sm:rounded-xl shadow-md border border-brand-yellow/60 whitespace-nowrap shrink-0">
                 REG: {nomorRegistrasi}
               </span>
               {jenisRegistrasi === 'po_jersey' && (
-                <span className="bg-brand-yellow text-[#0A1338] text-[7.5px] xs:text-[9px] sm:text-[11px] md:text-[13px] font-black px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl shadow-md flex items-center border border-[#0A1338] whitespace-nowrap shrink-0">
-                  <Heart className="w-2 h-2 sm:w-3 sm:h-3 mr-0.5 fill-[#0A1338]" /> PO JERSEY
+                <span className="bg-brand-yellow text-[#0A1338] text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[15px] font-black px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-lg sm:rounded-xl shadow-md flex items-center border border-[#0A1338] whitespace-nowrap shrink-0">
+                  <Heart className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 mr-1 fill-[#0A1338]" /> PO JERSEY
                 </span>
               )}
             </div>
