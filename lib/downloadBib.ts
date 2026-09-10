@@ -88,8 +88,8 @@ export async function generateBibCanvas(data: {
       const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
 
       // Bold, prominent font sizes with safe margins (clears logo above and banner below)
-      const bibFontSize = 400; // Large, prominent Sakana font (height ~275px)
-      const bibBaselineY = 990; // Top of number is at ~715px (140px below logo at 575px)
+      const bibFontSize = 490; // Significantly enlarged Sakana font (height ~338px)
+      const bibBaselineY = 1010; // Top of number at ~672px (safely ~100px below logo)
 
       // Draw BIB Number with Sakana Font
       ctx.fillStyle = '#0A1338';
@@ -99,8 +99,8 @@ export async function generateBibCanvas(data: {
 
       // Subtle golden glow shadow matching web preview
       ctx.shadowColor = 'rgba(244, 199, 22, 0.45)';
-      ctx.shadowBlur = 22;
-      ctx.shadowOffsetY = 6;
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 7;
       ctx.fillText(formattedBib, w / 2, bibBaselineY);
 
       // Reset shadow
@@ -109,8 +109,8 @@ export async function generateBibCanvas(data: {
       ctx.shadowOffsetY = 0;
 
       // Draw Participant Name
-      let nameFontSize = 80;
-      const nameBaselineY = 1080; // Sits nicely below number, 200px above route banner
+      let nameFontSize = 96; // Enlarged bold name
+      const nameBaselineY = 1115; // Cleanly placed below number, safely ~160px above route banner
 
       ctx.font = `900 ${nameFontSize}px sans-serif`;
       const maxNameWidth = w * 0.82;
