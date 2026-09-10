@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { Download, Share2, Bike, Heart, Loader2, X } from 'lucide-react';
-import { downloadBibCard, saveOrShareImage, generateBibCanvas } from '@/lib/downloadBib';
+import { saveOrShareImage, generateBibCanvas } from '@/lib/downloadBib';
 import localFont from 'next/font/local';
-import { toBlob, toPng } from 'html-to-image';
 
 const sakanaFont = localFont({
   src: '../public/fonts/Sakana.ttf',
@@ -27,30 +26,8 @@ export default function BibCard({
   jenisRegistrasi
 }: BibCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [iosModalUrl, setIosModalUrl] = useState<string | null>(null);
-  const [templateBase64, setTemplateBase64] = useState<string>('/bib-template-revisi.png?v=3');
-
-  useEffect(() => {
-    // Pre-cache template image as base64 to eliminate Safari WebKit SVG foreignObject loading glitches
-    const preloadTemplate = async () => {
-      try {
-        const res = await fetch('/bib-template-revisi.png?v=3');
-        const blob = await res.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            setTemplateBase64(reader.result);
-          }
-        };
-        reader.readAsDataURL(blob);
-      } catch (e) {
-        console.warn('Base64 template preload fallback:', e);
-      }
-    };
-    preloadTemplate();
-  }, []);
 
   const handleDownload = async () => {
     if (downloading) return;
@@ -61,34 +38,16 @@ export default function BibCard({
         await document.fonts.ready;
       }
 
-      let blob: Blob | null = null;
-      const targetElement = exportRef.current || cardRef.current;
+      // Generate direct 2.5K image directly - zero DOM responsive scaling issues, zero dark Safari screens
+      const canvas = await generateBibCanvas({
+        nomorBib,
+        namaLengkap,
+        komunitas,
+        nomorRegistrasi,
+        jenisRegistrasi,
+      });
 
-      if (targetElement) {
-        try {
-          // Pre-warm WebKit rasterization to guarantee zero black screens
-          await toPng(targetElement, { cacheBust: false });
-          blob = await toBlob(targetElement, {
-            pixelRatio: 2, // 1100px * 2 = 2200px crystal clear 2K resolution
-            cacheBust: false,
-          });
-        } catch (e) {
-          console.warn('DOM capture failed, falling back to direct canvas:', e);
-        }
-      }
-
-      // Fallback if DOM capture is unsupported
-      if (!blob) {
-        const canvas = await generateBibCanvas({
-          nomorBib,
-          namaLengkap,
-          komunitas,
-          nomorRegistrasi,
-          jenisRegistrasi,
-        });
-        blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      }
-
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Gagal menghasilkan file gambar.');
 
       await saveOrShareImage(
@@ -171,75 +130,6 @@ export default function BibCard({
 
           </div>
         </div>
-
-      {/* Off-screen Export Container: Fixed 1100px Desktop Dimensions for 100% Identical Output on All Devices */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '1100px',
-          pointerEvents: 'none',
-          opacity: 0,
-          zIndex: -9999,
-        }}
-      >
-        <div
-          ref={exportRef}
-          style={{ width: '1100px' }}
-          className="relative aspect-[21014/14808] rounded-3xl overflow-hidden border-4 border-brand-yellow bg-slate-900"
-        >
-          <img
-            src={templateBase64}
-            alt="Tour de Gunung Batu BIB Template"
-            className="w-full h-full object-cover select-none"
-            crossOrigin="anonymous"
-          />
-
-          <div className="absolute inset-0 pointer-events-none">
-            {/* 1. TOP-RIGHT BADGE: OFFICIAL PARTICIPANT */}
-            <div className="absolute top-[28.5%] right-[4%] transform -translate-y-1/2 z-10">
-              <span className="bg-[#0A1338] text-brand-yellow text-[13px] font-black px-4 py-1 rounded-full border-2 border-brand-yellow shadow-md uppercase tracking-wider block text-center">
-                OFFICIAL PARTICIPANT
-              </span>
-            </div>
-
-            {/* 2. PURE WHITE BOX ZONE (Desktop Proportions) */}
-            <div className="absolute top-[37%] bottom-[32%] left-[4%] right-[4%] flex flex-col items-center justify-center">
-              <div className="text-center w-full my-auto">
-                <span className={`${sakanaFont.className} text-[8.5rem] text-[#0A1338] tracking-tight drop-shadow-[0_4px_12px_rgba(244,199,22,0.35)] block leading-[0.9]`}>
-                  {String(nomorBib).padStart(3, '0')}
-                </span>
-                <h3 className="text-2xl text-[#0A1338] font-black uppercase tracking-wide truncate max-w-[90%] mx-auto mt-1">
-                  {namaLengkap}
-                </h3>
-              </div>
-            </div>
-
-            {/* 3. ROUTE BANNER */}
-            <div className="absolute top-[75%] w-full bg-[#0A1338]/95 py-1.5 px-3 text-center border-y border-brand-yellow/50 shadow-md">
-              <span className="text-[12px] font-black text-brand-yellow tracking-widest block uppercase">
-                JONGGOL → GUNUNG BATU &nbsp;•&nbsp; ELEVATION GAIN ±700M &nbsp;•&nbsp; SELF-SUPPORTED
-              </span>
-            </div>
-
-            {/* 4. PROMINENT PRIDE BADGES (Strictly 1 Line Guaranteed on 1100px Width) */}
-            <div className="absolute top-[90.5%] transform -translate-y-1/2 flex items-center justify-center flex-nowrap gap-2.5 px-4 w-full max-w-full">
-              <span className="bg-[#1D3AAE] text-white text-[14px] font-black px-3.5 py-1.5 rounded-xl shadow-md border border-white/20 uppercase tracking-wide whitespace-nowrap shrink-0">
-                KOMUNITAS: {(komunitas || 'UMUM').toUpperCase()}
-              </span>
-              <span className="bg-[#0A1338] text-brand-yellow text-[14px] font-mono font-black px-3.5 py-1.5 rounded-xl shadow-md border border-brand-yellow/60 whitespace-nowrap shrink-0">
-                REG: {nomorRegistrasi}
-              </span>
-              {jenisRegistrasi === 'po_jersey' && (
-                <span className="bg-brand-yellow text-[#0A1338] text-[14px] font-black px-3.5 py-1.5 rounded-xl shadow-md flex items-center border border-[#0A1338] whitespace-nowrap shrink-0">
-                  <Heart className="w-3.5 h-3.5 mr-1 fill-[#0A1338]" /> PO JERSEY
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Buttons Action */}
       <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
