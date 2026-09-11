@@ -62,12 +62,16 @@ export default function CharityGoalProgressBar({
           </div>
 
           {/* Animated Bar Container */}
-          <div className="relative w-full h-4 sm:h-5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/20 shadow-inner">
+          <div className="relative w-full h-4 sm:h-5 bg-black/50 rounded-full overflow-hidden p-0.5 border border-sky-400/40 shadow-inner">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-brand-yellow via-amber-400 to-emerald-400 shadow-[0_0_15px_rgba(244,199,22,0.8)] transition-all duration-1000 ease-out relative"
+              className="h-full rounded-full bg-brand-sky shadow-[0_0_18px_rgba(56,189,248,1),0_0_30px_rgba(14,165,233,0.7)] transition-all duration-1000 ease-out relative overflow-hidden"
               style={{ width: `${Math.max(5, percentage)}%` }}
             >
-              <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
+              {/* Inner light pulse & continuous shimmer beam */}
+              <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              
+              {/* Leading edge neon spark */}
+              <div className="absolute top-0 right-0 bottom-0 w-2.5 bg-white rounded-r-full shadow-[0_0_10px_#ffffff]" />
             </div>
           </div>
         </div>
