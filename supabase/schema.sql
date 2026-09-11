@@ -1,6 +1,10 @@
 -- =======================================================
 -- TOUR DE GUNUNG BATU 2026 - SUPABASE DATABASE SCHEMA
 -- Jalankan skrip ini di: Supabase Dashboard -> SQL Editor
+--
+-- JIKA DATABASE SUDAH BERJALAN, JALANKAN PERINTAH MIGRATION INI:
+-- ALTER TABLE jersey_pos DROP CONSTRAINT IF EXISTS jersey_pos_ukuran_check;
+-- ALTER TABLE jersey_pos ADD COLUMN IF NOT EXISTS kategori_ukuran TEXT DEFAULT 'dewasa';
 -- =======================================================
 
 -- 1. SEQUENCE UNTUK NOMOR BIB (Mulai dari 1000)
@@ -27,8 +31,9 @@ CREATE TABLE IF NOT EXISTS registrants (
 CREATE TABLE IF NOT EXISTS jersey_pos (
   id TEXT PRIMARY KEY,
   registrant_id TEXT NOT NULL REFERENCES registrants(id) ON DELETE CASCADE,
+  kategori_ukuran TEXT NOT NULL DEFAULT 'dewasa',
   jenis_lengan TEXT NOT NULL CHECK (jenis_lengan IN ('short_sleeve', 'long_sleeve')),
-  ukuran TEXT NOT NULL CHECK (ukuran IN ('S', 'M', 'L', 'XL', 'XXL')),
+  ukuran TEXT NOT NULL,
   qty INTEGER NOT NULL DEFAULT 1,
   harga_satuan INTEGER NOT NULL,
   harga_total INTEGER NOT NULL,

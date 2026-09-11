@@ -8,7 +8,7 @@ export async function GET() {
     const { registrants_with_po } = await getAllAdminData();
 
     // CSV Header
-    let csv = 'BIB,No. Registrasi,Nama Lengkap,Komunitas,No. Telepon,No. Kerabat,Alamat Lengkap,Jenis Registrasi,Jenis Lengan,Ukuran,Qty,Metode Ambil,Alamat Pengiriman,Total Harga,Status Pembayaran,Verifikator,Tanggal Bayar\n';
+    let csv = 'BIB,No. Registrasi,Nama Lengkap,Komunitas,No. Telepon,No. Kerabat,Alamat Lengkap,Jenis Registrasi,Kategori Jersey,Jenis Lengan,Ukuran,Qty,Metode Ambil,Alamat Pengiriman,Total Harga,Status Pembayaran,Verifikator,Tanggal Bayar\n';
 
     registrants_with_po.forEach(({ registrant: r, jersey_po: p }) => {
       const bib = r.nomor_bib;
@@ -20,6 +20,7 @@ export async function GET() {
       const alamat = `"${r.alamat_lengkap.replace(/"/g, '""')}"`;
       const jenisReg = r.jenis_registrasi;
       
+      const kategori = p ? (p.kategori_ukuran === 'anak' ? 'Anak' : 'Dewasa') : '-';
       const lengan = p ? (p.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve') : '-';
       const ukuran = p ? p.ukuran : '-';
       const qty = p ? p.qty : 0;
@@ -30,7 +31,7 @@ export async function GET() {
       const verifikator = p ? (p.verified_by || '-') : '-';
       const tglBayar = p ? (p.paid_at || '-') : '-';
 
-      csv += `${bib},${noReg},${nama},${kom},${telp},${telpKerabat},${alamat},${jenisReg},${lengan},${ukuran},${qty},${metode},${alamatKirim},${total},${status},${verifikator},${tglBayar}\n`;
+      csv += `${bib},${noReg},${nama},${kom},${telp},${telpKerabat},${alamat},${jenisReg},${kategori},${lengan},${ukuran},${qty},${metode},${alamatKirim},${total},${status},${verifikator},${tglBayar}\n`;
     });
 
     return new Response(csv, {

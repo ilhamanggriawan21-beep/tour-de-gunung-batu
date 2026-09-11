@@ -6,7 +6,7 @@ import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
 import SizeChart from '@/components/SizeChart';
 import BibLookupCard from '@/components/BibLookupCard';
-import { Search, Shirt, Heart, AlertCircle, ArrowRight, UserCheck, CheckCircle, Bike, Ruler } from 'lucide-react';
+import { Search, Shirt, Heart, AlertCircle, ArrowRight, UserCheck, CheckCircle, Bike, Ruler, User, Baby } from 'lucide-react';
 
 export default function SusulanPOPage() {
   const router = useRouter();
@@ -19,8 +19,9 @@ export default function SusulanPOPage() {
 
   // Jersey Spec State
   const [jerseySpec, setJerseySpec] = useState({
+    kategori_ukuran: 'dewasa' as 'dewasa' | 'anak',
     jenis_lengan: 'short_sleeve' as 'short_sleeve' | 'long_sleeve',
-    ukuran: 'L' as 'S' | 'M' | 'L' | 'XL' | 'XXL',
+    ukuran: 'L' as string,
     qty: 1,
     metode_ambil: 'ambil_langsung' as 'ambil_langsung' | 'dikirim',
     alamat_pengiriman: '',
@@ -291,22 +292,88 @@ export default function SusulanPOPage() {
                     </div>
                   </div>
 
-                  {/* Ukuran & Jumlah */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-bold text-slate-700 text-sm mb-1">Ukuran Jersey</label>
-                      <select
-                        value={jerseySpec.ukuran}
-                        onChange={(e) => setJerseySpec({ ...jerseySpec, ukuran: e.target.value as any })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 font-bold text-sm focus:ring-2 focus:ring-brand-royal"
+                  {/* Kategori Jersey: Dewasa vs Anak-Anak */}
+                  <div>
+                    <label className="block font-bold text-slate-700 text-sm mb-1.5 flex items-center justify-between">
+                      <span>Kategori Ukuran</span>
+                      <span className="text-xs font-semibold text-brand-royal">Tersedia Dewasa &amp; Anak</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJerseySpec((prev) => ({
+                            ...prev,
+                            kategori_ukuran: 'dewasa',
+                            ukuran: prev.kategori_ukuran === 'dewasa' ? prev.ukuran : 'L'
+                          }));
+                        }}
+                        className={`py-2 px-3 rounded-xl border text-xs sm:text-sm font-extrabold flex items-center justify-center space-x-1.5 transition-all ${
+                          jerseySpec.kategori_ukuran === 'dewasa'
+                            ? 'border-brand-navy bg-brand-navy text-brand-yellow shadow-md'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
                       >
-                        <option value="S">S (Lebar 48cm / Panjang 69cm)</option>
-                        <option value="M">M (Lebar 50cm / Panjang 71cm)</option>
-                        <option value="L">L (Lebar 52cm / Panjang 73cm)</option>
-                        <option value="XL">XL (Lebar 54cm / Panjang 75cm)</option>
-                        <option value="XXL">XXL / 2XL (Lebar 56cm / Panjang 77cm)</option>
-                        <option value="3XL">3XL (Lebar 58cm / Panjang 79cm)</option>
-                      </select>
+                        <User className="w-4 h-4" />
+                        <span>Dewasa (Adult)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJerseySpec((prev) => ({
+                            ...prev,
+                            kategori_ukuran: 'anak',
+                            ukuran: prev.kategori_ukuran === 'anak' ? prev.ukuran : 'M'
+                          }));
+                        }}
+                        className={`py-2 px-3 rounded-xl border text-xs sm:text-sm font-extrabold flex items-center justify-center space-x-1.5 transition-all ${
+                          jerseySpec.kategori_ukuran === 'anak'
+                            ? 'border-brand-royal bg-brand-royal text-white shadow-md'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Baby className="w-4 h-4 text-amber-300" />
+                        <span>Anak-Anak (Kids)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Ukuran & Jumlah */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-bold text-slate-700 text-sm mb-1">
+                        {jerseySpec.kategori_ukuran === 'dewasa' ? 'Ukuran Jersey Dewasa' : 'Ukuran Jersey Anak'}
+                      </label>
+                      {jerseySpec.kategori_ukuran === 'dewasa' ? (
+                        <select
+                          value={jerseySpec.ukuran}
+                          onChange={(e) => setJerseySpec({ ...jerseySpec, ukuran: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 font-bold text-xs sm:text-sm focus:ring-2 focus:ring-brand-royal bg-white"
+                        >
+                          <option value="S">S (Lebar 48cm / Panjang 69cm)</option>
+                          <option value="M">M (Lebar 50cm / Panjang 71cm)</option>
+                          <option value="L">L (Lebar 52cm / Panjang 73cm)</option>
+                          <option value="XL">XL (Lebar 54cm / Panjang 75cm)</option>
+                          <option value="XXL">XXL / 2XL (Lebar 56cm / Panjang 77cm)</option>
+                          <option value="3XL">3XL / XXXL (Lebar 58cm / Panjang 79cm)</option>
+                          <option value="4XL">4XL / XXXXL (Lebar 60cm / Panjang 81cm)</option>
+                          <option value="5XL">5XL (Lebar 62cm / Panjang 83cm)</option>
+                        </select>
+                      ) : (
+                        <select
+                          value={jerseySpec.ukuran}
+                          onChange={(e) => setJerseySpec({ ...jerseySpec, ukuran: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-amber-300 bg-amber-50/50 font-bold text-xs sm:text-sm focus:ring-2 focus:ring-brand-royal"
+                        >
+                          <option value="2XS">2XS (Lebar 33cm / Panjang 45cm - Usia 1-2 Thn)</option>
+                          <option value="XS">XS (Lebar 35cm / Panjang 48cm - Usia 3-4 Thn)</option>
+                          <option value="S">S (Lebar 37cm / Panjang 50cm - Usia 5-6 Thn)</option>
+                          <option value="M">M (Lebar 39cm / Panjang 53cm - Usia 7-8 Thn)</option>
+                          <option value="L">L (Lebar 41cm / Panjang 55cm - Usia 8-9 Thn)</option>
+                          <option value="XL">XL (Lebar 43cm / Panjang 58cm - Usia 10-11 Thn)</option>
+                          <option value="2XL">2XL (Lebar 45cm / Panjang 62cm - Usia 12-13 Thn)</option>
+                        </select>
+                      )}
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 text-sm mb-1">Jumlah (Qty)</label>
@@ -316,7 +383,7 @@ export default function SusulanPOPage() {
                         max={10}
                         value={jerseySpec.qty}
                         onChange={(e) => setJerseySpec({ ...jerseySpec, qty: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 font-bold text-center text-sm focus:ring-2 focus:ring-brand-royal"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-300 font-bold text-center text-sm focus:ring-2 focus:ring-brand-royal bg-white"
                       />
                     </div>
                   </div>

@@ -25,11 +25,15 @@ export interface BibLookupParticipant {
   jenis_registrasi: 'daftar_saja' | 'po_jersey';
 }
 
+export type JerseyKategori = 'dewasa' | 'anak';
+export type JerseySize = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL' | '4XL' | '5XL' | '2XS' | 'XS' | 'Kids 2XS' | 'Kids XS' | 'Kids S' | 'Kids M' | 'Kids L' | 'Kids XL' | 'Kids 2XL' | string;
+
 export interface JerseyPO {
   id: string;
   registrant_id: string;
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan: 'short_sleeve' | 'long_sleeve';
-  ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran: JerseySize;
   qty: number;
   harga_satuan: number;
   harga_total: number;
@@ -273,8 +277,9 @@ function registerLocalParticipant(data: {
   consent_no_refund?: boolean;
   // If PO Jersey
   jersey_spec?: {
+    kategori_ukuran?: JerseyKategori;
     jenis_lengan: 'short_sleeve' | 'long_sleeve';
-    ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+    ukuran: JerseySize;
     qty: number;
     metode_ambil: 'ambil_langsung' | 'dikirim';
     alamat_pengiriman?: string;
@@ -318,6 +323,7 @@ function registerLocalParticipant(data: {
     jerseyPO = {
       id: poId,
       registrant_id: regId,
+      kategori_ukuran: data.jersey_spec.kategori_ukuran || 'dewasa',
       jenis_lengan: data.jersey_spec.jenis_lengan,
       ukuran: data.jersey_spec.ukuran,
       qty: data.jersey_spec.qty,
@@ -335,13 +341,14 @@ function registerLocalParticipant(data: {
 }
 
 function addLateLocalJerseyPO(registrantIdOrNo: string, jerseySpec: {
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan: 'short_sleeve' | 'long_sleeve';
-  ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran: JerseySize;
   qty: number;
   metode_ambil: 'ambil_langsung' | 'dikirim';
   alamat_pengiriman?: string;
   consent_no_refund: boolean;
-}): { registrant: Registrant; jersey_po: JerseyPO } | null {
+}): { registrant: Registrant; jersey_po?: JerseyPO } | null {
   const db = readDB();
 
   const regIndex = db.registrants.findIndex(
@@ -367,6 +374,7 @@ function addLateLocalJerseyPO(registrantIdOrNo: string, jerseySpec: {
   if (existingPoIdx !== -1) {
     jerseyPO = {
       ...db.jersey_pos[existingPoIdx],
+      kategori_ukuran: jerseySpec.kategori_ukuran || db.jersey_pos[existingPoIdx].kategori_ukuran || 'dewasa',
       jenis_lengan: jerseySpec.jenis_lengan,
       ukuran: jerseySpec.ukuran,
       qty: jerseySpec.qty,
@@ -382,6 +390,7 @@ function addLateLocalJerseyPO(registrantIdOrNo: string, jerseySpec: {
     jerseyPO = {
       id: poId,
       registrant_id: registrant.id,
+      kategori_ukuran: jerseySpec.kategori_ukuran || 'dewasa',
       jenis_lengan: jerseySpec.jenis_lengan,
       ukuran: jerseySpec.ukuran,
       qty: jerseySpec.qty,
@@ -529,12 +538,13 @@ function getLocalWallOfHeroesData(): {
     const po = lunasPoMap.get(r.id);
     if (po) {
       const sleeveStr = po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve';
+      const katStr = po.kategori_ukuran === 'anak' ? ' (Anak)' : '';
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
         komunitas: r.komunitas || 'Umum',
         nomor_bib: r.nomor_bib,
-        jersey_spec_str: `Jersey ${sleeveStr} Size ${po.ukuran} (${po.qty}x)`,
+        jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
         created_at: r.created_at
       });
     }
@@ -654,8 +664,9 @@ export async function registerParticipant(data: {
   consent_waiver: boolean;
   consent_no_refund?: boolean;
   jersey_spec?: {
+    kategori_ukuran?: JerseyKategori;
     jenis_lengan: 'short_sleeve' | 'long_sleeve';
-    ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+    ukuran: JerseySize;
     qty: number;
     metode_ambil: 'ambil_langsung' | 'dikirim';
     alamat_pengiriman?: string;
@@ -669,13 +680,14 @@ export async function registerParticipant(data: {
 }
 
 export async function addLateJerseyPO(registrantIdOrNo: string, jerseySpec: {
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan: 'short_sleeve' | 'long_sleeve';
-  ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran: JerseySize;
   qty: number;
   metode_ambil: 'ambil_langsung' | 'dikirim';
   alamat_pengiriman?: string;
   consent_no_refund: boolean;
-}): Promise<{ registrant: Registrant; jersey_po: JerseyPO } | null> {
+}): Promise<{ registrant: Registrant; jersey_po?: JerseyPO } | null> {
   if (isSupabaseConfigured()) {
     const res = await addSupabaseLateJerseyPO(registrantIdOrNo, jerseySpec);
     if (res) return res;
@@ -786,8 +798,9 @@ export async function updateRegistrantAndPO(data: {
   no_telepon_kerabat?: string;
   alamat_lengkap?: string;
   po_id?: string;
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan?: 'short_sleeve' | 'long_sleeve';
-  ukuran?: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran?: JerseySize;
   qty?: number;
   metode_ambil?: 'ambil_langsung' | 'dikirim';
   alamat_pengiriman?: string;
@@ -836,8 +849,9 @@ function updateLocalRegistrantAndPO(data: {
   no_telepon_kerabat?: string;
   alamat_lengkap?: string;
   po_id?: string;
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan?: 'short_sleeve' | 'long_sleeve';
-  ukuran?: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran?: JerseySize;
   qty?: number;
   metode_ambil?: 'ambil_langsung' | 'dikirim';
   alamat_pengiriman?: string;
@@ -858,6 +872,7 @@ function updateLocalRegistrantAndPO(data: {
   const poIdx = db.jersey_pos.findIndex(p => p.registrant_id === data.registrantId || (data.po_id && p.id === data.po_id));
   if (poIdx !== -1) {
     const po = db.jersey_pos[poIdx];
+    if (data.kategori_ukuran !== undefined) po.kategori_ukuran = data.kategori_ukuran;
     if (data.jenis_lengan !== undefined) po.jenis_lengan = data.jenis_lengan;
     if (data.ukuran !== undefined) po.ukuran = data.ukuran;
     if (data.qty !== undefined) po.qty = data.qty;

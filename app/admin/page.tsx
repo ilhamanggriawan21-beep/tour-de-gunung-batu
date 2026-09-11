@@ -30,8 +30,13 @@ import {
   Edit,
   X,
   MapPin,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Baby,
+  Image as ImageIcon,
+  Clock
 } from 'lucide-react';
+import { compressImage, estimateDataUrlSize } from '@/lib/imageCompression';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -80,6 +85,8 @@ export default function AdminDashboardPage() {
 
   // Edit & Delete State
   const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [compressingProof, setCompressingProof] = useState(false);
+  const [proofCompressInfo, setProofCompressInfo] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     registrantId: '',
     nama_lengkap: '',
@@ -88,8 +95,9 @@ export default function AdminDashboardPage() {
     no_telepon_kerabat: '',
     alamat_lengkap: '',
     po_id: '',
+    kategori_ukuran: 'dewasa' as 'dewasa' | 'anak',
     jenis_lengan: 'short_sleeve' as 'short_sleeve' | 'long_sleeve',
-    ukuran: 'L' as 'S' | 'M' | 'L' | 'XL' | 'XXL',
+    ukuran: 'L' as string,
     qty: 1,
     metode_ambil: 'ambil_langsung' as 'ambil_langsung' | 'dikirim',
     alamat_pengiriman: '',
@@ -101,10 +109,112 @@ export default function AdminDashboardPage() {
   const [deletePoId, setDeletePoId] = useState<{ id: string; nama: string } | null>(null);
   const [selectedBibParticipant, setSelectedBibParticipant] = useState<any>(null);
 
+  // Quick Upload Proof Modal State
+  const [quickUploadItem, setQuickUploadItem] = useState<any | null>(null);
+  const [quickUploadProof, setQuickUploadProof] = useState<string>('');
+  const [quickUploadStatus, setQuickUploadStatus] = useState<'menunggu_verifikasi' | 'lunas'>('lunas');
+  const [quickCompressInfo, setQuickCompressInfo] = useState<string | null>(null);
+  const [quickCompressing, setQuickCompressing] = useState(false);
+  const [quickSaving, setQuickSaving] = useState(false);
+
+  const handleAdminProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar bukti transfer (JPG/PNG/WebP).');
+      return;
+    }
+
+    setCompressingProof(true);
+    try {
+      const origSize = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+      const compressed = await compressImage(file, { maxDimension: 1600, quality: 0.75 });
+      const compSize = estimateDataUrlSize(compressed);
+
+      setEditForm(prev => ({
+        ...prev,
+        bukti_transfer_url: compressed
+      }));
+      setProofCompressInfo(`Terkompresi otomatis: ${origSize} → ${compSize}`);
+    } catch (err) {
+      console.error('Failed compressing proof:', err);
+      alert('Gagal mengompresi gambar bukti transfer.');
+    } finally {
+      setCompressingProof(false);
+    }
+  };
+
+  const handleQuickFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar bukti transfer (JPG/PNG/WebP).');
+      return;
+    }
+
+    setQuickCompressing(true);
+    try {
+      const origSize = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+      const compressed = await compressImage(file, { maxDimension: 1600, quality: 0.75 });
+      const compSize = estimateDataUrlSize(compressed);
+
+      setQuickUploadProof(compressed);
+      setQuickCompressInfo(`Foto terkompresi otomatis: ${origSize} → ${compSize}`);
+    } catch (err) {
+      console.error('Failed compressing proof:', err);
+      alert('Gagal mengompresi gambar bukti transfer.');
+    } finally {
+      setQuickCompressing(false);
+    }
+  };
+
+  const handleSaveQuickUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickUploadItem || !quickUploadProof) {
+      alert('Mohon pilih foto bukti transfer terlebih dahulu.');
+      return;
+    }
+    setQuickSaving(true);
+    try {
+      const r = quickUploadItem.registrant;
+      const p = quickUploadItem.jersey_po;
+
+      const res = await fetch('/api/admin/registrant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registrantId: r.id,
+          poId: p.id,
+          bukti_transfer_url: quickUploadProof,
+          status_pembayaran: quickUploadStatus,
+          verified_by: quickUploadStatus === 'lunas' ? (adminSession?.nama_pic || 'Admin') : undefined
+        })
+      });
+      const d = await res.json();
+      if (d.success) {
+        setMessage(`Bukti transfer untuk ${r.nama_lengkap} berhasil disimpan! (${quickUploadStatus === 'lunas' ? 'LUNAS' : 'Menunggu Verifikasi'})`);
+        setQuickUploadItem(null);
+        setQuickUploadProof('');
+        setQuickCompressInfo(null);
+        fetchAdminData(false);
+      } else {
+        alert(d.error || 'Gagal menyimpan bukti transfer');
+      }
+    } catch (err) {
+      console.error('Error uploading proof:', err);
+      alert('Terjadi kesalahan koneksi jaringan.');
+    } finally {
+      setQuickSaving(false);
+    }
+  };
+
   const openEditModal = (item: any) => {
     const r = item.registrant;
     const p = item.jersey_po;
     setEditingItem(item);
+    setProofCompressInfo(null);
     setEditForm({
       registrantId: r.id,
       nama_lengkap: r.nama_lengkap || '',
@@ -113,6 +223,7 @@ export default function AdminDashboardPage() {
       no_telepon_kerabat: r.no_telepon_kerabat || '',
       alamat_lengkap: r.alamat_lengkap || '',
       po_id: p ? p.id : '',
+      kategori_ukuran: p?.kategori_ukuran || 'dewasa',
       jenis_lengan: p ? p.jenis_lengan : 'short_sleeve',
       ukuran: p ? p.ukuran : 'L',
       qty: p ? p.qty : 1,
@@ -644,7 +755,7 @@ export default function AdminDashboardPage() {
                         <div>
                           <span className="text-[10px] text-slate-400 block font-bold uppercase">Jersey &amp; Total:</span>
                           <span className="font-bold text-slate-800 block">
-                            {p.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve'} ({p.ukuran}) x{p.qty}
+                            {p.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve'} {p.kategori_ukuran === 'anak' ? '(Anak)' : ''} ({p.ukuran}) x{p.qty}
                           </span>
                           <span className="font-black text-brand-royal text-xs font-mono block">
                             Rp {p.harga_total.toLocaleString('id-ID')}
@@ -653,19 +764,46 @@ export default function AdminDashboardPage() {
                       </div>
 
                       <div className="text-xs pt-2 border-t flex items-center justify-between">
-                        <span className="text-[10px] text-slate-500 truncate max-w-[65%]">
+                        <span className="text-[10px] text-slate-500 truncate max-w-[60%]">
                           {p.metode_ambil === 'ambil_langsung' ? 'Ambil di Lokasi' : `Kirim: ${p.alamat_pengiriman || '-'}`}
                         </span>
                         {p.bukti_transfer_url ? (
-                          <button
-                            onClick={() => setPreviewImage(p.bukti_transfer_url)}
-                            className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-royal bg-brand-royal/10 px-2.5 py-1 rounded-lg border border-brand-royal/20"
-                          >
-                            <Eye className="w-3 h-3" />
-                            <span>Bukti</span>
-                          </button>
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => setPreviewImage(p.bukti_transfer_url)}
+                              className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-royal bg-brand-royal/10 hover:bg-brand-royal/20 px-2 py-1 rounded-lg border border-brand-royal/20"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Bukti</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setQuickUploadItem(item);
+                                setQuickUploadProof(p.bukti_transfer_url || '');
+                                setQuickCompressInfo(null);
+                                setQuickUploadStatus(p.status_pembayaran === 'lunas' ? 'lunas' : 'menunggu_verifikasi');
+                              }}
+                              className="inline-flex items-center space-x-1 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border border-slate-300"
+                              title="Ganti / Upload Ulang Bukti"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Ganti</span>
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-slate-400 italic text-[10px]">No Proof</span>
+                          <button
+                            onClick={() => {
+                              setQuickUploadItem(item);
+                              setQuickUploadProof('');
+                              setQuickCompressInfo(null);
+                              setQuickUploadStatus('lunas');
+                            }}
+                            className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-300 shadow-sm"
+                            title="Bantu upload bukti transfer"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Bukti</span>
+                          </button>
                         )}
                       </div>
 
@@ -795,7 +933,7 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-3">
                             <span className="font-bold text-slate-800 block text-xs">
-                              {p.jenis_lengan === 'short_sleeve' ? 'Short' : 'Long'} ({p.ukuran}) x{p.qty}
+                              {p.jenis_lengan === 'short_sleeve' ? 'Short' : 'Long'} {p.kategori_ukuran === 'anak' ? '(Anak)' : ''} ({p.ukuran}) x{p.qty}
                             </span>
                             <span className="font-black text-brand-royal text-xs font-mono block">
                               Rp {p.harga_total.toLocaleString('id-ID')}
@@ -803,15 +941,41 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-3 text-center">
                             {p.bukti_transfer_url ? (
-                              <button
-                                onClick={() => setPreviewImage(p.bukti_transfer_url)}
-                                className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-royal hover:underline bg-brand-royal/10 px-2 py-1 rounded-lg"
-                              >
-                                <Eye className="w-3 h-3" />
-                                <span>Lihat</span>
-                              </button>
+                              <div className="inline-flex items-center space-x-1.5">
+                                <button
+                                  onClick={() => setPreviewImage(p.bukti_transfer_url)}
+                                  className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-royal hover:underline bg-brand-royal/10 px-2 py-1 rounded-lg border border-brand-royal/20"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Lihat</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setQuickUploadItem(item);
+                                    setQuickUploadProof(p.bukti_transfer_url || '');
+                                    setQuickCompressInfo(null);
+                                    setQuickUploadStatus(p.status_pembayaran === 'lunas' ? 'lunas' : 'menunggu_verifikasi');
+                                  }}
+                                  className="text-slate-400 hover:text-brand-royal p-1 rounded hover:bg-slate-100"
+                                  title="Ganti / Upload Ulang Bukti"
+                                >
+                                  <Upload className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             ) : (
-                              <span className="text-slate-400 italic text-[10px]">Belum</span>
+                              <button
+                                onClick={() => {
+                                  setQuickUploadItem(item);
+                                  setQuickUploadProof('');
+                                  setQuickCompressInfo(null);
+                                  setQuickUploadStatus('lunas');
+                                }}
+                                className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300 shadow-sm"
+                                title="Upload bukti transfer"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Upload</span>
+                              </button>
                             )}
                           </td>
                           <td className="py-3 px-3 text-center">
@@ -1098,15 +1262,20 @@ export default function AdminDashboardPage() {
                           <td className="py-3 px-3 text-slate-600 max-w-xs truncate">{r.alamat_lengkap}</td>
                           <td className="py-3 px-3 text-center">
                             {p ? (
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  p.status_pembayaran === 'lunas'
-                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                    : 'bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                PO ({p.status_pembayaran})
-                              </span>
+                              <div className="text-center">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    p.status_pembayaran === 'lunas'
+                                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                      : 'bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  PO ({p.status_pembayaran})
+                                </span>
+                                <span className="text-[10px] text-slate-500 block font-medium mt-0.5">
+                                  {p.jenis_lengan === 'short_sleeve' ? 'Short' : 'Long'} {p.kategori_ukuran === 'anak' ? '(Anak)' : ''} ({p.ukuran}) x{p.qty}
+                                </span>
+                              </div>
                             ) : (
                               <span className="text-[11px] text-slate-400">Daftar Saja</span>
                             )}
@@ -1630,33 +1799,105 @@ export default function AdminDashboardPage() {
               </div>
 
               {editingItem.jersey_po && (
-                <div className="bg-brand-royal/5 p-4 rounded-2xl border border-brand-royal/20 space-y-3">
-                  <h4 className="font-extrabold text-xs text-brand-royal uppercase tracking-wider">2. Spesifikasi PO Jersey &amp; Pembayaran</h4>
+                <div className="bg-brand-royal/5 p-4 rounded-2xl border border-brand-royal/20 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-xs text-brand-royal uppercase tracking-wider">
+                      2. Spesifikasi PO Jersey &amp; Pembayaran
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-500">
+                      Status: {editForm.status_pembayaran.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Kategori Usia: Dewasa vs Anak */}
+                  <div>
+                    <label className="block font-bold text-slate-700 text-xs mb-1">Kategori Jersey</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            kategori_ukuran: 'dewasa',
+                            ukuran: prev.kategori_ukuran === 'dewasa' ? prev.ukuran : 'L'
+                          }))
+                        }
+                        className={`py-1.5 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center space-x-1.5 transition-all ${
+                          editForm.kategori_ukuran === 'dewasa'
+                            ? 'border-brand-navy bg-brand-navy text-brand-yellow shadow-sm'
+                            : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <User className="w-3.5 h-3.5" />
+                        <span>Dewasa (Adult)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            kategori_ukuran: 'anak',
+                            ukuran: prev.kategori_ukuran === 'anak' ? prev.ukuran : 'M'
+                          }))
+                        }
+                        className={`py-1.5 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center space-x-1.5 transition-all ${
+                          editForm.kategori_ukuran === 'anak'
+                            ? 'border-brand-royal bg-brand-royal text-white shadow-sm'
+                            : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Baby className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Anak-Anak (Kids)</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Jenis Lengan</label>
                       <select
                         value={editForm.jenis_lengan}
                         onChange={(e) => setEditForm({ ...editForm, jenis_lengan: e.target.value as any })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-xs"
                       >
                         <option value="short_sleeve">Short Sleeve</option>
                         <option value="long_sleeve">Long Sleeve</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block font-bold text-slate-700 mb-1">Ukuran Jersey</label>
-                      <select
-                        value={editForm.ukuran}
-                        onChange={(e) => setEditForm({ ...editForm, ukuran: e.target.value as any })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
-                      >
-                        <option value="S">Size S</option>
-                        <option value="M">Size M</option>
-                        <option value="L">Size L</option>
-                        <option value="XL">Size XL</option>
-                        <option value="XXL">Size XXL</option>
-                      </select>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        {editForm.kategori_ukuran === 'dewasa' ? 'Ukuran Dewasa' : 'Ukuran Anak'}
+                      </label>
+                      {editForm.kategori_ukuran === 'dewasa' ? (
+                        <select
+                          value={editForm.ukuran}
+                          onChange={(e) => setEditForm({ ...editForm, ukuran: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-xs"
+                        >
+                          <option value="S">Size S (P 69cm / L 48cm)</option>
+                          <option value="M">Size M (P 71cm / L 50cm)</option>
+                          <option value="L">Size L (P 73cm / L 52cm)</option>
+                          <option value="XL">Size XL (P 75cm / L 54cm)</option>
+                          <option value="XXL">Size XXL / 2XL (P 77cm / L 56cm)</option>
+                          <option value="3XL">Size 3XL / XXXL (P 79cm / L 58cm)</option>
+                          <option value="4XL">Size 4XL / XXXXL (P 81cm / L 60cm)</option>
+                          <option value="5XL">Size 5XL (P 83cm / L 62cm)</option>
+                        </select>
+                      ) : (
+                        <select
+                          value={editForm.ukuran}
+                          onChange={(e) => setEditForm({ ...editForm, ukuran: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-amber-300 font-bold bg-amber-50 text-xs"
+                        >
+                          <option value="2XS">Size 2XS (1-2 Thn / P 45cm / L 33cm)</option>
+                          <option value="XS">Size XS (3-4 Thn / P 48cm / L 35cm)</option>
+                          <option value="S">Size S (5-6 Thn / P 50cm / L 37cm)</option>
+                          <option value="M">Size M (7-8 Thn / P 53cm / L 39cm)</option>
+                          <option value="L">Size L (8-9 Thn / P 55cm / L 41cm)</option>
+                          <option value="XL">Size XL (10-11 Thn / P 58cm / L 43cm)</option>
+                          <option value="2XL">Size 2XL (12-13 Thn / P 62cm / L 45cm)</option>
+                        </select>
+                      )}
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Jumlah (Qty)</label>
@@ -1665,7 +1906,7 @@ export default function AdminDashboardPage() {
                         min={1}
                         value={editForm.qty}
                         onChange={(e) => setEditForm({ ...editForm, qty: parseInt(e.target.value) || 1 })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-xs text-center"
                       />
                     </div>
                   </div>
@@ -1676,7 +1917,7 @@ export default function AdminDashboardPage() {
                       <select
                         value={editForm.metode_ambil}
                         onChange={(e) => setEditForm({ ...editForm, metode_ambil: e.target.value as any })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-xs"
                       >
                         <option value="ambil_langsung">Ambil Langsung di Lokasi Event</option>
                         <option value="dikirim">Dikirim ke Alamat</option>
@@ -1687,7 +1928,7 @@ export default function AdminDashboardPage() {
                       <select
                         value={editForm.status_pembayaran}
                         onChange={(e) => setEditForm({ ...editForm, status_pembayaran: e.target.value as any })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-xs"
                       >
                         <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
                         <option value="lunas">Lunas (Sudah Verifikasi)</option>
@@ -1709,15 +1950,86 @@ export default function AdminDashboardPage() {
                     </div>
                   )}
 
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1 text-xs">URL / Link Bukti Transfer</label>
-                    <input
-                      type="text"
-                      value={editForm.bukti_transfer_url}
-                      onChange={(e) => setEditForm({ ...editForm, bukti_transfer_url: e.target.value })}
-                      placeholder="https://... atau data:image/..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-[11px] bg-white"
-                    />
+                  {/* Upload Bukti Transfer dengan Kompresi Otomatis */}
+                  <div className="pt-2 border-t border-slate-200">
+                    <label className="block font-bold text-slate-700 mb-1.5 text-xs flex items-center justify-between">
+                      <span>Bukti Transfer Pembayaran</span>
+                      {proofCompressInfo && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          ✓ {proofCompressInfo}
+                        </span>
+                      )}
+                    </label>
+
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-brand-navy hover:bg-brand-navyLight text-brand-yellow font-bold text-xs cursor-pointer shadow-sm transition-all">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{compressingProof ? 'Mengompres Foto...' : 'Pilih / Foto Bukti Transfer'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={compressingProof}
+                            onChange={handleAdminProofUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {editForm.bukti_transfer_url && (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage(editForm.bukti_transfer_url)}
+                            className="inline-flex items-center space-x-1 px-3 py-2 rounded-xl bg-brand-royal/10 text-brand-royal hover:bg-brand-royal/20 font-bold text-xs border border-brand-royal/30"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Lihat Bukti ({estimateDataUrlSize(editForm.bukti_transfer_url)})</span>
+                          </button>
+                        )}
+
+                        {editForm.bukti_transfer_url && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditForm((prev) => ({ ...prev, bukti_transfer_url: '' }));
+                              setProofCompressInfo(null);
+                            }}
+                            className="inline-flex items-center space-x-1 px-2.5 py-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-xs border border-rose-200"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Thumbnail Preview */}
+                      {editForm.bukti_transfer_url && (
+                        <div className="relative w-full max-w-[180px] aspect-[4/3] rounded-xl overflow-hidden border-2 border-brand-royal/30 shadow-sm bg-black/5 mt-2">
+                          <img
+                            src={editForm.bukti_transfer_url}
+                            alt="Preview Bukti Transfer"
+                            className="w-full h-full object-cover cursor-pointer hover:opacity-90"
+                            onClick={() => setPreviewImage(editForm.bukti_transfer_url)}
+                          />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] px-1 py-0.5 text-center truncate">
+                            Klik untuk perbesar
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Manual Link Input Fallback */}
+                      <details className="text-[11px] text-slate-500 pt-1">
+                        <summary className="cursor-pointer hover:text-slate-800 font-medium">
+                          Atau masukkan link URL gambar manual
+                        </summary>
+                        <input
+                          type="text"
+                          value={editForm.bukti_transfer_url}
+                          onChange={(e) => setEditForm({ ...editForm, bukti_transfer_url: e.target.value })}
+                          placeholder="https://... atau data:image/..."
+                          className="w-full mt-1.5 px-3 py-1.5 rounded-lg border border-slate-300 font-mono text-[10px] bg-white"
+                        />
+                      </details>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1823,6 +2135,168 @@ export default function AdminDashboardPage() {
               nomorRegistrasi={selectedBibParticipant.nomor_registrasi}
               jenisRegistrasi={selectedBibParticipant.jenis_registrasi}
             />
+          </div>
+        </div>
+      )}
+
+      {/* QUICK UPLOAD BUKTI TRANSFER MODAL */}
+      {quickUploadItem && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Upload Bukti Pembayaran">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl relative border border-brand-sky/40 my-auto">
+            <button
+              onClick={() => {
+                setQuickUploadItem(null);
+                setQuickUploadProof('');
+                setQuickCompressInfo(null);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 border-b border-slate-200 pb-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold flex-shrink-0">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base sm:text-lg text-brand-navy">
+                  Upload Bukti Transfer Peserta
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Bantu unggah bukti struk pembayaran peserta yang dikirim via WhatsApp
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-bold">Nama Peserta:</span>
+                <span className="font-extrabold text-brand-navy">{quickUploadItem.registrant.nama_lengkap}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-bold">Nomor BIB / Reg:</span>
+                <span className="font-mono text-brand-royal font-bold">BIB #{quickUploadItem.registrant.nomor_bib} ({quickUploadItem.registrant.nomor_registrasi})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-bold">Pesanan Jersey:</span>
+                <span className="font-bold text-slate-800">
+                  {quickUploadItem.jersey_po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve'} {quickUploadItem.jersey_po.kategori_ukuran === 'anak' ? '(Anak)' : ''} ({quickUploadItem.jersey_po.ukuran}) x{quickUploadItem.jersey_po.qty}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-bold">Total Tagihan:</span>
+                <span className="font-black text-emerald-600 text-sm font-mono">
+                  Rp {quickUploadItem.jersey_po.harga_total.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveQuickUpload} className="space-y-4">
+              <div>
+                <label className="block font-bold text-slate-700 text-xs mb-1.5 flex items-center justify-between">
+                  <span>Pilih File Gambar Bukti Transfer (JPG/PNG/WebP)</span>
+                  {quickCompressInfo && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ✓ {quickCompressInfo}
+                    </span>
+                  )}
+                </label>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <label className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-brand-navyLight text-brand-yellow font-bold text-xs cursor-pointer shadow-sm transition-all border border-brand-yellow/30">
+                    <Upload className="w-4 h-4" />
+                    <span>{quickCompressing ? 'Mengompres Foto...' : 'Pilih / Foto Bukti Transfer'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={quickCompressing || quickSaving}
+                      onChange={handleQuickFileChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {quickUploadProof && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(quickUploadProof)}
+                      className="inline-flex items-center space-x-1 px-3 py-2 rounded-xl bg-brand-royal/10 text-brand-royal hover:bg-brand-royal/20 font-bold text-xs border border-brand-royal/30"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Ukuran Penuh ({estimateDataUrlSize(quickUploadProof)})</span>
+                    </button>
+                  )}
+                </div>
+
+                {quickUploadProof && (
+                  <div className="relative w-full max-w-[200px] aspect-[4/3] rounded-2xl overflow-hidden border-2 border-brand-royal/40 shadow-sm bg-black/5 mt-3 mx-auto sm:mx-0">
+                    <img
+                      src={quickUploadProof}
+                      alt="Pratinjau Bukti"
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-90"
+                      onClick={() => setPreviewImage(quickUploadProof)}
+                    />
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] px-1 py-0.5 text-center">
+                      Klik untuk perbesar
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 text-xs mb-1.5">
+                  Set Status Pembayaran Setelah Simpan
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuickUploadStatus('lunas')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                      quickUploadStatus === 'lunas'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm font-extrabold'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <CheckCircle className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
+                    <span>Langsung Lunas (Verifikasi)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickUploadStatus('menunggu_verifikasi')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all ${
+                      quickUploadStatus === 'menunggu_verifikasi'
+                        ? 'border-amber-500 bg-amber-50 text-amber-800 shadow-sm font-extrabold'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+                    <span>Menunggu Verifikasi</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickUploadItem(null);
+                    setQuickUploadProof('');
+                    setQuickCompressInfo(null);
+                  }}
+                  disabled={quickSaving}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!quickUploadProof || quickSaving || quickCompressing}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-extrabold shadow flex items-center space-x-1.5"
+                >
+                  <CheckCircle className="w-4 h-4 text-white" />
+                  <span>{quickSaving ? 'Menyimpan...' : 'Simpan Bukti Transfer'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

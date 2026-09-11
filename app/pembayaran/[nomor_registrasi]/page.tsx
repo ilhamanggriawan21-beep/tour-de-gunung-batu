@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   Phone
 } from 'lucide-react';
+import { compressImage, estimateDataUrlSize } from '@/lib/imageCompression';
 
 export default function PembayaranPage() {
   const params = useParams();
@@ -28,6 +29,8 @@ export default function PembayaranPage() {
   const [error, setError] = useState('');
 
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+  const [compressInfo, setCompressInfo] = useState<string | null>(null);
   const [buktiInput, setBuktiInput] = useState('');
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -67,13 +70,26 @@ export default function PembayaranPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB.');
-        return;
-      }
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar bukti transfer (JPG/PNG/WebP).');
+      return;
+    }
+
+    setCompressing(true);
+    try {
+      const origSize = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+      const compressed = await compressImage(file, { maxDimension: 1600, quality: 0.75 });
+      const compSize = estimateDataUrlSize(compressed);
+
+      setFilePreview(compressed);
+      setBuktiInput(compressed);
+      setCompressInfo(`Foto terkompresi otomatis: ${origSize} → ${compSize}`);
+    } catch (err) {
+      console.error('Failed compressing file:', err);
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
@@ -81,6 +97,8 @@ export default function PembayaranPage() {
         setBuktiInput(result);
       };
       reader.readAsDataURL(file);
+    } finally {
+      setCompressing(false);
     }
   };
 
@@ -276,16 +294,26 @@ export default function PembayaranPage() {
 
                 {/* File Upload Selector */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Pilih Foto / Screenshot Bukti Transfer
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Pilih Foto / Screenshot Bukti Transfer
+                    </label>
+                    {compressInfo && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        ✓ {compressInfo}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="file"
                     accept="image/*"
+                    disabled={compressing || uploading}
                     onChange={handleFileChange}
                     className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-navy file:text-white hover:file:bg-brand-royal cursor-pointer border rounded-xl p-1.5 border-slate-200"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Format JPG, PNG (Maks. 5MB)</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {compressing ? 'Sedang mengompresi foto otomatis...' : 'Format JPG/PNG. Foto akan otomatis dikompres agar hemat kuota & cepat terkirim.'}
+                  </p>
                 </div>
 
                 {/* Preview Selected File */}

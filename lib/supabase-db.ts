@@ -1,5 +1,5 @@
 import { getSupabaseAdmin, isSupabaseConfigured } from './supabase';
-import type { Registrant, JerseyPO, Settings, AdminUser, BibLookupParticipant } from './db';
+import type { Registrant, JerseyPO, Settings, AdminUser, BibLookupParticipant, JerseyKategori, JerseySize } from './db';
 
 // ==========================================
 // 1. SETTINGS
@@ -107,8 +107,9 @@ export async function registerSupabaseParticipant(data: {
   consent_waiver: boolean;
   consent_no_refund?: boolean;
   jersey_spec?: {
+    kategori_ukuran?: JerseyKategori;
     jenis_lengan: 'short_sleeve' | 'long_sleeve';
-    ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+    ukuran: JerseySize;
     qty: number;
     metode_ambil: 'ambil_langsung' | 'dikirim';
     alamat_pengiriman?: string;
@@ -160,6 +161,7 @@ export async function registerSupabaseParticipant(data: {
     const poRecord = {
       id: poId,
       registrant_id: regId,
+      kategori_ukuran: data.jersey_spec.kategori_ukuran || 'dewasa',
       jenis_lengan: data.jersey_spec.jenis_lengan,
       ukuran: data.jersey_spec.ukuran,
       qty: data.jersey_spec.qty,
@@ -184,8 +186,9 @@ export async function registerSupabaseParticipant(data: {
 // 4. SUSULAN PO JERSEY
 // ==========================================
 export async function addSupabaseLateJerseyPO(registrantIdOrNo: string, jerseySpec: {
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan: 'short_sleeve' | 'long_sleeve';
-  ukuran: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran: JerseySize;
   qty: number;
   metode_ambil: 'ambil_langsung' | 'dikirim';
   alamat_pengiriman?: string;
@@ -222,6 +225,7 @@ export async function addSupabaseLateJerseyPO(registrantIdOrNo: string, jerseySp
 
   if (existingPo) {
     const { data: updatedPo } = await supabase.from('jersey_pos').update({
+      kategori_ukuran: jerseySpec.kategori_ukuran || existingPo.kategori_ukuran || 'dewasa',
       jenis_lengan: jerseySpec.jenis_lengan,
       ukuran: jerseySpec.ukuran,
       qty: jerseySpec.qty,
@@ -237,6 +241,7 @@ export async function addSupabaseLateJerseyPO(registrantIdOrNo: string, jerseySp
     const { data: insertedPo } = await supabase.from('jersey_pos').insert({
       id: poId,
       registrant_id: reg.id,
+      kategori_ukuran: jerseySpec.kategori_ukuran || 'dewasa',
       jenis_lengan: jerseySpec.jenis_lengan,
       ukuran: jerseySpec.ukuran,
       qty: jerseySpec.qty,
@@ -447,12 +452,13 @@ export async function getSupabaseWallOfHeroesData() {
     const po = lunasPoMap.get(r.id);
     if (po) {
       const sleeveStr = po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve';
+      const katStr = po.kategori_ukuran === 'anak' ? ' (Anak)' : '';
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
         komunitas: r.komunitas || 'Umum',
         nomor_bib: r.nomor_bib,
-        jersey_spec_str: `Jersey ${sleeveStr} Size ${po.ukuran} (${po.qty}x)`,
+        jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
         created_at: r.created_at
       });
     }
@@ -545,8 +551,9 @@ export async function updateSupabaseRegistrantAndPO(data: {
   no_telepon_kerabat?: string;
   alamat_lengkap?: string;
   po_id?: string;
+  kategori_ukuran?: JerseyKategori;
   jenis_lengan?: 'short_sleeve' | 'long_sleeve';
-  ukuran?: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+  ukuran?: JerseySize;
   qty?: number;
   metode_ambil?: 'ambil_langsung' | 'dikirim';
   alamat_pengiriman?: string;
@@ -571,6 +578,7 @@ export async function updateSupabaseRegistrantAndPO(data: {
   if (po) {
     const settings = await getSupabaseSettings();
     const poUpdates: any = {};
+    if (data.kategori_ukuran !== undefined) poUpdates.kategori_ukuran = data.kategori_ukuran;
     if (data.jenis_lengan !== undefined) poUpdates.jenis_lengan = data.jenis_lengan;
     if (data.ukuran !== undefined) poUpdates.ukuran = data.ukuran;
     if (data.qty !== undefined) poUpdates.qty = data.qty;
