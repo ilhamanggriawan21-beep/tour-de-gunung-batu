@@ -45,6 +45,13 @@ function DaftarFormContent() {
     alamat_pengiriman: ''
   });
 
+  const [communityList, setCommunityList] = useState<string[]>([
+    'Rudeboys Cyclist',
+    'PEADERAL',
+    'Fedjong (Federal Jonggol)',
+    'Jonggol Cycling Club'
+  ]);
+
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => res.json())
@@ -59,6 +66,16 @@ function DaftarFormContent() {
             setIsPoClosed(true);
             setFormData((prev) => ({ ...prev, jenis_registrasi: 'daftar_saja' }));
           }
+        }
+      })
+      .catch(() => {});
+
+    // Fetch existing communities for autocomplete
+    fetch('/api/wall-of-heroes')
+      .then((res) => res.json())
+      .then((d) => {
+        if (d.success && d.daftar_komunitas && d.daftar_komunitas.length > 0) {
+          setCommunityList((prev) => Array.from(new Set([...prev, ...d.daftar_komunitas])));
         }
       })
       .catch(() => {});
@@ -352,16 +369,25 @@ function DaftarFormContent() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Asal Komunitas / Team (Opsional)</label>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Asal Komunitas / Team (Opsional)</span>
+                  <span className="text-[10px] text-brand-royal font-semibold">Bisa ketik atau pilih saran</span>
+                </label>
                 <input
                   type="text"
+                  list="community-suggestions"
                   placeholder="Contoh: Rudeboys Cyclist (Kosongkan jika individu/umum)"
                   value={formData.komunitas}
                   onChange={(e) => setFormData({ ...formData, komunitas: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-royal focus:outline-none"
                 />
+                <datalist id="community-suggestions">
+                  {communityList.map((comm) => (
+                    <option key={comm} value={comm} />
+                  ))}
+                </datalist>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  *Jika dikosongkan, otomatis tercatat sebagai "Umum" di leaderboard Wall of Heroes.
+                  *Pilih nama komunitas yang seragam agar ranking tim Anda terakumulasi di Wall of Heroes. Jika dikosongkan, otomatis tercatat sebagai "Umum".
                 </p>
               </div>
             </div>

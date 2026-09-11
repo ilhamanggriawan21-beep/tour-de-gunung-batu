@@ -4,6 +4,8 @@ import TopoBackground from '@/components/TopoBackground';
 import CountdownTimer from '@/components/CountdownTimer';
 import SizeChart from '@/components/SizeChart';
 import PeaderalImpactGallery from '@/components/PeaderalImpactGallery';
+import GpxDownloadCard from '@/components/GpxDownloadCard';
+import CharityGoalProgressBar from '@/components/CharityGoalProgressBar';
 import {
   Bike,
   Heart,
@@ -139,17 +141,23 @@ export default async function HomePage() {
           </Link>
 
           {/* Countdown Component */}
-          <div className="mt-10 sm:mt-12 max-w-4xl mx-auto">
+          <div className="mt-10 sm:mt-12 max-w-4xl mx-auto space-y-6">
             <CountdownTimer
               poDeadlineStr={settings.tanggal_tutup_po}
               regDeadlineStr={settings.tanggal_tutup_pendaftaran}
             />
+
+            {/* Secret Route & H-1 Auto Release GPX Card */}
+            <GpxDownloadCard />
           </div>
         </div>
       </section>
 
       {/* STORYTELLING AMAL & OFFICIAL JERSEY DISPLAY */}
-      <section className="py-10 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <section className="py-10 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-8">
+        {/* Charity Goal Target 100 Jersey Progress Bar */}
+        <CharityGoalProgressBar currentCount={heroData.total_partisipan_jersey} targetCount={100} />
+
         <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-10 border border-brand-sky/30 shadow-card relative overflow-hidden">
           <div className="text-center max-w-2xl sm:max-w-3xl mx-auto mb-6 sm:mb-8 space-y-2 sm:space-y-3">
             <div className="inline-flex items-center space-x-2 text-brand-royal font-extrabold text-xs uppercase tracking-widest">

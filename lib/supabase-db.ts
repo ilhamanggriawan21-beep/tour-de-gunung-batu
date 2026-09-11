@@ -1,5 +1,5 @@
 import { getSupabaseAdmin, isSupabaseConfigured } from './supabase';
-import type { Registrant, JerseyPO, Settings, AdminUser, BibLookupParticipant, JerseyKategori, JerseySize } from './db';
+import { normalizeCommunityName, type Registrant, type JerseyPO, type Settings, type AdminUser, type BibLookupParticipant, type JerseyKategori, type JerseySize } from './db';
 
 // ==========================================
 // 1. SETTINGS
@@ -94,6 +94,94 @@ export async function updateSupabaseAdminProfile(id: string, nama_pic: string, k
 }
 
 // ==========================================
+// RESILIENT HELPERS FOR JERSEY_POS
+// ==========================================
+export function parseJerseyPO(po: any): JerseyPO {
+  if (!po) return po;
+  const parsed = { ...po };
+  if (parsed.catatan_admin) {
+    const sizeMatch = parsed.catatan_admin.match(/\[REAL_SIZE:([^\]]+)\]/);
+    if (sizeMatch) {
+      parsed.ukuran = sizeMatch[1];
+    }
+    const katMatch = parsed.catatan_admin.match(/\[KAT:([^\]]+)\]/);
+    if (katMatch) {
+      parsed.kategori_ukuran = katMatch[1];
+    }
+  }
+  if (!parsed.kategori_ukuran) {
+    parsed.kategori_ukuran = 'dewasa';
+  }
+  return parsed as JerseyPO;
+}
+
+async function safeInsertJerseyPO(supabase: any, poRecord: any): Promise<JerseyPO | null> {
+  // Attempt 1: Direct insert with all fields
+  let { data, error } = await supabase.from('jersey_pos').insert(poRecord).select().single();
+  if (!error && data) return parseJerseyPO(data);
+
+  let currentRecord = { ...poRecord };
+
+  // Attempt 2: If kategori_ukuran column missing in DB schema
+  if (error && (error.message?.includes('kategori_ukuran') || error.details?.includes('kategori_ukuran') || error.code === 'PGRST204')) {
+    const kat = currentRecord.kategori_ukuran || 'dewasa';
+    delete currentRecord.kategori_ukuran;
+    currentRecord.catatan_admin = `[KAT:${kat}]` + (currentRecord.catatan_admin ? ' ' + currentRecord.catatan_admin : '');
+    
+    const res2 = await supabase.from('jersey_pos').insert(currentRecord).select().single();
+    if (!res2.error && res2.data) return parseJerseyPO(res2.data);
+    error = res2.error;
+  }
+
+  // Attempt 3: If check constraint on ukuran (e.g. legacy check only allowing S,M,L,XL,XXL)
+  if (error && (error.message?.includes('jersey_pos_ukuran_check') || error.details?.includes('jersey_pos_ukuran_check'))) {
+    const origSize = currentRecord.ukuran;
+    currentRecord.ukuran = 'L'; // Safe standard size to satisfy legacy DB check
+    currentRecord.catatan_admin = `[REAL_SIZE:${origSize}]` + (currentRecord.catatan_admin ? ' ' + currentRecord.catatan_admin : '');
+
+    const res3 = await supabase.from('jersey_pos').insert(currentRecord).select().single();
+    if (!res3.error && res3.data) return parseJerseyPO(res3.data);
+    console.error('All fallback inserts failed for jersey_pos:', res3.error);
+  }
+
+  console.error('Failed safeInsertJerseyPO:', error);
+  return null;
+}
+
+async function safeUpdateJerseyPO(supabase: any, poId: string, poUpdates: any): Promise<boolean> {
+  let { error } = await supabase.from('jersey_pos').update(poUpdates).eq('id', poId);
+  if (!error) return true;
+
+  let currentUpdates = { ...poUpdates };
+
+  // If kategori_ukuran column missing
+  if (error && (error.message?.includes('kategori_ukuran') || error.details?.includes('kategori_ukuran') || error.code === 'PGRST204')) {
+    const kat = currentUpdates.kategori_ukuran;
+    delete currentUpdates.kategori_ukuran;
+    if (kat) {
+      currentUpdates.catatan_admin = `[KAT:${kat}]` + (currentUpdates.catatan_admin ? ' ' + currentUpdates.catatan_admin : '');
+    }
+    const res2 = await supabase.from('jersey_pos').update(currentUpdates).eq('id', poId);
+    if (!res2.error) return true;
+    error = res2.error;
+  }
+
+  // If ukuran check constraint failed
+  if (error && (error.message?.includes('jersey_pos_ukuran_check') || error.details?.includes('jersey_pos_ukuran_check'))) {
+    const origSize = currentUpdates.ukuran;
+    currentUpdates.ukuran = 'L';
+    if (origSize) {
+      currentUpdates.catatan_admin = `[REAL_SIZE:${origSize}]` + (currentUpdates.catatan_admin ? ' ' + currentUpdates.catatan_admin : '');
+    }
+    const res3 = await supabase.from('jersey_pos').update(currentUpdates).eq('id', poId);
+    if (!res3.error) return true;
+  }
+
+  console.error('Failed safeUpdateJerseyPO:', error);
+  return false;
+}
+
+// ==========================================
 // 3. REGISTRANT & PARTICIPANT REGISTRATION
 // ==========================================
 export async function registerSupabaseParticipant(data: {
@@ -135,7 +223,7 @@ export async function registerSupabaseParticipant(data: {
     alamat_lengkap: data.alamat_lengkap.trim(),
     no_telepon: data.no_telepon.trim(),
     no_telepon_kerabat: data.no_telepon_kerabat?.trim() || null,
-    komunitas: (data.komunitas && data.komunitas.trim()) ? data.komunitas.trim() : 'Umum',
+    komunitas: (data.komunitas && data.komunitas.trim()) ? normalizeCommunityName(data.komunitas.trim()) : 'Umum',
     jenis_registrasi: data.jenis_registrasi,
     consent_data: data.consent_data,
     consent_waiver: data.consent_waiver,
@@ -173,9 +261,9 @@ export async function registerSupabaseParticipant(data: {
       created_at: new Date().toISOString()
     };
 
-    const { data: insertedPo, error: poError } = await supabase.from('jersey_pos').insert(poRecord).select().single();
-    if (!poError && insertedPo) {
-      jerseyPO = insertedPo as JerseyPO;
+    const inserted = await safeInsertJerseyPO(supabase, poRecord);
+    if (inserted) {
+      jerseyPO = inserted;
     }
   }
 
@@ -221,10 +309,10 @@ export async function addSupabaseLateJerseyPO(registrantIdOrNo: string, jerseySp
   // Check existing PO
   const { data: existingPo } = await supabase.from('jersey_pos').select('*').eq('registrant_id', reg.id).maybeSingle();
 
-  let finalPo: JerseyPO;
+  let finalPo: JerseyPO | null = null;
 
   if (existingPo) {
-    const { data: updatedPo } = await supabase.from('jersey_pos').update({
+    const updatePayload: any = {
       kategori_ukuran: jerseySpec.kategori_ukuran || existingPo.kategori_ukuran || 'dewasa',
       jenis_lengan: jerseySpec.jenis_lengan,
       ukuran: jerseySpec.ukuran,
@@ -234,11 +322,13 @@ export async function addSupabaseLateJerseyPO(registrantIdOrNo: string, jerseySp
       metode_ambil: jerseySpec.metode_ambil,
       alamat_pengiriman: jerseySpec.alamat_pengiriman || null,
       status_pembayaran: 'menunggu_verifikasi'
-    }).eq('id', existingPo.id).select().single();
-    finalPo = updatedPo as JerseyPO;
+    };
+    await safeUpdateJerseyPO(supabase, existingPo.id, updatePayload);
+    const { data: refreshedPo } = await supabase.from('jersey_pos').select('*').eq('id', existingPo.id).single();
+    finalPo = parseJerseyPO(refreshedPo);
   } else {
     const poId = 'po_' + Math.random().toString(36).substring(2, 9);
-    const { data: insertedPo } = await supabase.from('jersey_pos').insert({
+    const poRecord = {
       id: poId,
       registrant_id: reg.id,
       kategori_ukuran: jerseySpec.kategori_ukuran || 'dewasa',
@@ -251,11 +341,11 @@ export async function addSupabaseLateJerseyPO(registrantIdOrNo: string, jerseySp
       metode_ambil: jerseySpec.metode_ambil,
       alamat_pengiriman: jerseySpec.alamat_pengiriman || null,
       created_at: new Date().toISOString()
-    }).select().single();
-    finalPo = insertedPo as JerseyPO;
+    };
+    finalPo = await safeInsertJerseyPO(supabase, poRecord);
   }
 
-  return { registrant: reg as Registrant, jersey_po: finalPo };
+  return { registrant: reg as Registrant, jersey_po: finalPo || ({} as JerseyPO) };
 }
 
 // ==========================================
@@ -304,18 +394,38 @@ export async function uploadSupabasePaymentProof(nomorRegistrasi: string, buktiU
     }
   }
 
+  // Find or create PO if missing
+  let { data: po } = await supabase.from('jersey_pos').select('*').eq('registrant_id', reg.id).maybeSingle();
+  if (!po) {
+    const poId = 'po_' + Math.random().toString(36).substring(2, 9);
+    po = await safeInsertJerseyPO(supabase, {
+      id: poId,
+      registrant_id: reg.id,
+      jenis_lengan: 'short_sleeve',
+      ukuran: 'L',
+      qty: 1,
+      harga_satuan: 120000,
+      harga_total: 120000,
+      bukti_transfer_url: finalUrl,
+      status_pembayaran: 'menunggu_verifikasi',
+      metode_ambil: 'ambil_langsung',
+      created_at: new Date().toISOString()
+    });
+    return po;
+  }
+
   const { data: updatedPo, error: updateError } = await supabase
     .from('jersey_pos')
     .update({
       bukti_transfer_url: finalUrl,
       status_pembayaran: 'menunggu_verifikasi'
     })
-    .eq('registrant_id', reg.id)
+    .eq('id', po.id)
     .select()
     .single();
 
   if (updateError || !updatedPo) return null;
-  return updatedPo as JerseyPO;
+  return parseJerseyPO(updatedPo);
 }
 
 // ==========================================
@@ -357,7 +467,7 @@ export async function getSupabaseRegistrationDetails(nomorRegistrasi: string): P
 
   return {
     registrant: reg as Registrant,
-    jersey_po: po ? (po as JerseyPO) : undefined,
+    jersey_po: po ? parseJerseyPO(po) : undefined,
     settings
   };
 }
@@ -408,7 +518,7 @@ export async function updateSupabasePaymentStatus(
     .single();
 
   if (error || !data) return null;
-  return data as JerseyPO;
+  return parseJerseyPO(data);
 }
 
 // ==========================================
@@ -422,7 +532,7 @@ export async function getSupabaseWallOfHeroesData() {
   const { data: jersey_pos } = await supabase.from('jersey_pos').select('*');
 
   const regs = registrants || [];
-  const pos = jersey_pos || [];
+  const pos = (jersey_pos || []).map(parseJerseyPO);
 
   const poMap = new Map<string, any>();
   const lunasPoMap = new Map<string, any>();
@@ -438,7 +548,7 @@ export async function getSupabaseWallOfHeroesData() {
     return {
       id: r.id,
       nama_lengkap: r.nama_lengkap,
-      komunitas: r.komunitas || 'Umum',
+      komunitas: normalizeCommunityName(r.komunitas),
       nomor_bib: r.nomor_bib,
       jenis_registrasi: r.jenis_registrasi,
       status_pembayaran: po ? po.status_pembayaran : null,
@@ -456,7 +566,7 @@ export async function getSupabaseWallOfHeroesData() {
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
-        komunitas: r.komunitas || 'Umum',
+        komunitas: normalizeCommunityName(r.komunitas),
         nomor_bib: r.nomor_bib,
         jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
         created_at: r.created_at
@@ -465,9 +575,14 @@ export async function getSupabaseWallOfHeroesData() {
   });
 
   const commCounts: { [key: string]: number } = {};
+  const uniqueCommSet = new Set<string>();
+
   regs.forEach((r: any) => {
-    const k = r.komunitas || 'Umum';
-    commCounts[k] = (commCounts[k] || 0) + 1;
+    const norm = normalizeCommunityName(r.komunitas);
+    if (norm !== 'Umum') {
+      commCounts[norm] = (commCounts[norm] || 0) + 1;
+      uniqueCommSet.add(norm);
+    }
   });
 
   const top_komunitas = Object.entries(commCounts)
@@ -475,12 +590,15 @@ export async function getSupabaseWallOfHeroesData() {
     .sort((a, b) => b.jumlah - a.jumlah)
     .slice(0, 5);
 
+  const daftar_komunitas = Array.from(uniqueCommSet).sort((a, b) => a.localeCompare(b));
+
   return {
     total_peserta: regs.length,
     total_partisipan_jersey: lunasPoMap.size,
     peserta_terdaftar,
     partisipan_jersey,
-    top_komunitas
+    top_komunitas,
+    daftar_komunitas
   };
 }
 
@@ -496,12 +614,30 @@ export async function getSupabaseAllAdminData() {
   const settings = await getSupabaseSettings();
   const admins = await getSupabaseAdmins();
 
-  const posList = pos || [];
+  const posList = (pos || []).map(parseJerseyPO);
   const registrants_with_po = (regs || []).map((reg: any) => {
-    const matchingPo = posList.find((p: any) => p.registrant_id === reg.id);
+    let matchingPo = posList.find((p: any) => p.registrant_id === reg.id);
+    
+    // Auto-synthesize PO for registrants with po_jersey but missing row in jersey_pos
+    if (!matchingPo && reg.jenis_registrasi === 'po_jersey') {
+      matchingPo = {
+        id: 'po_' + reg.id.replace('reg_', ''),
+        registrant_id: reg.id,
+        kategori_ukuran: 'dewasa',
+        jenis_lengan: 'short_sleeve',
+        ukuran: 'L',
+        qty: 1,
+        harga_satuan: settings?.harga_short_sleeve || 120000,
+        harga_total: settings?.harga_short_sleeve || 120000,
+        status_pembayaran: 'menunggu_verifikasi',
+        metode_ambil: 'ambil_langsung',
+        created_at: reg.created_at
+      } as JerseyPO;
+    }
+
     return {
       registrant: reg as Registrant,
-      jersey_po: matchingPo ? (matchingPo as JerseyPO) : undefined
+      jersey_po: matchingPo
     };
   });
 
@@ -521,6 +657,7 @@ export async function getSupabaseAllAdminData() {
     admins
   };
 }
+
 export async function deleteSupabaseRegistrant(registrantId: string): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return false;
@@ -559,13 +696,14 @@ export async function updateSupabaseRegistrantAndPO(data: {
   alamat_pengiriman?: string;
   status_pembayaran?: 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa';
   bukti_transfer_url?: string;
+  verified_by?: string;
 }): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return false;
 
   const regUpdates: any = {};
   if (data.nama_lengkap !== undefined) regUpdates.nama_lengkap = data.nama_lengkap.trim();
-  if (data.komunitas !== undefined) regUpdates.komunitas = data.komunitas.trim() || 'Umum';
+  if (data.komunitas !== undefined) regUpdates.komunitas = data.komunitas.trim() ? normalizeCommunityName(data.komunitas.trim()) : 'Umum';
   if (data.no_telepon !== undefined) regUpdates.no_telepon = data.no_telepon.trim();
   if (data.no_telepon_kerabat !== undefined) regUpdates.no_telepon_kerabat = data.no_telepon_kerabat.trim();
   if (data.alamat_lengkap !== undefined) regUpdates.alamat_lengkap = data.alamat_lengkap.trim();
@@ -575,8 +713,10 @@ export async function updateSupabaseRegistrantAndPO(data: {
   }
 
   const { data: po } = await supabase.from('jersey_pos').select('*').or(`registrant_id.eq.${data.registrantId},id.eq.${data.po_id || ''}`).maybeSingle();
+  
+  const settings = await getSupabaseSettings();
+
   if (po) {
-    const settings = await getSupabaseSettings();
     const poUpdates: any = {};
     if (data.kategori_ukuran !== undefined) poUpdates.kategori_ukuran = data.kategori_ukuran;
     if (data.jenis_lengan !== undefined) poUpdates.jenis_lengan = data.jenis_lengan;
@@ -586,20 +726,57 @@ export async function updateSupabaseRegistrantAndPO(data: {
     if (data.alamat_pengiriman !== undefined) poUpdates.alamat_pengiriman = data.alamat_pengiriman;
     if (data.status_pembayaran !== undefined) {
       poUpdates.status_pembayaran = data.status_pembayaran;
-      if (data.status_pembayaran === 'lunas') poUpdates.paid_at = new Date().toISOString();
+      if (data.status_pembayaran === 'lunas') {
+        poUpdates.paid_at = new Date().toISOString();
+        poUpdates.verified_at = new Date().toISOString();
+        poUpdates.verified_by = data.verified_by || 'Admin';
+      }
     }
     if (data.bukti_transfer_url !== undefined) poUpdates.bukti_transfer_url = data.bukti_transfer_url;
 
     const jenisLengan = data.jenis_lengan || po.jenis_lengan;
     const qty = data.qty !== undefined ? data.qty : po.qty;
     const hargaSatuan = jenisLengan === 'short_sleeve'
-      ? (settings?.harga_short_sleeve || 175000)
-      : (settings?.harga_long_sleeve || 185000);
+      ? (settings?.harga_short_sleeve || 120000)
+      : (settings?.harga_long_sleeve || 135000);
 
     poUpdates.harga_satuan = hargaSatuan;
     poUpdates.harga_total = hargaSatuan * qty;
 
-    await supabase.from('jersey_pos').update(poUpdates).eq('id', po.id);
+    await safeUpdateJerseyPO(supabase, po.id, poUpdates);
+  } else {
+    // If PO record doesn't exist yet (e.g. orphan po_jersey registrant being edited/verified)
+    const poId = data.po_id || ('po_' + Math.random().toString(36).substring(2, 9));
+    const jenisLengan = data.jenis_lengan || 'short_sleeve';
+    const qty = data.qty || 1;
+    const hargaSatuan = jenisLengan === 'short_sleeve'
+      ? (settings?.harga_short_sleeve || 120000)
+      : (settings?.harga_long_sleeve || 135000);
+
+    const poRecord: any = {
+      id: poId,
+      registrant_id: data.registrantId,
+      kategori_ukuran: data.kategori_ukuran || 'dewasa',
+      jenis_lengan: jenisLengan,
+      ukuran: data.ukuran || 'L',
+      qty: qty,
+      harga_satuan: hargaSatuan,
+      harga_total: hargaSatuan * qty,
+      status_pembayaran: data.status_pembayaran || 'menunggu_verifikasi',
+      metode_ambil: data.metode_ambil || 'ambil_langsung',
+      alamat_pengiriman: data.alamat_pengiriman || null,
+      bukti_transfer_url: data.bukti_transfer_url || null,
+      created_at: new Date().toISOString()
+    };
+
+    if (data.status_pembayaran === 'lunas') {
+      poRecord.paid_at = new Date().toISOString();
+      poRecord.verified_at = new Date().toISOString();
+      poRecord.verified_by = data.verified_by || 'Admin';
+    }
+
+    await safeInsertJerseyPO(supabase, poRecord);
+    await supabase.from('registrants').update({ jenis_registrasi: 'po_jersey' }).eq('id', data.registrantId);
   }
 
   return true;

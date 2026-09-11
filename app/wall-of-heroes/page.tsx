@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import TopoBackground from '@/components/TopoBackground';
+import CharityGoalProgressBar from '@/components/CharityGoalProgressBar';
 import { Users, Shirt, Search, Trophy, ShieldCheck, Heart, Award, ArrowRight, RefreshCw, Download } from 'lucide-react';
 
 export default function WallOfHeroesPage() {
@@ -112,6 +113,11 @@ export default function WallOfHeroesPage() {
               Total Partisipan Jersey (Lunas)
             </span>
           </div>
+        </div>
+
+        {/* Charity Goal Target 100 Jersey Progress Bar */}
+        <div className="max-w-4xl mx-auto">
+          <CharityGoalProgressBar currentCount={data.total_partisipan_jersey || 0} targetCount={100} />
         </div>
 
         {/* Community Leaderboard Preview */}

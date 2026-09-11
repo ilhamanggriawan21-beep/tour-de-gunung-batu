@@ -475,6 +475,56 @@ function updateLocalPaymentStatus(
   return db.jersey_pos[poIdx];
 }
 
+export function normalizeCommunityName(name?: string): string {
+  if (!name) return 'Umum';
+  const clean = name.trim().replace(/\s+/g, ' ');
+  if (
+    !clean ||
+    clean.toLowerCase() === 'umum' ||
+    clean.toLowerCase() === '-' ||
+    clean.toLowerCase() === 'none' ||
+    clean.toLowerCase() === 'pribadi' ||
+    clean.toLowerCase() === 'individu' ||
+    clean.toLowerCase() === 'personal' ||
+    clean.toLowerCase() === 'sendiri'
+  ) {
+    return 'Umum';
+  }
+
+  // Common alias normalization
+  const lower = clean.toLowerCase();
+  if (
+    lower === 'rudeboys' ||
+    lower === 'rudeboy' ||
+    lower === 'rude boys' ||
+    lower === 'rudeboys cc' ||
+    lower === 'rudeboys cyclist' ||
+    lower === 'rudeboy cyclist'
+  ) {
+    return 'Rudeboys Cyclist';
+  }
+  if (
+    lower === 'peaderal' ||
+    lower === 'peaderal mtb' ||
+    lower === 'peaderal indonesia' ||
+    lower === 'pergerakan peaderal'
+  ) {
+    return 'PEADERAL';
+  }
+
+  // Format Title Case nicely
+  return clean
+    .split(' ')
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (['CC', 'MTB', 'RB', 'CT', 'GOP', 'TCC', 'MCC', 'KCC', 'KGB', 'JCC', 'BCC', 'GCC', 'RCC', 'PEADERAL'].includes(upper)) {
+        return upper;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
 function getLocalWallOfHeroesData(): {
   total_peserta: number;
   total_partisipan_jersey: number;
@@ -483,6 +533,8 @@ function getLocalWallOfHeroesData(): {
     nama_lengkap: string;
     komunitas: string;
     nomor_bib: number;
+    jenis_registrasi: string;
+    status_pembayaran: string | null;
     is_jersey_lunas: boolean;
     created_at: string;
   }>;
@@ -495,6 +547,7 @@ function getLocalWallOfHeroesData(): {
     created_at: string;
   }>;
   top_komunitas: Array<{ nama: string; jumlah: number }>;
+  daftar_komunitas: string[];
 } {
   const db = readDB();
 
@@ -516,7 +569,7 @@ function getLocalWallOfHeroesData(): {
     return {
       id: r.id,
       nama_lengkap: r.nama_lengkap,
-      komunitas: r.komunitas || 'Umum',
+      komunitas: normalizeCommunityName(r.komunitas),
       nomor_bib: r.nomor_bib,
       jenis_registrasi: r.jenis_registrasi,
       status_pembayaran: po ? po.status_pembayaran : null,
@@ -542,7 +595,7 @@ function getLocalWallOfHeroesData(): {
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
-        komunitas: r.komunitas || 'Umum',
+        komunitas: normalizeCommunityName(r.komunitas),
         nomor_bib: r.nomor_bib,
         jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
         created_at: r.created_at
@@ -550,11 +603,16 @@ function getLocalWallOfHeroesData(): {
     }
   });
 
-  // Calculate Top 5 Communities
+  // Calculate Top Communities & Unique List
   const commCounts: { [key: string]: number } = {};
+  const uniqueCommSet = new Set<string>();
+
   db.registrants.forEach(r => {
-    const k = r.komunitas || 'Umum';
-    commCounts[k] = (commCounts[k] || 0) + 1;
+    const norm = normalizeCommunityName(r.komunitas);
+    if (norm !== 'Umum') {
+      commCounts[norm] = (commCounts[norm] || 0) + 1;
+      uniqueCommSet.add(norm);
+    }
   });
 
   const top_komunitas = Object.entries(commCounts)
@@ -562,12 +620,15 @@ function getLocalWallOfHeroesData(): {
     .sort((a, b) => b.jumlah - a.jumlah)
     .slice(0, 5);
 
+  const daftar_komunitas = Array.from(uniqueCommSet).sort((a, b) => a.localeCompare(b));
+
   return {
     total_peserta,
     total_partisipan_jersey,
     peserta_terdaftar,
     partisipan_jersey,
-    top_komunitas
+    top_komunitas,
+    daftar_komunitas
   };
 }
 
