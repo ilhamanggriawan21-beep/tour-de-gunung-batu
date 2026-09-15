@@ -140,7 +140,7 @@ export async function updateSupabaseAdminProfile(id: string, nama_pic: string, k
 // ==========================================
 // RESILIENT HELPERS FOR JERSEY_POS
 // ==========================================
-export function parseJerseyPO(po: any): JerseyPO {
+export function parseJerseyPO(po: any, registrantBib?: number | null): JerseyPO {
   if (!po) return po;
   const parsed = { ...po };
   if (parsed.catatan_admin) {
@@ -152,21 +152,65 @@ export function parseJerseyPO(po: any): JerseyPO {
     if (katMatch) {
       parsed.kategori_ukuran = katMatch[1];
     }
+    const batchMatch = parsed.catatan_admin.match(/\[BATCH:([0-9]+|none|unbatched)\]/i);
+    if (batchMatch) {
+      const bVal = batchMatch[1].toLowerCase();
+      if (bVal === 'none' || bVal === 'unbatched') {
+        parsed.batch_produksi = null;
+      } else {
+        parsed.batch_produksi = parseInt(bVal, 10);
+      }
+    }
   }
   if (!parsed.kategori_ukuran) {
     parsed.kategori_ukuran = 'dewasa';
   }
+
+  // If batch_produksi is still undefined / null, apply business rule:
+  // Hanifsyah Aditya (nomor_bib <= 1184) is Batch 1, others are unbatched (null)
+  if (parsed.batch_produksi === undefined || parsed.batch_produksi === null) {
+    const effectiveBib = registrantBib !== undefined && registrantBib !== null 
+      ? registrantBib 
+      : (parsed.registrant?.nomor_bib);
+
+    if (effectiveBib !== undefined && effectiveBib !== null) {
+      if (effectiveBib <= 1184) {
+        parsed.batch_produksi = 1;
+      } else {
+        parsed.batch_produksi = null;
+      }
+    }
+  }
+
   return parsed as JerseyPO;
 }
 
+export function applyBatchToCatatan(catatan: string = '', batchNum: number | null): string {
+  let clean = catatan.replace(/\[BATCH:([^\]]+)\]/gi, '').trim();
+  const tag = `[BATCH:${batchNum !== null && batchNum !== undefined ? batchNum : 'none'}]`;
+  return clean ? `${tag} ${clean}` : tag;
+}
+
 async function safeInsertJerseyPO(supabase: any, poRecord: any): Promise<JerseyPO | null> {
+  let currentRecord = { ...poRecord };
+  
+  if (currentRecord.batch_produksi !== undefined) {
+    currentRecord.catatan_admin = applyBatchToCatatan(currentRecord.catatan_admin || '', currentRecord.batch_produksi);
+  }
+
   // Attempt 1: Direct insert with all fields
-  let { data, error } = await supabase.from('jersey_pos').insert(poRecord).select().single();
+  let { data, error } = await supabase.from('jersey_pos').insert(currentRecord).select().single();
   if (!error && data) return parseJerseyPO(data);
 
-  let currentRecord = { ...poRecord };
+  // Attempt 2: If batch_produksi column missing in DB schema
+  if (error && (error.message?.includes('batch_produksi') || error.details?.includes('batch_produksi') || error.code === 'PGRST204')) {
+    delete currentRecord.batch_produksi;
+    const res = await supabase.from('jersey_pos').insert(currentRecord).select().single();
+    if (!res.error && res.data) return parseJerseyPO(res.data);
+    error = res.error;
+  }
 
-  // Attempt 2: If kategori_ukuran column missing in DB schema
+  // Attempt 3: If kategori_ukuran column missing in DB schema
   if (error && (error.message?.includes('kategori_ukuran') || error.details?.includes('kategori_ukuran') || error.code === 'PGRST204')) {
     const kat = currentRecord.kategori_ukuran || 'dewasa';
     delete currentRecord.kategori_ukuran;
@@ -177,7 +221,7 @@ async function safeInsertJerseyPO(supabase: any, poRecord: any): Promise<JerseyP
     error = res2.error;
   }
 
-  // Attempt 3: If check constraint on ukuran (e.g. legacy check only allowing S,M,L,XL,XXL)
+  // Attempt 4: If check constraint on ukuran (e.g. legacy check only allowing S,M,L,XL,XXL)
   if (error && (error.message?.includes('jersey_pos_ukuran_check') || error.details?.includes('jersey_pos_ukuran_check'))) {
     const origSize = currentRecord.ukuran;
     currentRecord.ukuran = 'L'; // Safe standard size to satisfy legacy DB check
@@ -193,10 +237,22 @@ async function safeInsertJerseyPO(supabase: any, poRecord: any): Promise<JerseyP
 }
 
 async function safeUpdateJerseyPO(supabase: any, poId: string, poUpdates: any): Promise<boolean> {
-  let { error } = await supabase.from('jersey_pos').update(poUpdates).eq('id', poId);
+  let currentUpdates = { ...poUpdates };
+
+  if (currentUpdates.batch_produksi !== undefined) {
+    currentUpdates.catatan_admin = applyBatchToCatatan(currentUpdates.catatan_admin || '', currentUpdates.batch_produksi);
+  }
+
+  let { error } = await supabase.from('jersey_pos').update(currentUpdates).eq('id', poId);
   if (!error) return true;
 
-  let currentUpdates = { ...poUpdates };
+  // If batch_produksi column missing in DB schema
+  if (error && (error.message?.includes('batch_produksi') || error.details?.includes('batch_produksi') || error.code === 'PGRST204')) {
+    delete currentUpdates.batch_produksi;
+    const resBatch = await supabase.from('jersey_pos').update(currentUpdates).eq('id', poId);
+    if (!resBatch.error) return true;
+    error = resBatch.error;
+  }
 
   // If kategori_ukuran column missing
   if (error && (error.message?.includes('kategori_ukuran') || error.details?.includes('kategori_ukuran') || error.code === 'PGRST204')) {
@@ -658,7 +714,12 @@ export async function getSupabaseAllAdminData() {
   const settings = await getSupabaseSettings();
   const admins = await getSupabaseAdmins();
 
-  const posList = (pos || []).map(parseJerseyPO);
+  const regBibMap = new Map<string, number>();
+  (regs || []).forEach((r: any) => {
+    if (r.nomor_bib) regBibMap.set(r.id, r.nomor_bib);
+  });
+
+  const posList = (pos || []).map((p: any) => parseJerseyPO(p, regBibMap.get(p.registrant_id)));
   const registrants_with_po = (regs || []).map((reg: any) => {
     let matchingPo = posList.find((p: any) => p.registrant_id === reg.id);
     
@@ -675,7 +736,8 @@ export async function getSupabaseAllAdminData() {
         harga_total: settings?.harga_short_sleeve || 120000,
         status_pembayaran: 'menunggu_verifikasi',
         metode_ambil: 'ambil_langsung',
-        created_at: reg.created_at
+        created_at: reg.created_at,
+        batch_produksi: reg.nomor_bib <= 1184 ? 1 : null
       } as JerseyPO;
     }
 
@@ -741,6 +803,7 @@ export async function updateSupabaseRegistrantAndPO(data: {
   status_pembayaran?: 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa';
   bukti_transfer_url?: string;
   verified_by?: string;
+  batch_produksi?: number | null;
 }): Promise<boolean> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return false;
@@ -777,6 +840,7 @@ export async function updateSupabaseRegistrantAndPO(data: {
       }
     }
     if (data.bukti_transfer_url !== undefined) poUpdates.bukti_transfer_url = data.bukti_transfer_url;
+    if (data.batch_produksi !== undefined) poUpdates.batch_produksi = data.batch_produksi;
 
     const jenisLengan = data.jenis_lengan || po.jenis_lengan;
     const qty = data.qty !== undefined ? data.qty : po.qty;
@@ -810,6 +874,7 @@ export async function updateSupabaseRegistrantAndPO(data: {
       metode_ambil: data.metode_ambil || 'ambil_langsung',
       alamat_pengiriman: data.alamat_pengiriman || null,
       bukti_transfer_url: data.bukti_transfer_url || null,
+      batch_produksi: data.batch_produksi !== undefined ? data.batch_produksi : null,
       created_at: new Date().toISOString()
     };
 
@@ -885,5 +950,65 @@ export async function updateSupabaseShippingStatus(
     console.error('updateSupabaseShippingStatus error:', e);
     return false;
   }
+}
+
+// ==========================================
+// 11. BATCH PRODUKSI JERSEY
+// ==========================================
+export async function updateSupabaseJerseyBatch(
+  poIdOrRegistrantId: string,
+  batchNumber: number | null
+): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  const { data: po } = await supabase
+    .from('jersey_pos')
+    .select('*')
+    .or(`id.eq.${poIdOrRegistrantId},registrant_id.eq.${poIdOrRegistrantId}`)
+    .maybeSingle();
+
+  if (!po) return false;
+
+  const currentCat = po.catatan_admin || '';
+  const newCat = applyBatchToCatatan(currentCat, batchNumber);
+
+  return await safeUpdateJerseyPO(supabase, po.id, {
+    batch_produksi: batchNumber,
+    catatan_admin: newCat
+  });
+}
+
+export async function assignSupabaseUnbatchedToBatch(batchNumber: number): Promise<number> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return 0;
+
+  const { data: regs } = await supabase.from('registrants').select('id, nomor_bib');
+  const { data: pos } = await supabase.from('jersey_pos').select('*');
+
+  if (!pos || pos.length === 0) return 0;
+
+  const regBibMap = new Map<string, number>();
+  (regs || []).forEach((r: any) => {
+    if (r.nomor_bib) regBibMap.set(r.id, r.nomor_bib);
+  });
+
+  let count = 0;
+  for (const po of pos) {
+    const bib = regBibMap.get(po.registrant_id);
+    const parsed = parseJerseyPO(po, bib);
+    
+    // Only assign if it is currently unbatched
+    if (parsed.batch_produksi === null || parsed.batch_produksi === undefined) {
+      const newCat = applyBatchToCatatan(po.catatan_admin || '', batchNumber);
+      const success = await safeUpdateJerseyPO(supabase, po.id, {
+        batch_produksi: batchNumber,
+        catatan_admin: newCat
+      });
+      if (success) count++;
+    }
+  }
+
+  return count;
 }
 

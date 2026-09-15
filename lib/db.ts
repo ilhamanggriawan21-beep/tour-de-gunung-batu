@@ -52,6 +52,7 @@ export interface JerseyPO {
   shipped_at?: string | null;
   shipped_by?: string | null;
   no_resi?: string | null;
+  batch_produksi?: number | null; // 1 for Batch 1 (<= 1184 Hanifsyah Aditya), 2 for Batch 2, null for unbatched
 }
 
 export interface Settings {
@@ -258,7 +259,9 @@ import {
   updateSupabaseRegistrantAndPO,
   getSupabaseBibLookup,
   updateSupabaseCheckInStatus,
-  updateSupabaseShippingStatus
+  updateSupabaseShippingStatus,
+  updateSupabaseJerseyBatch,
+  assignSupabaseUnbatchedToBatch
 } from './supabase-db';
 
 function getLocalSettings(): Settings {
@@ -705,7 +708,12 @@ function getLocalAllAdminData(): {
 } {
   const db = readDB();
   const result = db.registrants.map(reg => {
-    const po = db.jersey_pos.find(p => p.registrant_id === reg.id);
+    let po = db.jersey_pos.find(p => p.registrant_id === reg.id);
+    if (po) {
+      if (po.batch_produksi === undefined) {
+        po.batch_produksi = reg.nomor_bib <= 1184 ? 1 : null;
+      }
+    }
     return {
       registrant: reg,
       jersey_po: po
@@ -930,6 +938,7 @@ export async function updateRegistrantAndPO(data: {
   alamat_pengiriman?: string;
   status_pembayaran?: 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa';
   bukti_transfer_url?: string;
+  batch_produksi?: number | null;
 }): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const res = await updateSupabaseRegistrantAndPO(data);
@@ -981,6 +990,7 @@ function updateLocalRegistrantAndPO(data: {
   alamat_pengiriman?: string;
   status_pembayaran?: 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa';
   bukti_transfer_url?: string;
+  batch_produksi?: number | null;
 }): boolean {
   const db = readDB();
   const regIdx = db.registrants.findIndex(r => r.id === data.registrantId);
@@ -1009,6 +1019,7 @@ function updateLocalRegistrantAndPO(data: {
       }
     }
     if (data.bukti_transfer_url !== undefined) po.bukti_transfer_url = data.bukti_transfer_url;
+    if (data.batch_produksi !== undefined) po.batch_produksi = data.batch_produksi;
 
     const hargaSatuan = po.jenis_lengan === 'short_sleeve'
       ? db.settings.harga_short_sleeve
@@ -1059,6 +1070,40 @@ export function updateLocalShippingStatus(
   return true;
 }
 
+export function updateLocalJerseyBatch(
+  poIdOrRegistrantId: string,
+  batchNumber: number | null
+): boolean {
+  const db = readDB();
+  const po = db.jersey_pos.find(p => p.id === poIdOrRegistrantId || p.registrant_id === poIdOrRegistrantId);
+  if (!po) return false;
+  po.batch_produksi = batchNumber;
+  writeDB(db);
+  return true;
+}
+
+export function assignLocalUnbatchedToBatch(batchNumber: number): number {
+  const db = readDB();
+  let count = 0;
+  const regMap = new Map(db.registrants.map(r => [r.id, r]));
+
+  db.jersey_pos.forEach(po => {
+    const reg = regMap.get(po.registrant_id);
+    const isBatch1Default = reg && reg.nomor_bib <= 1184;
+    const currentBatch = po.batch_produksi !== undefined ? po.batch_produksi : (isBatch1Default ? 1 : null);
+    
+    if (currentBatch === null) {
+      po.batch_produksi = batchNumber;
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    writeDB(db);
+  }
+  return count;
+}
+
 export async function updateParticipantCheckIn(
   registrantId: string,
   isCheckedIn: boolean,
@@ -1080,5 +1125,22 @@ export async function updateJerseyShipping(
     return await updateSupabaseShippingStatus(poId, isShipped, shippedBy, noResi);
   }
   return updateLocalShippingStatus(poId, isShipped, shippedBy, noResi);
+}
+
+export async function updateJerseyBatch(
+  poIdOrRegistrantId: string,
+  batchNumber: number | null
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    return await updateSupabaseJerseyBatch(poIdOrRegistrantId, batchNumber);
+  }
+  return updateLocalJerseyBatch(poIdOrRegistrantId, batchNumber);
+}
+
+export async function assignUnbatchedToBatch(batchNumber: number): Promise<number> {
+  if (isSupabaseConfigured()) {
+    return await assignSupabaseUnbatchedToBatch(batchNumber);
+  }
+  return assignLocalUnbatchedToBatch(batchNumber);
 }
 

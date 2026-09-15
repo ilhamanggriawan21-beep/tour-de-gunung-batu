@@ -38,19 +38,31 @@ import {
   Truck,
   Bike,
   CheckSquare,
-  PackageCheck
+  PackageCheck,
+  Layers,
+  Factory,
+  Copy,
+  Check,
+  Filter
 } from 'lucide-react';
 import { compressImage, estimateDataUrlSize } from '@/lib/imageCompression';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'checkin' | 'logistik' | 'verifikasi' | 'rekap' | 'pengaturan' | 'profil' | 'kelola_pic'>('checkin');
+  const [activeTab, setActiveTab] = useState<'checkin' | 'logistik' | 'verifikasi' | 'batch_produksi' | 'rekap' | 'pengaturan' | 'profil' | 'kelola_pic'>('checkin');
 
   const [loading, setLoading] = useState(true);
   const [registrantsData, setRegistrantsData] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [adminsList, setAdminsList] = useState<any[]>([]);
+
+  // Batch Produksi State
+  const [selectedBatchView, setSelectedBatchView] = useState<'batch_1' | 'unbatched'>('batch_1');
+  const [poFilterBatch, setPoFilterBatch] = useState<'semua' | 'batch_1' | 'unbatched'>('semua');
+  const [batchCopyFeedback, setBatchCopyFeedback] = useState<string | null>(null);
+  const [assigningBatch, setAssigningBatch] = useState(false);
+  const [batchSearchTerm, setBatchSearchTerm] = useState('');
 
   // Check-In Hari H State
   const [checkInSearch, setCheckInSearch] = useState('');
@@ -116,7 +128,8 @@ export default function AdminDashboardPage() {
     metode_ambil: 'ambil_langsung' as 'ambil_langsung' | 'dikirim',
     alamat_pengiriman: '',
     status_pembayaran: 'menunggu_verifikasi' as 'menunggu_verifikasi' | 'lunas' | 'perlu_klarifikasi' | 'kedaluwarsa',
-    bukti_transfer_url: ''
+    bukti_transfer_url: '',
+    batch_produksi: null as number | null
   });
 
   const [deleteRegistrantId, setDeleteRegistrantId] = useState<{ id: string; nama: string } | null>(null);
@@ -244,7 +257,8 @@ export default function AdminDashboardPage() {
       metode_ambil: p ? p.metode_ambil : 'ambil_langsung',
       alamat_pengiriman: p ? (p.alamat_pengiriman || '') : '',
       status_pembayaran: p ? p.status_pembayaran : 'menunggu_verifikasi',
-      bukti_transfer_url: p ? (p.bukti_transfer_url || '') : ''
+      bukti_transfer_url: p ? (p.bukti_transfer_url || '') : '',
+      batch_produksi: p ? (p.batch_produksi !== undefined ? p.batch_produksi : (r.nomor_bib <= 1184 ? 1 : null)) : null
     });
   };
 
@@ -704,11 +718,185 @@ export default function AdminDashboardPage() {
   });
 
   const poList = registrantsData.filter((item) => item.jersey_po);
+
+  // Batch Calculations
+  const computeBatchSummary = (items: any[]) => {
+    let totalQty = 0;
+    let shortQty = 0;
+    let longQty = 0;
+    let lunasQty = 0;
+    let unpaidQty = 0;
+
+    const dewasaSizes: { [key: string]: { short: number; long: number; total: number } } = {
+      '2XS': { short: 0, long: 0, total: 0 },
+      'XS': { short: 0, long: 0, total: 0 },
+      'S': { short: 0, long: 0, total: 0 },
+      'M': { short: 0, long: 0, total: 0 },
+      'L': { short: 0, long: 0, total: 0 },
+      'XL': { short: 0, long: 0, total: 0 },
+      'XXL': { short: 0, long: 0, total: 0 },
+      '3XL': { short: 0, long: 0, total: 0 },
+      '4XL': { short: 0, long: 0, total: 0 },
+      '5XL': { short: 0, long: 0, total: 0 }
+    };
+
+    const anakSizes: { [key: string]: { short: number; long: number; total: number } } = {
+      'Kids 2XS': { short: 0, long: 0, total: 0 },
+      'Kids XS': { short: 0, long: 0, total: 0 },
+      'Kids S': { short: 0, long: 0, total: 0 },
+      'Kids M': { short: 0, long: 0, total: 0 },
+      'Kids L': { short: 0, long: 0, total: 0 },
+      'Kids XL': { short: 0, long: 0, total: 0 },
+      'Kids 2XL': { short: 0, long: 0, total: 0 }
+    };
+
+    items.forEach((item) => {
+      const p = item.jersey_po;
+      if (!p) return;
+      const qty = p.qty || 1;
+      totalQty += qty;
+
+      if (p.jenis_lengan === 'short_sleeve') shortQty += qty;
+      else longQty += qty;
+
+      if (p.status_pembayaran === 'lunas') lunasQty += qty;
+      else unpaidQty += qty;
+
+      const isAnak = p.kategori_ukuran === 'anak' || (typeof p.ukuran === 'string' && (p.ukuran.startsWith('Kids') || p.ukuran.startsWith('kids')));
+      const targetMap = isAnak ? anakSizes : dewasaSizes;
+      let rawSize = (p.ukuran || 'L').toString();
+      if (isAnak && !rawSize.startsWith('Kids ') && !rawSize.startsWith('Kids')) {
+        rawSize = `Kids ${rawSize}`;
+      }
+
+      if (!targetMap[rawSize]) {
+        targetMap[rawSize] = { short: 0, long: 0, total: 0 };
+      }
+
+      if (p.jenis_lengan === 'short_sleeve') {
+        targetMap[rawSize].short += qty;
+      } else {
+        targetMap[rawSize].long += qty;
+      }
+      targetMap[rawSize].total += qty;
+    });
+
+    return {
+      totalQty,
+      shortQty,
+      longQty,
+      lunasQty,
+      unpaidQty,
+      dewasaSizes,
+      anakSizes,
+      totalCount: items.length
+    };
+  };
+
+  const batch1List = poList.filter((item) => item.jersey_po?.batch_produksi === 1);
+  const unbatchedList = poList.filter((item) => !item.jersey_po?.batch_produksi);
+  const batch1Summary = computeBatchSummary(batch1List);
+  const unbatchedSummary = computeBatchSummary(unbatchedList);
+
+  const handleCopyVendorSummary = (isBatch1: boolean) => {
+    const summary = isBatch1 ? batch1Summary : unbatchedSummary;
+    const title = isBatch1 ? 'REKAP ORDER PRODUKSI JERSEY - BATCH 1' : 'REKAP ORDER PRODUKSI JERSEY - UNBATCHED (SIAP BATCH 2)';
+    const note = isBatch1
+      ? 'Cut-off: Data awal s/d Peserta Hanifsyah Aditya (BIB #1184)'
+      : 'Data Pesanan Baru (Nomor BIB > 1184)';
+
+    let text = `*${title}*\n*TOUR DE GUNUNG BATU 2026*\n_${note}_\n\n`;
+    text += `*RINGKASAN TOTAL:* ${summary.totalQty} pcs (${summary.totalCount} pendaftar)\n`;
+    text += `- Lengan Pendek (Short Sleeve): ${summary.shortQty} pcs\n`;
+    text += `- Lengan Panjang (Long Sleeve): ${summary.longQty} pcs\n`;
+    text += `- Status Lunas: ${summary.lunasQty} pcs | Belum Lunas: ${summary.unpaidQty} pcs\n\n`;
+
+    text += `*BREAKDOWN UKURAN DEWASA:*\n`;
+    Object.entries(summary.dewasaSizes).forEach(([size, data]) => {
+      if (data.total > 0) {
+        text += `• Size ${size}: ${data.total} pcs (Short: ${data.short} | Long: ${data.long})\n`;
+      }
+    });
+
+    const hasAnak = Object.values(summary.anakSizes).some(d => d.total > 0);
+    if (hasAnak) {
+      text += `\n*BREAKDOWN UKURAN ANAK-ANAK (KIDS):*\n`;
+      Object.entries(summary.anakSizes).forEach(([size, data]) => {
+        if (data.total > 0) {
+          text += `• ${size}: ${data.total} pcs (Short: ${data.short} | Long: ${data.long})\n`;
+        }
+      });
+    }
+
+    text += `\n_Generated via Sistem Panitia Tour De Gunung Batu 2026_`;
+
+    navigator.clipboard.writeText(text);
+    setBatchCopyFeedback(isBatch1 ? 'batch1' : 'unbatched');
+    setTimeout(() => setBatchCopyFeedback(null), 3000);
+  };
+
+  const handleUpdateBatch = async (poId: string, registrantId: string, batchNumber: number | null) => {
+    try {
+      const res = await fetch('/api/admin/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ poId, registrantId, batchNumber })
+      });
+      const d = await res.json();
+      if (d.success) {
+        setMessage(d.message || 'Status batch jersey berhasil diubah');
+        setTimeout(() => setMessage(''), 3000);
+        fetchAdminData(false);
+      } else {
+        alert(d.error || 'Gagal mengubah status batch');
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan');
+    }
+  };
+
+  const handleAssignUnbatchedToBatch2 = async () => {
+    if (unbatchedList.length === 0) {
+      alert('Tidak ada pesanan yang belum masuk batch saat ini.');
+      return;
+    }
+    const conf = window.confirm(`Apakah Anda yakin ingin memasukkan ${unbatchedList.length} pesanan PO jersey ini ke Batch 2? Data Batch 1 tidak akan berubah.`);
+    if (!conf) return;
+
+    setAssigningBatch(true);
+    try {
+      const res = await fetch('/api/admin/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'assign_unbatched', batchNumber: 2 })
+      });
+      const d = await res.json();
+      if (d.success) {
+        setMessage(d.message);
+        setTimeout(() => setMessage(''), 4000);
+        fetchAdminData(false);
+      } else {
+        alert(d.error || 'Gagal memasukkan ke Batch 2');
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan');
+    } finally {
+      setAssigningBatch(false);
+    }
+  };
+
   const filteredPoList = poList.filter((item) => {
-    const matchesFilter =
+    const matchesStatus =
       poFilterStatus === 'semua'
         ? true
         : item.jersey_po.status_pembayaran === poFilterStatus;
+
+    const matchesBatch =
+      poFilterBatch === 'semua'
+        ? true
+        : poFilterBatch === 'batch_1'
+        ? item.jersey_po.batch_produksi === 1
+        : !item.jersey_po.batch_produksi;
 
     const matchesSearch =
       item.registrant.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -716,7 +904,7 @@ export default function AdminDashboardPage() {
       item.registrant.no_telepon.includes(searchTerm) ||
       (item.registrant.komunitas || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    return matchesStatus && matchesBatch && matchesSearch;
   });
 
   const filteredAllRegistrants = registrantsData.filter((item) => {
@@ -828,6 +1016,21 @@ export default function AdminDashboardPage() {
             <span>Verifikasi PO</span>
             <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeTab === 'verifikasi' ? 'bg-white/20 text-brand-yellow' : 'bg-slate-200 text-slate-700'}`}>
               {poList.filter(p => p.jersey_po?.status_pembayaran === 'menunggu_verifikasi').length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('batch_produksi')}
+            className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center space-x-2 whitespace-nowrap ${
+              activeTab === 'batch_produksi'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Shirt className="w-4 h-4" />
+            <span>Batch Vendor</span>
+            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeTab === 'batch_produksi' ? 'bg-amber-800 text-amber-100' : 'bg-amber-100 text-amber-800'}`}>
+              B1 ({batch1List.length}) {unbatchedList.length > 0 ? `| +${unbatchedList.length}` : ''}
             </span>
           </button>
 
@@ -1262,25 +1465,49 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
-                {[
-                  { id: 'semua', label: 'Semua Status' },
-                  { id: 'menunggu_verifikasi', label: 'Menunggu Verifikasi' },
-                  { id: 'lunas', label: 'Lunas' },
-                  { id: 'perlu_klarifikasi', label: 'Perlu Klarifikasi' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setPoFilterStatus(tab.id)}
-                    className={`min-h-10 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      poFilterStatus === tab.id
-                        ? 'bg-brand-navy text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
+                {/* Status Filter */}
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5">
+                  {[
+                    { id: 'semua', label: 'Semua Status' },
+                    { id: 'menunggu_verifikasi', label: 'Menunggu' },
+                    { id: 'lunas', label: 'Lunas' },
+                    { id: 'perlu_klarifikasi', label: 'Klarifikasi' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setPoFilterStatus(tab.id)}
+                      className={`min-h-9 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        poFilterStatus === tab.id
+                          ? 'bg-brand-navy text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Batch Filter */}
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                  {[
+                    { id: 'semua', label: 'Semua Batch' },
+                    { id: 'batch_1', label: `Batch 1 (${batch1List.length})` },
+                    { id: 'unbatched', label: `Belum Batch (${unbatchedList.length})` }
+                  ].map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => setPoFilterBatch(b.id as any)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        poFilterBatch === b.id
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1310,7 +1537,18 @@ export default function AdminDashboardPage() {
                     <div key={p.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
                       <div className="flex items-start justify-between gap-2 border-b pb-2">
                         <div className="min-w-0">
-                          <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-extrabold text-sm text-brand-navy block">{r.nama_lengkap}</span>
+                            {p.batch_produksi === 1 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                BATCH 1
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                BELUM BATCH
+                              </span>
+                            )}
+                          </div>
                           <button
                             onClick={() => setSelectedBibParticipant(r)}
                             className="text-[10px] text-brand-royal hover:underline font-mono inline-flex items-center space-x-1 font-bold bg-brand-royal/10 px-1.5 py-0.5 rounded border border-brand-royal/20 mt-0.5"
@@ -1534,6 +1772,17 @@ export default function AdminDashboardPage() {
                             <span className="font-black text-brand-royal text-xs font-mono block">
                               Rp {p.harga_total.toLocaleString('id-ID')}
                             </span>
+                            <div className="mt-1 flex items-center gap-1">
+                              {p.batch_produksi === 1 ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  BATCH 1
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                  BELUM BATCH
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-3 text-center">
                             {p.bukti_transfer_url ? (
@@ -1664,6 +1913,381 @@ export default function AdminDashboardPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB: BATCH PRODUKSI JERSEY VENDOR                        */}
+        {/* ======================================================== */}
+        {activeTab === 'batch_produksi' && (
+          <div className="space-y-6">
+            {/* Header Card */}
+            <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-brand-sky/40 shadow-card space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black">
+                      <Shirt className="w-4 h-4" />
+                    </span>
+                    <h2 className="text-lg font-bold text-brand-navy">Manajemen Batch Produksi Jersey</h2>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Sistem pemisahan order konveksi per batch untuk mencegah duplikasi order ke vendor.
+                  </p>
+                </div>
+
+                {/* Sub-view Switcher */}
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                  <button
+                    onClick={() => setSelectedBatchView('batch_1')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 ${
+                      selectedBatchView === 'batch_1'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>Batch 1 (Siap Produksi)</span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${selectedBatchView === 'batch_1' ? 'bg-amber-800 text-amber-100' : 'bg-slate-200 text-slate-700'}`}>
+                      {batch1List.length} Order ({batch1Summary.totalQty} pcs)
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedBatchView('unbatched')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 ${
+                      selectedBatchView === 'unbatched'
+                        ? 'bg-brand-navy text-white shadow-md'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>Belum Masuk Batch</span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${selectedBatchView === 'unbatched' ? 'bg-white/20 text-brand-yellow' : 'bg-slate-200 text-slate-700'}`}>
+                      {unbatchedList.length} Order ({unbatchedSummary.totalQty} pcs)
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Banner Info Cut-Off */}
+              {selectedBatchView === 'batch_1' ? (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl text-xs flex items-start space-x-2.5">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold block">Cut-Off Batch 1: s/d Hanifsyah Aditya (BIB #1184)</span>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      Seluruh data pesanan PO jersey dari awal pendaftaran sampai dengan nomor BIB 1184 dikunci ke Batch 1. Data ini yang diberikan ke vendor produksi konveksi pertama hari ini.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs flex items-start space-x-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold block">Pesanan PO Jersey Baru (Setelah BIB 1184)</span>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      Peserta yang mendaftar atau memesan jersey setelah cutoff BIB 1184 akan masuk ke status ini. Pesanan ini aman dan terpisah dari Batch 1. Jika sudah cukup banyak, panitia dapat mengunci &amp; memasukkannya ke Batch 2.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 4 Stat Badges */}
+              {(() => {
+                const currentSummary = selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary;
+                return (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Total Jersey</span>
+                      <div className="flex items-baseline space-x-1.5 mt-0.5">
+                        <span className="text-xl sm:text-2xl font-black text-brand-navy">{currentSummary.totalQty}</span>
+                        <span className="text-xs font-bold text-slate-500">pcs ({currentSummary.totalCount} pemesan)</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-sky-50 p-3.5 rounded-2xl border border-sky-200">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-600 block">Lengan Pendek (Short)</span>
+                      <div className="flex items-baseline space-x-1.5 mt-0.5">
+                        <span className="text-xl sm:text-2xl font-black text-sky-900">{currentSummary.shortQty}</span>
+                        <span className="text-xs font-bold text-sky-700">pcs</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 block">Lengan Panjang (Long)</span>
+                      <div className="flex items-baseline space-x-1.5 mt-0.5">
+                        <span className="text-xl sm:text-2xl font-black text-indigo-900">{currentSummary.longQty}</span>
+                        <span className="text-xs font-bold text-indigo-700">pcs</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 block">Status Pembayaran</span>
+                      <div className="flex items-baseline space-x-1.5 mt-0.5">
+                        <span className="text-xl sm:text-2xl font-black text-emerald-900">{currentSummary.lunasQty}</span>
+                        <span className="text-xs font-bold text-emerald-700">Lunas ({currentSummary.unpaidQty} blm)</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Action Toolbar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => handleCopyVendorSummary(selectedBatchView === 'batch_1')}
+                    className="min-h-10 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
+                  >
+                    {batchCopyFeedback === selectedBatchView ? (
+                      <>
+                        <Check className="w-4 h-4 text-brand-yellow animate-bounce" />
+                        <span>✓ Teks Format WA Vendor Tersalin!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Salin Rekap untuk WA Vendor</span>
+                      </>
+                    )}
+                  </button>
+
+                  <a
+                    href={`/api/admin/export?batch=${selectedBatchView === 'batch_1' ? '1' : 'unbatched'}`}
+                    target="_blank"
+                    download
+                    className="min-h-10 px-4 py-2 bg-brand-navy hover:bg-brand-royal text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
+                  >
+                    <Download className="w-4 h-4 text-brand-yellow" />
+                    <span>Download CSV {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Unbatched'}</span>
+                  </a>
+                </div>
+
+                {selectedBatchView === 'unbatched' && unbatchedList.length > 0 && (
+                  <button
+                    onClick={handleAssignUnbatchedToBatch2}
+                    disabled={assigningBatch}
+                    className="min-h-10 px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl text-xs font-black flex items-center space-x-2 shadow-md transition-all"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>{assigningBatch ? 'Memproses...' : `Kunci ${unbatchedList.length} Pesanan ke Batch 2`}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Matrix Rekap Ukuran Vendor */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Ukuran Dewasa */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-brand-navy" />
+                    <h3 className="font-extrabold text-sm text-brand-navy">Rekap Ukuran Dewasa (Adult)</h3>
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">
+                    {Object.values((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).dewasaSizes).reduce((acc, d) => acc + d.total, 0)} pcs
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="py-2 px-3">Size</th>
+                        <th className="py-2 px-3 text-center">Short Sleeve</th>
+                        <th className="py-2 px-3 text-center">Long Sleeve</th>
+                        <th className="py-2 px-3 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Object.entries((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).dewasaSizes).map(([size, data]) => (
+                        <tr key={size} className={data.total > 0 ? 'font-bold bg-amber-50/40' : 'text-slate-400'}>
+                          <td className="py-2 px-3 font-mono">{size}</td>
+                          <td className="py-2 px-3 text-center">{data.short}</td>
+                          <td className="py-2 px-3 text-center">{data.long}</td>
+                          <td className="py-2 px-3 text-right font-mono font-black text-brand-navy">
+                            {data.total > 0 ? `${data.total} pcs` : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Ukuran Anak-Anak */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <Baby className="w-4 h-4 text-amber-600" />
+                    <h3 className="font-extrabold text-sm text-brand-navy">Rekap Ukuran Anak-Anak (Kids)</h3>
+                  </div>
+                  <span className="text-xs font-bold text-amber-700">
+                    {Object.values((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).anakSizes).reduce((acc, d) => acc + d.total, 0)} pcs
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-amber-50 text-amber-900 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="py-2 px-3">Size Anak</th>
+                        <th className="py-2 px-3 text-center">Short Sleeve</th>
+                        <th className="py-2 px-3 text-center">Long Sleeve</th>
+                        <th className="py-2 px-3 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Object.entries((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).anakSizes).map(([size, data]) => (
+                        <tr key={size} className={data.total > 0 ? 'font-bold bg-amber-100/40' : 'text-slate-400'}>
+                          <td className="py-2 px-3 font-mono">{size}</td>
+                          <td className="py-2 px-3 text-center">{data.short}</td>
+                          <td className="py-2 px-3 text-center">{data.long}</td>
+                          <td className="py-2 px-3 text-right font-mono font-black text-amber-900">
+                            {data.total > 0 ? `${data.total} pcs` : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabel Detail Peserta dalam Batch */}
+            <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                <h3 className="font-extrabold text-sm text-brand-navy">
+                  Daftar Peserta {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Belum Masuk Batch'}
+                </h3>
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari peserta dalam batch..."
+                    value={batchSearchTerm}
+                    onChange={(e) => setBatchSearchTerm(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium"
+                  />
+                </div>
+              </div>
+
+              {(() => {
+                const targetList = selectedBatchView === 'batch_1' ? batch1List : unbatchedList;
+                const filtered = targetList.filter((item) => {
+                  if (!batchSearchTerm.trim()) return true;
+                  const q = batchSearchTerm.toLowerCase();
+                  return (
+                    item.registrant.nama_lengkap.toLowerCase().includes(q) ||
+                    item.registrant.nomor_registrasi.toLowerCase().includes(q) ||
+                    (item.registrant.nomor_bib || '').toString().includes(q) ||
+                    (item.registrant.komunitas || '').toLowerCase().includes(q)
+                  );
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-slate-400 font-medium text-xs bg-slate-50 rounded-2xl">
+                      Tidak ada pesanan di {selectedBatchView === 'batch_1' ? 'Batch 1' : 'status Belum Masuk Batch'}.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-bold">
+                        <tr>
+                          <th className="py-2.5 px-3">No</th>
+                          <th className="py-2.5 px-3">BIB &amp; Peserta</th>
+                          <th className="py-2.5 px-3">Komunitas</th>
+                          <th className="py-2.5 px-3">Spesifikasi Jersey</th>
+                          <th className="py-2.5 px-3 text-center">Pengambilan</th>
+                          <th className="py-2.5 px-3 text-center">Status Bayar</th>
+                          <th className="py-2.5 px-3 text-center">Batch</th>
+                          <th className="py-2.5 px-3 text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filtered.map((item, idx) => {
+                          const r = item.registrant;
+                          const p = item.jersey_po;
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-2.5 px-3">
+                                <span className="font-extrabold text-xs text-brand-navy block">{r.nama_lengkap}</span>
+                                <span className="text-[10px] font-mono text-brand-royal font-bold">BIB #{r.nomor_bib}</span>
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-700">{r.komunitas || 'Umum'}</td>
+                              <td className="py-2.5 px-3">
+                                <span className="font-bold text-slate-800 block">
+                                  {p.jenis_lengan === 'short_sleeve' ? 'Short' : 'Long'} {p.kategori_ukuran === 'anak' ? '(Anak)' : ''} Size {p.ukuran} x{p.qty}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  p.metode_ambil === 'dikirim' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {p.metode_ambil === 'dikirim' ? 'Dikirim' : 'Di Lokasi'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                  p.status_pembayaran === 'lunas'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {p.status_pembayaran === 'lunas' ? 'LUNAS' : p.status_pembayaran}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                {p.batch_produksi === 1 ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    Batch 1
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                    Belum Batch
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <div className="inline-flex items-center space-x-1">
+                                  <button
+                                    onClick={() => openEditModal(item)}
+                                    className="bg-brand-royal/10 hover:bg-brand-royal/20 text-brand-royal font-bold px-2 py-1 rounded-lg text-[10px] border border-brand-royal/30"
+                                  >
+                                    Edit
+                                  </button>
+                                  {selectedBatchView === 'batch_1' ? (
+                                    <button
+                                      onClick={() => handleUpdateBatch(p.id, r.id, null)}
+                                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-1.5 py-1 rounded-lg text-[10px]"
+                                      title="Keluarkan dari Batch 1"
+                                    >
+                                      Lepas Batch
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleUpdateBatch(p.id, r.id, 1)}
+                                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-1.5 py-1 rounded-lg text-[10px]"
+                                      title="Masukkan ke Batch 1"
+                                    >
+                                      + Batch 1
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -2530,6 +3154,26 @@ export default function AdminDashboardPage() {
                         <option value="lunas">Lunas (Sudah Verifikasi)</option>
                         <option value="perlu_klarifikasi">Perlu Klarifikasi</option>
                         <option value="kedaluwarsa">Kedaluwarsa</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Batch Produksi Vendor</label>
+                      <select
+                        value={editForm.batch_produksi === null || editForm.batch_produksi === undefined ? 'unbatched' : editForm.batch_produksi.toString()}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditForm({
+                            ...editForm,
+                            batch_produksi: val === 'unbatched' ? null : parseInt(val, 10)
+                          });
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-amber-300 font-bold bg-amber-50/60 text-xs"
+                      >
+                        <option value="1">Batch 1 (Produksi Pertama - s/d BIB 1184)</option>
+                        <option value="2">Batch 2</option>
+                        <option value="3">Batch 3</option>
+                        <option value="unbatched">Belum Masuk Batch (Unbatched / PO Baru)</option>
                       </select>
                     </div>
                   </div>
