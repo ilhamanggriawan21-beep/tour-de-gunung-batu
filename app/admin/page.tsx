@@ -34,19 +34,33 @@ import {
   Upload,
   Baby,
   Image as ImageIcon,
-  Clock
+  Clock,
+  Truck,
+  Bike,
+  CheckSquare,
+  PackageCheck
 } from 'lucide-react';
 import { compressImage, estimateDataUrlSize } from '@/lib/imageCompression';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'verifikasi' | 'rekap' | 'pengaturan' | 'profil' | 'kelola_pic'>('verifikasi');
+  const [activeTab, setActiveTab] = useState<'checkin' | 'logistik' | 'verifikasi' | 'rekap' | 'pengaturan' | 'profil' | 'kelola_pic'>('checkin');
 
   const [loading, setLoading] = useState(true);
   const [registrantsData, setRegistrantsData] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [adminsList, setAdminsList] = useState<any[]>([]);
+
+  // Check-In Hari H State
+  const [checkInSearch, setCheckInSearch] = useState('');
+  const [checkInFilter, setCheckInFilter] = useState<'semua' | 'belum' | 'sudah' | 'on_site' | 'daftar_saja'>('semua');
+
+  // Logistics Shipping State
+  const [shippingSearch, setShippingSearch] = useState('');
+  const [shippingFilter, setShippingFilter] = useState<'semua' | 'belum_kirim' | 'sudah_kirim'>('semua');
+  const [editingResiId, setEditingResiId] = useState<string | null>(null);
+  const [tempResiValue, setTempResiValue] = useState('');
 
   // Settings form state
   const [settingsForm, setSettingsForm] = useState({
@@ -405,6 +419,128 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleToggleCheckIn = async (registrantId: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    const picName = adminSession?.nama_pic || adminSession?.email_login || 'Panitia';
+    const previousData = [...registrantsData];
+
+    // Optimistic UI: Instant response in 0.001s
+    setRegistrantsData((prev) =>
+      prev.map((item) => {
+        if (item.registrant.id === registrantId) {
+          return {
+            ...item,
+            registrant: {
+              ...item.registrant,
+              is_checked_in: newStatus,
+              checked_in_at: newStatus ? new Date().toISOString() : null,
+              checked_in_by: newStatus ? picName : null
+            }
+          };
+        }
+        return item;
+      })
+    );
+
+    setMessage(newStatus ? '✓ Peserta berhasil di-check-in / diserahkan!' : 'Status check-in peserta dibatalkan.');
+    setTimeout(() => setMessage(''), 3000);
+
+    try {
+      const res = await fetch('/api/admin/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registrantId,
+          isCheckedIn: newStatus,
+          checkedInBy: picName
+        })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setRegistrantsData(previousData);
+        alert(data.error || 'Gagal mengubah status check-in');
+      }
+    } catch (err) {
+      setRegistrantsData(previousData);
+      alert('Gagal mengubah status check-in karena masalah koneksi.');
+    }
+  };
+
+  const handleToggleShipping = async (poId: string, currentStatus: boolean, customResi?: string) => {
+    const newStatus = !currentStatus;
+    const picName = adminSession?.nama_pic || adminSession?.email_login || 'Panitia Logistik';
+    const previousData = [...registrantsData];
+
+    // Optimistic UI
+    setRegistrantsData((prev) =>
+      prev.map((item) => {
+        if (item.jersey_po && item.jersey_po.id === poId) {
+          return {
+            ...item,
+            jersey_po: {
+              ...item.jersey_po,
+              is_shipped: newStatus,
+              shipped_at: newStatus ? new Date().toISOString() : null,
+              shipped_by: newStatus ? picName : null,
+              no_resi: customResi !== undefined ? customResi : item.jersey_po.no_resi
+            }
+          };
+        }
+        return item;
+      })
+    );
+
+    setMessage(newStatus ? '✓ Paket jersey ditandai SUDAH DIKIRIM!' : 'Status pengiriman jersey dibatalkan.');
+    setTimeout(() => setMessage(''), 3000);
+
+    try {
+      const res = await fetch('/api/admin/shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poId,
+          isShipped: newStatus,
+          shippedBy: picName,
+          noResi: customResi
+        })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setRegistrantsData(previousData);
+        alert(data.error || 'Gagal memperbarui status pengiriman');
+      }
+    } catch (err) {
+      setRegistrantsData(previousData);
+      alert('Gagal memperbarui status pengiriman.');
+    }
+  };
+
+  const handleSaveResi = async (poId: string) => {
+    const picName = adminSession?.nama_pic || adminSession?.email_login || 'Panitia Logistik';
+    const resiVal = tempResiValue.trim();
+    setEditingResiId(null);
+    try {
+      const res = await fetch('/api/admin/shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poId,
+          isShipped: true,
+          shippedBy: picName,
+          noResi: resiVal
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('✓ Nomor resi pengiriman berhasil disimpan!');
+        setTimeout(() => setMessage(''), 3000);
+        fetchAdminData(false);
+      }
+    } catch (err) {
+      alert('Gagal menyimpan nomor resi.');
+    }
+  };
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -510,6 +646,63 @@ export default function AdminDashboardPage() {
 
   if (!adminSession) return null;
 
+  // Metrics for Dashboard & Tabs
+  const totalPeserta = registrantsData.length;
+  const checkedInCount = registrantsData.filter((i) => i.registrant?.is_checked_in).length;
+  const notCheckedInCount = totalPeserta - checkedInCount;
+
+  const jerseyOnSiteList = registrantsData.filter((i) => i.jersey_po && i.jersey_po.metode_ambil === 'ambil_langsung');
+  const jerseyOnSiteTotal = jerseyOnSiteList.length;
+  const jerseyOnSiteTaken = jerseyOnSiteList.filter((i) => i.registrant?.is_checked_in).length;
+  const jerseyOnSiteRemaining = jerseyOnSiteTotal - jerseyOnSiteTaken;
+
+  const shippingList = registrantsData.filter((i) => i.jersey_po && i.jersey_po.metode_ambil === 'dikirim');
+  const totalShipping = shippingList.length;
+  const totalShipped = shippingList.filter((i) => i.jersey_po?.is_shipped).length;
+  const totalNotShipped = totalShipping - totalShipped;
+
+  // Filtered check-in items (Live 0.001s in-memory search)
+  const filteredCheckInList = registrantsData.filter((item) => {
+    const r = item.registrant;
+    const p = item.jersey_po;
+    if (!r) return false;
+
+    if (checkInFilter === 'belum' && r.is_checked_in) return false;
+    if (checkInFilter === 'sudah' && !r.is_checked_in) return false;
+    if (checkInFilter === 'on_site' && (!p || p.metode_ambil !== 'ambil_langsung')) return false;
+    if (checkInFilter === 'daftar_saja' && p) return false;
+
+    if (!checkInSearch.trim()) return true;
+    const q = checkInSearch.toLowerCase().trim();
+    const bibStr = (r.nomor_bib || '').toString();
+    const nameStr = (r.nama_lengkap || '').toLowerCase();
+    const phoneStr = (r.no_telepon || '').toLowerCase();
+    const commStr = (r.komunitas || '').toLowerCase();
+    const regNumStr = (r.nomor_registrasi || '').toLowerCase();
+
+    return bibStr.includes(q) || nameStr.includes(q) || phoneStr.includes(q) || commStr.includes(q) || regNumStr.includes(q);
+  });
+
+  // Filtered shipping list
+  const filteredShippingList = shippingList.filter((item) => {
+    const r = item.registrant;
+    const p = item.jersey_po;
+    if (!p) return false;
+
+    if (shippingFilter === 'belum_kirim' && p.is_shipped) return false;
+    if (shippingFilter === 'sudah_kirim' && !p.is_shipped) return false;
+
+    if (!shippingSearch.trim()) return true;
+    const q = shippingSearch.toLowerCase().trim();
+    const bibStr = (r?.nomor_bib || '').toString();
+    const nameStr = (r?.nama_lengkap || '').toLowerCase();
+    const phoneStr = (r?.no_telepon || '').toLowerCase();
+    const addrStr = (p.alamat_pengiriman || r?.alamat_lengkap || '').toLowerCase();
+    const resiStr = (p.no_resi || '').toLowerCase();
+
+    return bibStr.includes(q) || nameStr.includes(q) || phoneStr.includes(q) || addrStr.includes(q) || resiStr.includes(q);
+  });
+
   const poList = registrantsData.filter((item) => item.jersey_po);
   const filteredPoList = poList.filter((item) => {
     const matchesFilter =
@@ -548,7 +741,7 @@ export default function AdminDashboardPage() {
             <div className="min-w-0">
               <div className="flex items-center space-x-2">
                 <span className="text-xs font-bold text-brand-yellow uppercase tracking-widest">
-                  {isSuperAdmin ? 'SUPERADMIN • ADMIN UTAMA' : `ADMIN PANEL • ${adminSession.pihak.toUpperCase()}`}
+                  {isSuperAdmin ? 'SUPERADMIN • ADMIN UTAMA' : `PANITIA • ${adminSession.nama_pic || adminSession.pihak.toUpperCase()}`}
                 </span>
                 {isSuperAdmin && (
                   <span className="bg-brand-yellow text-brand-navy text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
@@ -557,7 +750,7 @@ export default function AdminDashboardPage() {
                 )}
               </div>
               <h1 className="text-lg sm:text-xl font-extrabold font-display break-words">{adminSession.nama_pic || adminSession.email_login}</h1>
-              <span className="block text-xs text-brand-sky break-words">Login: {adminSession.email_login} • Kontak: {adminSession.kontak_pic || '-'}</span>
+              <span className="block text-xs text-brand-sky break-words">Login: {adminSession.email_login} • PIC: {adminSession.nama_pic || '-'}</span>
             </div>
           </div>
 
@@ -590,12 +783,42 @@ export default function AdminDashboardPage() {
         </div>
 
         {message && (
-          <div className="p-4 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-2xl text-xs font-bold text-center animate-fade-in">
+          <div className="p-4 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-2xl text-xs font-bold text-center animate-fade-in shadow-sm">
             {message}
           </div>
         )}
 
+        {/* Navigation Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto bg-white p-2 rounded-2xl border border-brand-sky/30 shadow-card [-webkit-overflow-scrolling:touch]">
+          <button
+            onClick={() => setActiveTab('checkin')}
+            className={`shrink-0 min-h-11 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${
+              activeTab === 'checkin'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md ring-2 ring-emerald-400/40'
+                : 'text-slate-700 bg-emerald-50/70 hover:bg-emerald-100/70'
+            }`}
+          >
+            <Bike className="w-4 h-4 text-emerald-300" />
+            <span className="sm:hidden">Check-In Hari H ({checkedInCount}/{totalPeserta})</span>
+            <span className="hidden sm:inline">Meja Registrasi Hari H ({checkedInCount}/{totalPeserta})</span>
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'checkin' ? 'bg-white text-emerald-800' : 'bg-emerald-600 text-white'}`}>
+              LIVE
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('logistik')}
+            className={`shrink-0 min-h-11 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${
+              activeTab === 'logistik'
+                ? 'bg-brand-navy text-brand-yellow shadow-md ring-1 ring-brand-yellow/30'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Truck className="w-4 h-4 text-amber-500" />
+            <span className="sm:hidden">Kirim Jersey ({totalShipped}/{totalShipping})</span>
+            <span className="hidden sm:inline">Logistik Kirim Jersey ({totalShipped}/{totalShipping})</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('verifikasi')}
             className={`shrink-0 min-h-11 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-2 whitespace-nowrap ${
@@ -655,6 +878,390 @@ export default function AdminDashboardPage() {
             <span>Profil Saya</span>
           </button>
         </div>
+
+        {/* ======================================================== */}
+        {/* TAB 1: MEJA REGISTRASI HARI H (SPEED CHECK-IN) */}
+        {/* ======================================================== */}
+        {activeTab === 'checkin' && (
+          <div className="space-y-5">
+            {/* Live Metrics Header Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Peserta</span>
+                <span className="text-2xl sm:text-3xl font-black text-brand-navy font-mono block mt-1">{totalPeserta}</span>
+                <span className="text-[11px] text-slate-400">Terdaftar di sistem</span>
+              </div>
+
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-700 text-white p-4 rounded-2xl shadow-sm">
+                <span className="text-[11px] font-bold text-emerald-100 uppercase tracking-wider block">Hadir / Check-In</span>
+                <span className="text-2xl sm:text-3xl font-black text-white font-mono block mt-1">
+                  {checkedInCount} <span className="text-xs font-semibold opacity-90">({totalPeserta > 0 ? ((checkedInCount / totalPeserta) * 100).toFixed(0) : 0}%)</span>
+                </span>
+                <span className="text-[11px] text-emerald-100">Sudah ambil paket</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-rose-200 shadow-sm">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Belum Hadir</span>
+                <span className="text-2xl sm:text-3xl font-black text-rose-600 font-mono block mt-1">{notCheckedInCount}</span>
+                <span className="text-[11px] text-slate-400">Menunggu di lokasi</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Jersey di Lokasi</span>
+                <span className="text-2xl sm:text-3xl font-black text-amber-600 font-mono block mt-1">
+                  {jerseyOnSiteTaken} <span className="text-xs text-slate-500 font-normal">/ {jerseyOnSiteTotal}</span>
+                </span>
+                <span className="text-[11px] text-amber-700 font-semibold">{jerseyOnSiteRemaining} pcs tersisa di meja</span>
+              </div>
+            </div>
+
+            {/* Instant Search Bar & Filter Pills */}
+            <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-brand-sky/40 shadow-card space-y-4">
+              <div className="relative">
+                <Search className="w-5 h-5 absolute left-4 top-3.5 text-brand-navy/60" />
+                <input
+                  type="text"
+                  placeholder="Ketik No. BIB (misal: 1001), Nama, 4 digit No. HP, atau Komunitas..."
+                  value={checkInSearch}
+                  onChange={(e) => setCheckInSearch(e.target.value)}
+                  className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-brand-sky/50 text-sm font-bold text-brand-navy focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20 bg-brand-iceBg/40 shadow-inner"
+                />
+                {checkInSearch && (
+                  <button
+                    onClick={() => setCheckInSearch('')}
+                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Fast Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold">
+                {[
+                  { id: 'semua', label: `Semua (${registrantsData.length})` },
+                  { id: 'belum', label: `Belum Check-In (${notCheckedInCount})` },
+                  { id: 'sudah', label: `Sudah Check-In (${checkedInCount})` },
+                  { id: 'on_site', label: `Ambil Jersey di Tempat (${jerseyOnSiteTotal})` },
+                  { id: 'daftar_saja', label: `Hanya BIB (${registrantsData.filter(i => !i.jersey_po).length})` }
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setCheckInFilter(f.id as any)}
+                    className={`shrink-0 px-3.5 py-1.5 rounded-full transition-all ${
+                      checkInFilter === f.id
+                        ? 'bg-brand-navy text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* List of Check-in Participants */}
+              <div className="space-y-3 pt-2">
+                {filteredCheckInList.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                    <Bike className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-500">Tidak ada peserta yang cocok dengan pencarian.</p>
+                    <p className="text-xs text-slate-400 mt-1">Coba cari dengan nomor BIB atau nama panggilan.</p>
+                  </div>
+                ) : (
+                  filteredCheckInList.map((item) => {
+                    const r = item.registrant;
+                    const p = item.jersey_po;
+                    const isChecked = Boolean(r.is_checked_in);
+                    const isJerseyOnSite = p && p.metode_ambil === 'ambil_langsung';
+                    const isJerseyShipped = p && p.metode_ambil === 'dikirim';
+
+                    return (
+                      <div
+                        key={r.id}
+                        className={`p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                          isChecked
+                            ? 'bg-emerald-50/70 border-emerald-400/80 shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-brand-navy/40 shadow-sm'
+                        }`}
+                      >
+                        {/* Left Info */}
+                        <div className="flex items-start space-x-3.5 min-w-0">
+                          {/* Giant BIB badge */}
+                          <div className={`shrink-0 px-3 py-2 rounded-xl text-center font-mono border ${
+                            isChecked
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                              : 'bg-brand-navy text-brand-yellow border-brand-yellow/50 shadow-sm'
+                          }`}>
+                            <span className="text-[10px] font-bold block uppercase tracking-wider opacity-80">BIB</span>
+                            <span className="text-xl sm:text-2xl font-black block leading-none mt-0.5">#{r.nomor_bib}</span>
+                          </div>
+
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <h3 className="text-base sm:text-lg font-extrabold text-brand-navy truncate">{r.nama_lengkap}</h3>
+                              <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {r.komunitas || 'Umum'}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                              <span className="font-mono">📞 {r.no_telepon}</span>
+                              <span className="text-[11px] font-mono text-slate-400">ID: {r.nomor_registrasi}</span>
+                            </div>
+
+                            {/* Handover Instruction Banner */}
+                            <div className="pt-1">
+                              {!p ? (
+                                <div className="inline-flex items-center space-x-1.5 bg-slate-100 text-slate-800 text-xs font-extrabold px-2.5 py-1 rounded-lg border border-slate-300">
+                                  <span>🏷️ SERAHKAN: HANYA NOMOR BIB</span>
+                                </div>
+                              ) : isJerseyOnSite ? (
+                                <div className="inline-flex flex-wrap items-center gap-1.5 bg-amber-50 text-amber-900 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-amber-300 shadow-sm">
+                                  <span>🎁 SERAHKAN: BIB + JERSEY AMAL</span>
+                                  <span className="bg-amber-500 text-white text-[11px] px-2 py-0.5 rounded-md uppercase font-mono">
+                                    {p.kategori_ukuran === 'anak' ? 'Anak' : 'Dewasa'} • {p.ukuran} • {p.jenis_lengan === 'short_sleeve' ? 'Pendek' : 'Panjang'} (x{p.qty})
+                                  </span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${p.status_pembayaran === 'lunas' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+                                    {p.status_pembayaran === 'lunas' ? 'LUNAS' : 'BELUM LUNAS'}
+                                  </span>
+                                </div>
+                              ) : isJerseyShipped ? (
+                                <div className="inline-flex items-center space-x-1.5 bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-300">
+                                  <span>📦 INFO: JERSEY DIKIRIM KE ALAMAT ({p.is_shipped ? 'SUDAH DIKIRIM' : 'PROSES LOGISTIK'})</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Action: 1-Click Fast Check-In Button */}
+                        <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+                          {isChecked ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="text-right">
+                                <span className="inline-flex items-center space-x-1 text-xs font-extrabold text-emerald-800 bg-emerald-200/80 px-3 py-1.5 rounded-xl border border-emerald-400">
+                                  <CheckCircle className="w-4 h-4 text-emerald-700" />
+                                  <span>SUDAH AMBIL</span>
+                                </span>
+                                {r.checked_in_at && (
+                                  <span className="block text-[10px] text-slate-500 font-medium mt-0.5">
+                                    {new Date(r.checked_in_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB • Oleh: {r.checked_in_by || 'Panitia'}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleToggleCheckIn(r.id, true)}
+                                className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg text-xs font-bold transition-all"
+                                title="Batalkan status check-in jika salah klik"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleToggleCheckIn(r.id, false)}
+                              className="min-h-12 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center space-x-2"
+                            >
+                              <CheckCircle className="w-5 h-5 text-emerald-200" />
+                              <span>SELESAIKAN CHECK-IN</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 2: LOGISTIK PENGIRIMAN JERSEY */}
+        {/* ======================================================== */}
+        {activeTab === 'logistik' && (
+          <div className="space-y-5">
+            {/* Header Cards for Shipping */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-brand-sky/40 shadow-sm">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Paket Dikirim</span>
+                <span className="text-2xl sm:text-3xl font-black text-brand-navy font-mono block mt-1">{totalShipping}</span>
+                <span className="text-[11px] text-slate-400">Peserta memilih jersey dikirim</span>
+              </div>
+
+              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-300 shadow-sm">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Sudah Terkirim</span>
+                <span className="text-2xl sm:text-3xl font-black text-emerald-700 font-mono block mt-1">{totalShipped}</span>
+                <span className="text-[11px] text-emerald-600">Paket telah dikirimkan via ekspedisi</span>
+              </div>
+
+              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-300 shadow-sm">
+                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">Menunggu Pengiriman</span>
+                <span className="text-2xl sm:text-3xl font-black text-amber-700 font-mono block mt-1">{totalNotShipped}</span>
+                <span className="text-[11px] text-amber-600">Perlu dipacking &amp; dikirim</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-brand-sky/40 shadow-card space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-brand-navy">Daftar Paket Jersey Dikirim</h2>
+                  <p className="text-xs text-slate-500">
+                    Pastikan nomor BIB peserta disertakan di dalam kardus/paket jersey saat pengiriman.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {[
+                    { id: 'semua', label: `Semua (${shippingList.length})` },
+                    { id: 'belum_kirim', label: `Belum Kirim (${totalNotShipped})` },
+                    { id: 'sudah_kirim', label: `Sudah Kirim (${totalShipped})` }
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setShippingFilter(f.id as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        shippingFilter === f.id
+                          ? 'bg-brand-navy text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative max-w-md">
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari penerima, no. telp, alamat, no. resi..."
+                  value={shippingSearch}
+                  onChange={(e) => setShippingSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
+
+              {/* Shipping Table / Cards */}
+              <div className="space-y-3">
+                {filteredShippingList.length === 0 ? (
+                  <div className="text-center py-10 text-slate-400 text-xs font-bold">
+                    Tidak ada data pengiriman yang sesuai filter.
+                  </div>
+                ) : (
+                  filteredShippingList.map((item) => {
+                    const r = item.registrant;
+                    const p = item.jersey_po;
+                    const isShipped = Boolean(p.is_shipped);
+
+                    return (
+                      <div
+                        key={p.id}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                          isShipped ? 'bg-slate-50 border-slate-200' : 'bg-white border-amber-200 shadow-sm'
+                        }`}
+                      >
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-black bg-brand-navy text-brand-yellow px-2 py-0.5 rounded">
+                              BIB #{r?.nomor_bib || '-'} (Ikut Dipaketkan)
+                            </span>
+                            <h3 className="font-extrabold text-sm text-brand-navy">{r?.nama_lengkap}</h3>
+                            <a
+                              href={`https://wa.me/${r?.no_telepon?.replace(/^0/, '62')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-emerald-600 hover:underline inline-flex items-center space-x-1"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{r?.no_telepon}</span>
+                            </a>
+                          </div>
+
+                          <p className="text-xs text-slate-600 font-medium">
+                            📍 <strong>Alamat Kirim:</strong> {p.alamat_pengiriman || r?.alamat_lengkap || '-'}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                              👕 {p.kategori_ukuran === 'anak' ? 'Anak' : 'Dewasa'} - {p.ukuran} ({p.jenis_lengan === 'short_sleeve' ? 'Lengan Pendek' : 'Lengan Panjang'}) x{p.qty}
+                            </span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.status_pembayaran === 'lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                              Pembayaran: {p.status_pembayaran.toUpperCase()}
+                            </span>
+                          </div>
+
+                          {/* Resi & Shipping status note */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                            {editingResiId === p.id ? (
+                              <div className="flex items-center space-x-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="Masukkan Nomor Resi..."
+                                  value={tempResiValue}
+                                  onChange={(e) => setTempResiValue(e.target.value)}
+                                  className="px-2.5 py-1 text-xs border rounded-lg font-mono focus:ring-1 focus:ring-brand-navy"
+                                />
+                                <button
+                                  onClick={() => handleSaveResi(p.id)}
+                                  className="bg-brand-navy text-white text-xs px-2.5 py-1 rounded-lg font-bold"
+                                >
+                                  Simpan
+                                </button>
+                                <button
+                                  onClick={() => setEditingResiId(null)}
+                                  className="text-slate-400 hover:text-slate-600 text-xs px-1"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2 text-[11px] text-slate-500">
+                                <span>No. Resi: <strong className="font-mono text-slate-800">{p.no_resi || 'Belum diisi'}</strong></span>
+                                <button
+                                  onClick={() => {
+                                    setEditingResiId(p.id);
+                                    setTempResiValue(p.no_resi || '');
+                                  }}
+                                  className="text-brand-royal hover:underline font-bold text-[10px]"
+                                >
+                                  {p.no_resi ? 'Edit Resi' : '+ Input Resi'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right Toggle Shipped */}
+                        <div className="shrink-0 flex items-center space-x-2">
+                          {isShipped ? (
+                            <button
+                              onClick={() => handleToggleShipping(p.id, true)}
+                              className="px-4 py-2 rounded-xl bg-emerald-100 hover:bg-rose-100 text-emerald-800 hover:text-rose-800 font-extrabold text-xs border border-emerald-300 transition-all flex items-center space-x-1.5"
+                              title="Klik untuk membatalkan status terkirim"
+                            >
+                              <CheckCircle className="w-4 h-4 text-emerald-600" />
+                              <span>SUDAH TERKIRIM</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleToggleShipping(p.id, false)}
+                              className="px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-brand-royal text-white font-extrabold text-xs shadow-sm transition-all flex items-center space-x-1.5"
+                            >
+                              <Truck className="w-4 h-4 text-brand-yellow" />
+                              <span>Tandai Sudah Dikirim</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'verifikasi' && (
           <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-brand-sky/40 shadow-card space-y-5 sm:space-y-6">

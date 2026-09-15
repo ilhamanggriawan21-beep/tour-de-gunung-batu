@@ -14,6 +14,9 @@ export interface Registrant {
   consent_data: boolean;
   consent_waiver: boolean;
   consent_no_refund?: boolean;
+  is_checked_in?: boolean;
+  checked_in_at?: string | null;
+  checked_in_by?: string | null;
   created_at: string;
 }
 
@@ -45,6 +48,10 @@ export interface JerseyPO {
   verified_at?: string;
   paid_at?: string;
   catatan_admin?: string;
+  is_shipped?: boolean;
+  shipped_at?: string | null;
+  shipped_by?: string | null;
+  no_resi?: string | null;
 }
 
 export interface Settings {
@@ -119,6 +126,60 @@ const DEFAULT_ADMINS: AdminUser[] = [
     role: 'pic',
     nama_pic: 'PIC Pergerakan PEADERAL',
     kontak_pic: '08987654321'
+  },
+  {
+    id: 'adm-weni',
+    email_login: 'weni@tourdegunungbatu.com',
+    password: 'rudeboystdgb',
+    pihak: 'rudeboys',
+    role: 'pic',
+    nama_pic: 'Weni (Panitia TDGB)',
+    kontak_pic: '0812000001'
+  },
+  {
+    id: 'adm-bungs',
+    email_login: 'bungs@tourdegunungbatu.com',
+    password: 'rudeboystdgb',
+    pihak: 'rudeboys',
+    role: 'pic',
+    nama_pic: 'Bungs (Panitia TDGB)',
+    kontak_pic: '0812000002'
+  },
+  {
+    id: 'adm-lina',
+    email_login: 'lina@tourdegunungbatu.com',
+    password: 'rudeboystdgb',
+    pihak: 'rudeboys',
+    role: 'pic',
+    nama_pic: 'Lina (Panitia TDGB)',
+    kontak_pic: '0812000003'
+  },
+  {
+    id: 'adm-mumu',
+    email_login: 'mumu@tourdegunungbatu.com',
+    password: 'rudeboystdgb',
+    pihak: 'rudeboys',
+    role: 'pic',
+    nama_pic: 'Mumu (Panitia TDGB)',
+    kontak_pic: '0812000004'
+  },
+  {
+    id: 'adm-tia',
+    email_login: 'tia@tourdegunungbatu.com',
+    password: 'rudeboystdgb',
+    pihak: 'rudeboys',
+    role: 'pic',
+    nama_pic: 'Tia (Panitia TDGB)',
+    kontak_pic: '0812000005'
+  },
+  {
+    id: 'adm-desi',
+    email_login: 'desi@tourdegunungbatu.com',
+    password: 'rudeboystdgb',
+    pihak: 'rudeboys',
+    role: 'pic',
+    nama_pic: 'Desi (Panitia TDGB)',
+    kontak_pic: '0812000006'
   }
 ];
 
@@ -195,7 +256,9 @@ import {
   deleteSupabaseRegistrant,
   deleteSupabaseJerseyPO,
   updateSupabaseRegistrantAndPO,
-  getSupabaseBibLookup
+  getSupabaseBibLookup,
+  updateSupabaseCheckInStatus,
+  updateSupabaseShippingStatus
 } from './supabase-db';
 
 function getLocalSettings(): Settings {
@@ -957,3 +1020,65 @@ function updateLocalRegistrantAndPO(data: {
   writeDB(db);
   return true;
 }
+
+export function updateLocalCheckInStatus(
+  registrantId: string,
+  isCheckedIn: boolean,
+  checkedInBy: string = 'Panitia'
+): boolean {
+  const db = readDB();
+  const reg = db.registrants.find(r => r.id === registrantId);
+  if (!reg) return false;
+
+  reg.is_checked_in = isCheckedIn;
+  reg.checked_in_at = isCheckedIn ? new Date().toISOString() : null;
+  reg.checked_in_by = isCheckedIn ? checkedInBy : null;
+
+  writeDB(db);
+  return true;
+}
+
+export function updateLocalShippingStatus(
+  poId: string,
+  isShipped: boolean,
+  shippedBy: string = 'Panitia',
+  noResi?: string
+): boolean {
+  const db = readDB();
+  const po = db.jersey_pos.find(p => p.id === poId);
+  if (!po) return false;
+
+  po.is_shipped = isShipped;
+  po.shipped_at = isShipped ? new Date().toISOString() : null;
+  po.shipped_by = isShipped ? shippedBy : null;
+  if (noResi !== undefined) {
+    po.no_resi = noResi.trim() || null;
+  }
+
+  writeDB(db);
+  return true;
+}
+
+export async function updateParticipantCheckIn(
+  registrantId: string,
+  isCheckedIn: boolean,
+  checkedInBy: string = 'Panitia'
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    return await updateSupabaseCheckInStatus(registrantId, isCheckedIn, checkedInBy);
+  }
+  return updateLocalCheckInStatus(registrantId, isCheckedIn, checkedInBy);
+}
+
+export async function updateJerseyShipping(
+  poId: string,
+  isShipped: boolean,
+  shippedBy: string = 'Panitia',
+  noResi?: string
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    return await updateSupabaseShippingStatus(poId, isShipped, shippedBy, noResi);
+  }
+  return updateLocalShippingStatus(poId, isShipped, shippedBy, noResi);
+}
+

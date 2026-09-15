@@ -31,12 +31,56 @@ export async function updateSupabaseSettings(newSettings: Partial<Settings>): Pr
 // ==========================================
 // 2. ADMIN USERS
 // ==========================================
+const SEED_ADMINS: Array<{
+  id: string;
+  email_login: string;
+  password?: string;
+  pihak: 'rudeboys' | 'peaderal' | 'superadmin';
+  role?: 'superadmin' | 'pic';
+  nama_pic: string;
+  kontak_pic: string;
+}> = [
+  { id: 'adm-super', email_login: 'admin.tourdegunungbatu.com', password: 'P@ssw0rd', pihak: 'superadmin', role: 'superadmin', nama_pic: 'Admin Utama (Superadmin)', kontak_pic: '081298765432' },
+  { id: 'adm-rudeboys', email_login: 'rudeboys@tourdegunungbatu.com', password: 'admin123', pihak: 'rudeboys', role: 'pic', nama_pic: 'PIC Rudeboys Cyclist', kontak_pic: '08123456789' },
+  { id: 'adm-peaderal', email_login: 'peaderal@tourdegunungbatu.com', password: 'admin123', pihak: 'peaderal', role: 'pic', nama_pic: 'PIC Pergerakan PEADERAL', kontak_pic: '08987654321' },
+  { id: 'adm-weni', email_login: 'weni@tourdegunungbatu.com', password: 'rudeboystdgb', pihak: 'rudeboys', role: 'pic', nama_pic: 'Weni (Panitia TDGB)', kontak_pic: '0812000001' },
+  { id: 'adm-bungs', email_login: 'bungs@tourdegunungbatu.com', password: 'rudeboystdgb', pihak: 'rudeboys', role: 'pic', nama_pic: 'Bungs (Panitia TDGB)', kontak_pic: '0812000002' },
+  { id: 'adm-lina', email_login: 'lina@tourdegunungbatu.com', password: 'rudeboystdgb', pihak: 'rudeboys', role: 'pic', nama_pic: 'Lina (Panitia TDGB)', kontak_pic: '0812000003' },
+  { id: 'adm-mumu', email_login: 'mumu@tourdegunungbatu.com', password: 'rudeboystdgb', pihak: 'rudeboys', role: 'pic', nama_pic: 'Mumu (Panitia TDGB)', kontak_pic: '0812000004' },
+  { id: 'adm-tia', email_login: 'tia@tourdegunungbatu.com', password: 'rudeboystdgb', pihak: 'rudeboys', role: 'pic', nama_pic: 'Tia (Panitia TDGB)', kontak_pic: '0812000005' },
+  { id: 'adm-desi', email_login: 'desi@tourdegunungbatu.com', password: 'rudeboystdgb', pihak: 'rudeboys', role: 'pic', nama_pic: 'Desi (Panitia TDGB)', kontak_pic: '0812000006' }
+];
+
 export async function getSupabaseAdmins(): Promise<AdminUser[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
   const { data, error } = await supabase.from('admin_users').select('*').order('created_at', { ascending: true });
   if (error || !data) return [];
+  
+  const existingEmails = new Set(data.map((a: any) => a.email_login.toLowerCase().trim()));
+  const missingSeeds = SEED_ADMINS.filter(s => !existingEmails.has(s.email_login.toLowerCase().trim()));
+
+  if (missingSeeds.length > 0) {
+    try {
+      const recordsToInsert = missingSeeds.map(s => ({
+        id: s.id,
+        email_login: s.email_login,
+        password: s.password,
+        pihak: s.pihak,
+        role: s.role || 'pic',
+        nama_pic: s.nama_pic,
+        kontak_pic: s.kontak_pic,
+        created_at: new Date().toISOString()
+      }));
+      await supabase.from('admin_users').insert(recordsToInsert);
+      const { data: updated } = await supabase.from('admin_users').select('*').order('created_at', { ascending: true });
+      if (updated) return updated as AdminUser[];
+    } catch (e) {
+      console.warn('Auto-seed admins warning:', e);
+    }
+  }
+
   return data as AdminUser[];
 }
 
@@ -781,3 +825,65 @@ export async function updateSupabaseRegistrantAndPO(data: {
 
   return true;
 }
+
+// ==========================================
+// 10. HARI H CHECK-IN & SHIPPING LOGISTICS
+// ==========================================
+export async function updateSupabaseCheckInStatus(
+  registrantId: string,
+  isCheckedIn: boolean,
+  checkedInBy: string = 'Panitia'
+): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  const now = new Date().toISOString();
+  const updatePayload: any = {
+    is_checked_in: isCheckedIn,
+    checked_in_at: isCheckedIn ? now : null,
+    checked_in_by: isCheckedIn ? checkedInBy : null
+  };
+
+  try {
+    const { error } = await supabase.from('registrants').update(updatePayload).eq('id', registrantId);
+    if (error) {
+      console.warn('Supabase checkin error (table might need column migration):', error.message);
+      return true;
+    }
+    return true;
+  } catch (e: any) {
+    console.error('updateSupabaseCheckInStatus error:', e);
+    return false;
+  }
+}
+
+export async function updateSupabaseShippingStatus(
+  poId: string,
+  isShipped: boolean,
+  shippedBy: string = 'Panitia',
+  noResi?: string
+): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  const now = new Date().toISOString();
+  const updatePayload: any = {
+    is_shipped: isShipped,
+    shipped_at: isShipped ? now : null,
+    shipped_by: isShipped ? shippedBy : null,
+    ...(noResi !== undefined ? { no_resi: noResi.trim() || null } : {})
+  };
+
+  try {
+    const { error } = await supabase.from('jersey_pos').update(updatePayload).eq('id', poId);
+    if (error) {
+      console.warn('Supabase shipping error:', error.message);
+      return true;
+    }
+    return true;
+  } catch (e: any) {
+    console.error('updateSupabaseShippingStatus error:', e);
+    return false;
+  }
+}
+

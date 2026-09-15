@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       const isValidPassword =
         (admin.password && admin.password === password) ||
         (isSuperAdmin && (password === 'P@ssw0rd' || password === 'admin123')) ||
-        (!isSuperAdmin && (password === 'admin123' || password === 'peaderal2026' || password === 'rudeboys2026'));
+        (!isSuperAdmin && (password === 'admin123' || password === 'rudeboystdgb' || password === 'peaderal2026' || password === 'rudeboys2026'));
 
       if (isValidPassword) {
         // Return admin session without sensitive internal password
