@@ -1248,8 +1248,12 @@ function deleteLocalExpense(id: string): boolean {
 // ==========================================
 export async function getExpenses(): Promise<Expense[]> {
   if (isSupabaseConfigured()) {
-    const supaExpenses = await getSupabaseExpenses();
-    if (supaExpenses && supaExpenses.length > 0) return supaExpenses;
+    try {
+      const supaExpenses = await getSupabaseExpenses();
+      return supaExpenses || [];
+    } catch (e) {
+      console.warn('Error fetching Supabase expenses:', e);
+    }
   }
   return getLocalExpenses();
 }
@@ -1267,7 +1271,7 @@ export async function addExpense(data: Omit<Expense, 'id' | 'created_at'>): Prom
   if (isSupabaseConfigured()) {
     const res = await addSupabaseExpense(fullExpense);
     if (res) {
-      addLocalExpense(fullExpense);
+      addLocalExpense(res);
       return res;
     }
   }
@@ -1275,17 +1279,21 @@ export async function addExpense(data: Omit<Expense, 'id' | 'created_at'>): Prom
 }
 
 export async function updateExpense(id: string, updates: Partial<Expense>): Promise<boolean> {
+  let ok = false;
   if (isSupabaseConfigured()) {
-    await updateSupabaseExpense(id, updates);
+    ok = await updateSupabaseExpense(id, updates);
   }
-  return updateLocalExpense(id, updates);
+  const localOk = updateLocalExpense(id, updates);
+  return ok || localOk;
 }
 
 export async function deleteExpense(id: string): Promise<boolean> {
+  let ok = false;
   if (isSupabaseConfigured()) {
-    await deleteSupabaseExpense(id);
+    ok = await deleteSupabaseExpense(id);
   }
-  return deleteLocalExpense(id);
+  const localOk = deleteLocalExpense(id);
+  return ok || localOk;
 }
 
 export async function getFinanceSummary(): Promise<FinanceSummary> {

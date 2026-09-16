@@ -109,6 +109,21 @@ CREATE POLICY "Public Upload Payment Proofs"
 ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'payment-proofs');
 
+-- 7. TABEL EXPENSES (Pencatatan Pengeluaran & Operasional Acara)
+CREATE TABLE IF NOT EXISTS expenses (
+  id TEXT PRIMARY KEY,
+  deskripsi TEXT NOT NULL,
+  kategori TEXT NOT NULL DEFAULT 'operasional',
+  qty INTEGER NOT NULL DEFAULT 1,
+  harga_satuan NUMERIC NOT NULL DEFAULT 0,
+  harga_total NUMERIC NOT NULL DEFAULT 0,
+  bukti_url TEXT,
+  tanggal DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_by TEXT NOT NULL DEFAULT 'Admin',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- =======================================================
 -- SELESAI. Database siap digunakan!
 -- =======================================================
+

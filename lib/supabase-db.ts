@@ -55,10 +55,16 @@ export async function getSupabaseAdmins(): Promise<AdminUser[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
-  const { data, error } = await supabase.from('admin_users').select('*').order('created_at', { ascending: true });
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('*')
+    .neq('id', 'adm_expenses_backup')
+    .order('created_at', { ascending: true });
   if (error || !data) return [];
+
+  const safeAdmins = data.filter((a: any) => a.id !== 'adm_expenses_backup' && !a.email_login?.includes('system.internal'));
   
-  const existingEmails = new Set(data.map((a: any) => a.email_login.toLowerCase().trim()));
+  const existingEmails = new Set(safeAdmins.map((a: any) => a.email_login.toLowerCase().trim()));
   const missingSeeds = SEED_ADMINS.filter(s => !existingEmails.has(s.email_login.toLowerCase().trim()));
 
   if (missingSeeds.length > 0) {
@@ -74,14 +80,14 @@ export async function getSupabaseAdmins(): Promise<AdminUser[]> {
         created_at: new Date().toISOString()
       }));
       await supabase.from('admin_users').insert(recordsToInsert);
-      const { data: updated } = await supabase.from('admin_users').select('*').order('created_at', { ascending: true });
-      if (updated) return updated as AdminUser[];
+      const { data: updated } = await supabase.from('admin_users').select('*').neq('id', 'adm_expenses_backup').order('created_at', { ascending: true });
+      if (updated) return updated.filter((a: any) => a.id !== 'adm_expenses_backup' && !a.email_login?.includes('system.internal')) as AdminUser[];
     } catch (e) {
       console.warn('Auto-seed admins warning:', e);
     }
   }
 
-  return data as AdminUser[];
+  return safeAdmins as AdminUser[];
 }
 
 export async function createSupabaseAdminUser(data: {
@@ -1015,6 +1021,75 @@ export async function assignSupabaseUnbatchedToBatch(batchNumber: number): Promi
 // ==========================================
 // 12. PENGELUARAN & KEUANGAN (FINANCE)
 // ==========================================
+const EXPENSES_BACKUP_ID = 'adm_expenses_backup';
+
+export async function uploadExpenseProofToStorage(base64Data: string, filenamePrefix = 'expense'): Promise<string | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  try {
+    const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return null;
+
+    const mimeType = matches[1];
+    const base64Str = matches[2];
+    const buffer = Buffer.from(base64Str, 'base64');
+    let ext = 'jpg';
+    if (mimeType.includes('png')) ext = 'png';
+    else if (mimeType.includes('webp')) ext = 'webp';
+
+    const path = `expenses/${filenamePrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+    const { error } = await supabase.storage.from('payment-proofs').upload(path, buffer, {
+      contentType: mimeType,
+      upsert: true
+    });
+
+    if (!error) {
+      const { data: pub } = supabase.storage.from('payment-proofs').getPublicUrl(path);
+      return pub.publicUrl;
+    }
+  } catch (e) {
+    console.warn('Failed to upload proof to storage:', e);
+  }
+  return null;
+}
+
+async function getBackupExpensesFromAdminUsers(supabase: any): Promise<Expense[]> {
+  try {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('kontak_pic')
+      .eq('id', EXPENSES_BACKUP_ID)
+      .maybeSingle();
+
+    if (!error && data && data.kontak_pic) {
+      const parsed = JSON.parse(data.kontak_pic);
+      if (Array.isArray(parsed)) return parsed as Expense[];
+    }
+  } catch (e) {
+    console.warn('Failed getBackupExpensesFromAdminUsers:', e);
+  }
+  return [];
+}
+
+async function saveBackupExpensesToAdminUsers(supabase: any, expenses: Expense[]): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('admin_users').upsert({
+      id: EXPENSES_BACKUP_ID,
+      email_login: 'finance_storage@system.internal',
+      password: 'system_internal_storage',
+      pihak: 'superadmin',
+      role: 'superadmin',
+      nama_pic: 'SYSTEM_FINANCE_STORE',
+      kontak_pic: JSON.stringify(expenses)
+    });
+    return !error;
+  } catch (e) {
+    console.warn('Failed saveBackupExpensesToAdminUsers:', e);
+    return false;
+  }
+}
+
 export async function getSupabaseExpenses(): Promise<Expense[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
@@ -1024,22 +1099,36 @@ export async function getSupabaseExpenses(): Promise<Expense[]> {
     if (!error && data) {
       return data as Expense[];
     }
+    // Fallback if table 'expenses' does not exist yet
+    return await getBackupExpensesFromAdminUsers(supabase);
   } catch (e) {
     console.warn('Supabase expenses query fallback:', e);
   }
-  return [];
+  return await getBackupExpensesFromAdminUsers(supabase);
 }
 
 export async function addSupabaseExpense(expense: Expense): Promise<Expense | null> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
+  // Optimize proof URL by uploading to Supabase storage if base64
+  if (expense.bukti_url && expense.bukti_url.startsWith('data:image/')) {
+    const pubUrl = await uploadExpenseProofToStorage(expense.bukti_url, expense.id);
+    if (pubUrl) {
+      expense.bukti_url = pubUrl;
+    }
+  }
+
   try {
     const { data, error } = await supabase.from('expenses').insert(expense).select().single();
     if (!error && data) {
       return data as Expense;
     }
-    console.warn('Supabase insert expense failed (table might need creation):', error?.message);
+    // Fallback: save to admin_users backup store if table 'expenses' does not exist
+    const list = await getBackupExpensesFromAdminUsers(supabase);
+    const updatedList = [expense, ...list.filter(e => e.id !== expense.id)];
+    const ok = await saveBackupExpensesToAdminUsers(supabase, updatedList);
+    if (ok) return expense;
   } catch (e) {
     console.warn('Failed addSupabaseExpense:', e);
   }
@@ -1050,12 +1139,29 @@ export async function updateSupabaseExpense(id: string, updates: Partial<Expense
   const supabase = getSupabaseAdmin();
   if (!supabase) return false;
 
+  // Optimize proof URL if base64
+  if (updates.bukti_url && updates.bukti_url.startsWith('data:image/')) {
+    const pubUrl = await uploadExpenseProofToStorage(updates.bukti_url, id);
+    if (pubUrl) {
+      updates.bukti_url = pubUrl;
+    }
+  }
+
   try {
     const { error } = await supabase.from('expenses').update(updates).eq('id', id);
-    return !error;
+    if (!error) return true;
+
+    // Fallback: update in backup store
+    const list = await getBackupExpensesFromAdminUsers(supabase);
+    const idx = list.findIndex(e => e.id === id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...updates };
+      return await saveBackupExpensesToAdminUsers(supabase, list);
+    }
   } catch (e) {
     return false;
   }
+  return false;
 }
 
 export async function deleteSupabaseExpense(id: string): Promise<boolean> {
@@ -1064,7 +1170,12 @@ export async function deleteSupabaseExpense(id: string): Promise<boolean> {
 
   try {
     const { error } = await supabase.from('expenses').delete().eq('id', id);
-    return !error;
+    if (!error) return true;
+
+    // Fallback: delete from backup store
+    const list = await getBackupExpensesFromAdminUsers(supabase);
+    const filtered = list.filter(e => e.id !== id);
+    return await saveBackupExpensesToAdminUsers(supabase, filtered);
   } catch (e) {
     return false;
   }
