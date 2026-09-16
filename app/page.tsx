@@ -165,6 +165,8 @@ export default async function HomePage() {
           initialData={{
             total_pemasukan_lunas: financeSummary.total_pemasukan_lunas,
             total_qty_jersey_lunas: financeSummary.total_qty_jersey_lunas,
+            total_estimasi_pending: financeSummary.total_estimasi_pending || 0,
+            total_qty_jersey_pending: financeSummary.total_qty_jersey_pending || 0,
             total_pengeluaran: financeSummary.total_pengeluaran,
             saldo_kas: financeSummary.saldo_kas,
             expenses: financeSummary.expenses.map((e) => ({

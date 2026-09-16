@@ -3178,7 +3178,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* 4 KPI Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               {/* Pemasukan Lunas */}
               <div className="bg-white p-5 rounded-3xl border border-emerald-100 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between">
@@ -3521,132 +3521,241 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase text-[10px] tracking-wider font-extrabold">
-                      <th className="py-3.5 px-4 w-12 text-center">No</th>
-                      <th className="py-3.5 px-4">Tanggal</th>
-                      <th className="py-3.5 px-4">Deskripsi &amp; Kategori</th>
-                      <th className="py-3.5 px-4 text-center">Qty</th>
-                      <th className="py-3.5 px-4 text-right">Harga Satuan</th>
-                      <th className="py-3.5 px-4 text-right">Total Biaya</th>
-                      <th className="py-3.5 px-4 text-center">Bukti Nota</th>
-                      <th className="py-3.5 px-4">Dicatat Oleh</th>
-                      <th className="py-3.5 px-4 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {(() => {
-                      const list = (financeData?.expenses || []).filter((item: any) => {
-                        if (!financeSearch.trim()) return true;
-                        const q = financeSearch.toLowerCase().trim();
-                        return (
-                          (item.deskripsi || '').toLowerCase().includes(q) ||
-                          (item.kategori || '').toLowerCase().includes(q) ||
-                          (item.created_by || '').toLowerCase().includes(q)
-                        );
-                      });
+              {/* Table Container (MOBILE-FIRST: Pas di layar HP tanpa scroll kesamping, Warna Selang-Seling) */}
+              <div>
+                {(() => {
+                  const list = (financeData?.expenses || []).filter((item: any) => {
+                    if (!financeSearch.trim()) return true;
+                    const q = financeSearch.toLowerCase().trim();
+                    return (
+                      (item.deskripsi || '').toLowerCase().includes(q) ||
+                      (item.kategori || '').toLowerCase().includes(q) ||
+                      (item.created_by || '').toLowerCase().includes(q)
+                    );
+                  });
 
-                      if (list.length === 0) {
-                        return (
-                          <tr>
-                            <td colSpan={9} className="py-12 text-center text-slate-400">
-                              <Receipt className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                              <p className="font-bold text-sm text-slate-600">
-                                {financeSearch ? 'Tidak ada pengeluaran yang cocok dengan pencarian' : 'Belum ada data pengeluaran tercatat'}
-                              </p>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                Gunakan form di atas untuk mencatat pengeluaran acara pertama Anda
-                              </p>
-                            </td>
-                          </tr>
-                        );
-                      }
+                  if (list.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-slate-400 p-4">
+                        <Receipt className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="font-bold text-sm text-slate-600">
+                          {financeSearch ? 'Tidak ada pengeluaran yang cocok dengan pencarian' : 'Belum ada data pengeluaran tercatat'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Gunakan form di atas untuk mencatat pengeluaran acara pertama Anda
+                        </p>
+                      </div>
+                    );
+                  }
 
-                      return list.map((item: any, idx: number) => (
-                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 text-center text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-mono text-[11px]">
-                            {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-slate-800 text-xs">{item.deskripsi}</div>
-                            <span className="inline-block mt-0.5 text-[9px] uppercase font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                              {item.kategori || 'Operasional'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center font-bold text-slate-700 font-mono">
-                            {item.qty}
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono text-slate-600 whitespace-nowrap">
-                            Rp {(item.harga_satuan || 0).toLocaleString('id-ID')}
-                          </td>
-                          <td className="py-3 px-4 text-right font-black font-mono text-rose-600 whitespace-nowrap text-xs">
-                            Rp {(item.harga_total || 0).toLocaleString('id-ID')}
-                          </td>
-                          <td className="py-3 px-4 text-center whitespace-nowrap">
-                            {item.bukti_url ? (
-                              <button
-                                type="button"
-                                onClick={() => setPreviewExpenseProof({
-                                  url: item.bukti_url,
-                                  title: item.deskripsi,
-                                  total: item.harga_total,
-                                  date: item.tanggal,
-                                  category: item.kategori
-                                })}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-brand-royal/10 text-brand-royal hover:bg-brand-royal/20 text-[11px] font-bold border border-brand-royal/20 transition-all cursor-pointer"
+                  return (
+                    <>
+                      {/* 1. VERSI MOBILE (HP): 3 Kolom Ringkas, Pas 100% Layar HP, Tanpa Scroll Kesamping, Zebra Striped */}
+                      <div className="block sm:hidden">
+                        <table className="w-full text-left table-fixed border-collapse">
+                          <thead>
+                            <tr className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-wider border-b border-slate-800">
+                              <th className="py-2.5 px-2.5 w-[28%]">Tgl &amp; Kat</th>
+                              <th className="py-2.5 px-2 w-[42%]">Uraian &amp; Detail</th>
+                              <th className="py-2.5 px-2.5 w-[30%] text-right">Biaya &amp; Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-xs divide-y divide-slate-100">
+                            {list.map((item: any, idx: number) => (
+                              <tr
+                                key={item.id}
+                                className={`transition-colors ${
+                                  idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/90'
+                                } hover:bg-amber-50/40`}
                               >
-                                <Eye className="w-3 h-3" />
-                                <span>Lihat Bukti</span>
-                              </button>
-                            ) : (
-                              <span className="text-slate-300 text-[11px] italic">Tanpa Nota</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
-                            {item.created_by || 'Admin'}
-                          </td>
-                          <td className="py-3 px-4 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center space-x-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setEditingExpenseItem({ ...item })}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-brand-royal hover:bg-brand-royal/10 transition-colors cursor-pointer"
-                                title="Edit Pengeluaran"
+                                {/* Kolom 1: Tanggal & Kategori */}
+                                <td className="py-2.5 px-2.5 align-top">
+                                  <div className="font-mono text-[10px] font-bold text-slate-700 leading-tight">
+                                    {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}
+                                  </div>
+                                  <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-slate-200/80 text-slate-700 border border-slate-300/60">
+                                    {item.kategori || 'umum'}
+                                  </span>
+                                </td>
+
+                                {/* Kolom 2: Uraian, Qty, PIC */}
+                                <td className="py-2.5 px-2 align-top">
+                                  <div className="font-extrabold text-slate-900 text-[11px] leading-tight break-words">
+                                    {item.deskripsi}
+                                  </div>
+                                  <div className="text-[9px] text-slate-500 font-mono mt-0.5">
+                                    {item.qty}x @ Rp {(item.harga_satuan || 0).toLocaleString('id-ID')}
+                                  </div>
+                                  <div className="text-[8px] text-slate-400 mt-0.5 truncate">
+                                    Oleh: {item.created_by || 'Admin'}
+                                  </div>
+                                </td>
+
+                                {/* Kolom 3: Total Nominal, Tombol Bukti, Aksi */}
+                                <td className="py-2.5 px-2.5 align-top text-right">
+                                  <div className="font-mono font-black text-rose-600 text-[11px] leading-tight">
+                                    Rp {(item.harga_total || 0).toLocaleString('id-ID')}
+                                  </div>
+
+                                  <div className="flex items-center justify-end gap-1 mt-1.5">
+                                    {item.bukti_url && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewExpenseProof({
+                                          url: item.bukti_url,
+                                          title: item.deskripsi,
+                                          total: item.harga_total,
+                                          date: item.tanggal,
+                                          category: item.kategori
+                                        })}
+                                        className="p-1 rounded bg-brand-royal text-white text-[9px] font-bold"
+                                        title="Lihat Nota"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingExpenseItem({ ...item })}
+                                      className="p-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                      title="Edit"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteExpenseId({ id: item.id, deskripsi: item.deskripsi })}
+                                      className="p-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100"
+                                      title="Hapus"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-200 text-slate-700">
+                              <td colSpan={2} className="py-2.5 px-2.5 text-right text-[10px] uppercase font-black">
+                                Total Pengeluaran:
+                              </td>
+                              <td className="py-2.5 px-2.5 text-right font-mono font-black text-rose-600 text-[11px]">
+                                Rp {(financeData?.total_pengeluaran || 0).toLocaleString('id-ID')}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+
+                      {/* 2. VERSI DESKTOP & TABLET: Tabel Lengkap, Warna Selang-Seling (Zebra Striped) */}
+                      <div className="hidden sm:block">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-extrabold">
+                              <th className="py-3 px-3.5 w-10 text-center">No</th>
+                              <th className="py-3 px-3.5">Tanggal</th>
+                              <th className="py-3 px-4">Deskripsi Pengeluaran</th>
+                              <th className="py-3 px-3">Kategori</th>
+                              <th className="py-3 px-3 text-center">Qty</th>
+                              <th className="py-3 px-4 text-right">Harga Satuan</th>
+                              <th className="py-3 px-4 text-right">Total Biaya</th>
+                              <th className="py-3 px-4 text-center">Bukti Nota</th>
+                              <th className="py-3 px-4">Oleh</th>
+                              <th className="py-3 px-4 text-center">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium">
+                            {list.map((item: any, idx: number) => (
+                              <tr
+                                key={item.id}
+                                className={`transition-colors ${
+                                  idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'
+                                } hover:bg-amber-50/50`}
                               >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteExpenseId({ id: item.id, deskripsi: item.deskripsi })}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="Hapus Pengeluaran"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ));
-                    })()}
-                  </tbody>
-                  {(financeData?.expenses || []).length > 0 && (
-                    <tfoot>
-                      <tr className="bg-slate-50/80 font-bold border-t-2 border-slate-200">
-                        <td colSpan={5} className="py-3 px-4 text-right uppercase text-[11px] text-slate-600">
-                          Total Seluruh Pengeluaran:
-                        </td>
-                        <td className="py-3 px-4 text-right font-black font-mono text-rose-600 text-sm whitespace-nowrap">
-                          Rp {(financeData?.total_pengeluaran || 0).toLocaleString('id-ID')}
-                        </td>
-                        <td colSpan={3}></td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
+                                <td className="py-3 px-3.5 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                                <td className="py-3 px-3.5 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                                  {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="font-bold text-slate-800 text-xs">{item.deskripsi}</div>
+                                </td>
+                                <td className="py-3 px-3 whitespace-nowrap">
+                                  <span className="inline-block text-[9px] uppercase font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                    {item.kategori || 'Operasional'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-center font-bold text-slate-700 font-mono">
+                                  {item.qty}
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-slate-600 whitespace-nowrap">
+                                  Rp {(item.harga_satuan || 0).toLocaleString('id-ID')}
+                                </td>
+                                <td className="py-3 px-4 text-right font-black font-mono text-rose-600 whitespace-nowrap text-xs">
+                                  Rp {(item.harga_total || 0).toLocaleString('id-ID')}
+                                </td>
+                                <td className="py-3 px-4 text-center whitespace-nowrap">
+                                  {item.bukti_url ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewExpenseProof({
+                                        url: item.bukti_url,
+                                        title: item.deskripsi,
+                                        total: item.harga_total,
+                                        date: item.tanggal,
+                                        category: item.kategori
+                                      })}
+                                      className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-brand-royal/10 text-brand-royal hover:bg-brand-royal/20 text-[11px] font-bold border border-brand-royal/20 transition-all cursor-pointer"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>Lihat Bukti</span>
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-300 text-[11px] italic">Tanpa Nota</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                                  {item.created_by || 'Admin'}
+                                </td>
+                                <td className="py-3 px-4 text-center whitespace-nowrap">
+                                  <div className="flex items-center justify-center space-x-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingExpenseItem({ ...item })}
+                                      className="p-1.5 rounded-lg text-slate-500 hover:text-brand-royal hover:bg-brand-royal/10 transition-colors cursor-pointer"
+                                      title="Edit Pengeluaran"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteExpenseId({ id: item.id, deskripsi: item.deskripsi })}
+                                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                      title="Hapus Pengeluaran"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-200">
+                              <td colSpan={6} className="py-3 px-4 text-right uppercase text-[11px] text-slate-600 font-black">
+                                Total Seluruh Pengeluaran:
+                              </td>
+                              <td className="py-3 px-4 text-right font-black font-mono text-rose-600 text-sm whitespace-nowrap">
+                                Rp {(financeData?.total_pengeluaran || 0).toLocaleString('id-ID')}
+                              </td>
+                              <td colSpan={3}></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

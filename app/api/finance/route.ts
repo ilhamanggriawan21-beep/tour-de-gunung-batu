@@ -24,6 +24,8 @@ export async function GET() {
       success: true,
       total_pemasukan_lunas: summary.total_pemasukan_lunas,
       total_qty_jersey_lunas: summary.total_qty_jersey_lunas,
+      total_estimasi_pending: summary.total_estimasi_pending || 0,
+      total_qty_jersey_pending: summary.total_qty_jersey_pending || 0,
       total_pengeluaran: summary.total_pengeluaran,
       saldo_kas: summary.saldo_kas,
       expenses: publicExpenses
