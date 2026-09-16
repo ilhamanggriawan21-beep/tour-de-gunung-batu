@@ -78,12 +78,45 @@ export interface AdminUser {
   created_at?: string;
 }
 
+export interface Expense {
+  id: string;
+  deskripsi: string;
+  kategori?: 'produksi' | 'logistik' | 'konsumsi' | 'operasional' | 'lainnya';
+  qty: number;
+  harga_satuan: number;
+  harga_total: number;
+  bukti_url?: string;
+  tanggal: string; // YYYY-MM-DD
+  created_by?: string;
+  created_at: string;
+}
+
+export interface FinanceSummary {
+  total_pemasukan_lunas: number;
+  total_qty_jersey_lunas: number;
+  total_estimasi_pending: number; // Piutang / belum bayar - TIDAK MASUK KE TOTAL PEMASUKAN
+  total_qty_jersey_pending: number;
+  total_pengeluaran: number;
+  saldo_kas: number; // total_pemasukan_lunas - total_pengeluaran
+  expenses: Expense[];
+  recent_pemasukan: Array<{
+    id: string;
+    nama_lengkap: string;
+    nomor_bib: number;
+    komunitas: string;
+    jersey_spec_str: string;
+    harga_total: number;
+    paid_at?: string;
+  }>;
+}
+
 interface DBData {
   last_bib: number;
   registrants: Registrant[];
   jersey_pos: JerseyPO[];
   settings: Settings;
   admins: AdminUser[];
+  expenses: Expense[];
 }
 
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
@@ -196,7 +229,8 @@ function readDB(): DBData {
         registrants: [],
         jersey_pos: [],
         settings: DEFAULT_SETTINGS,
-        admins: DEFAULT_ADMINS
+        admins: DEFAULT_ADMINS,
+        expenses: []
       };
       fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
       return initial;
@@ -204,6 +238,7 @@ function readDB(): DBData {
     const raw = fs.readFileSync(DB_PATH, 'utf-8');
     const data = JSON.parse(raw);
     if (!data.settings) data.settings = DEFAULT_SETTINGS;
+    if (!data.expenses) data.expenses = [];
     if (!data.admins) {
       data.admins = DEFAULT_ADMINS;
     } else {
@@ -222,7 +257,8 @@ function readDB(): DBData {
       registrants: [],
       jersey_pos: [],
       settings: DEFAULT_SETTINGS,
-      admins: DEFAULT_ADMINS
+      admins: DEFAULT_ADMINS,
+      expenses: []
     };
   }
 }
@@ -233,6 +269,7 @@ function writeDB(data: DBData): void {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
+    if (!data.expenses) data.expenses = [];
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
   } catch (err) {
     console.error('Failed writing DB:', err);
@@ -261,7 +298,11 @@ import {
   updateSupabaseCheckInStatus,
   updateSupabaseShippingStatus,
   updateSupabaseJerseyBatch,
-  assignSupabaseUnbatchedToBatch
+  assignSupabaseUnbatchedToBatch,
+  getSupabaseExpenses,
+  addSupabaseExpense,
+  updateSupabaseExpense,
+  deleteSupabaseExpense
 } from './supabase-db';
 
 function getLocalSettings(): Settings {
@@ -1142,5 +1183,170 @@ export async function assignUnbatchedToBatch(batchNumber: number): Promise<numbe
     return await assignSupabaseUnbatchedToBatch(batchNumber);
   }
   return assignLocalUnbatchedToBatch(batchNumber);
+}
+
+// ==========================================
+// LOCAL EXPENSES FUNCTIONS
+// ==========================================
+function getLocalExpenses(): Expense[] {
+  const db = readDB();
+  return (db.expenses || []).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+}
+
+function addLocalExpense(data: Omit<Expense, 'id' | 'created_at'> & { id?: string; created_at?: string }): Expense {
+  const db = readDB();
+  if (!db.expenses) db.expenses = [];
+  
+  const id = data.id || 'exp_' + Math.random().toString(36).substring(2, 9);
+  const created_at = data.created_at || new Date().toISOString();
+  const expense: Expense = {
+    ...data,
+    id,
+    created_at,
+    harga_total: data.harga_total !== undefined ? data.harga_total : (data.qty * data.harga_satuan)
+  };
+
+  db.expenses.unshift(expense);
+  writeDB(db);
+  return expense;
+}
+
+function updateLocalExpense(id: string, updates: Partial<Expense>): boolean {
+  const db = readDB();
+  if (!db.expenses) return false;
+  const idx = db.expenses.findIndex(e => e.id === id);
+  if (idx === -1) return false;
+
+  const current = db.expenses[idx];
+  const updated: Expense = {
+    ...current,
+    ...updates,
+    harga_total: updates.harga_total !== undefined 
+      ? updates.harga_total 
+      : ((updates.qty !== undefined ? updates.qty : current.qty) * (updates.harga_satuan !== undefined ? updates.harga_satuan : current.harga_satuan))
+  };
+
+  db.expenses[idx] = updated;
+  writeDB(db);
+  return true;
+}
+
+function deleteLocalExpense(id: string): boolean {
+  const db = readDB();
+  if (!db.expenses) return false;
+  const initLen = db.expenses.length;
+  db.expenses = db.expenses.filter(e => e.id !== id);
+  if (db.expenses.length !== initLen) {
+    writeDB(db);
+    return true;
+  }
+  return false;
+}
+
+// ==========================================
+// UNIVERSAL EXPORTED FINANCE FUNCTIONS
+// ==========================================
+export async function getExpenses(): Promise<Expense[]> {
+  if (isSupabaseConfigured()) {
+    const supaExpenses = await getSupabaseExpenses();
+    if (supaExpenses && supaExpenses.length > 0) return supaExpenses;
+  }
+  return getLocalExpenses();
+}
+
+export async function addExpense(data: Omit<Expense, 'id' | 'created_at'>): Promise<Expense> {
+  const newId = 'exp_' + Math.random().toString(36).substring(2, 9);
+  const now = new Date().toISOString();
+  const fullExpense: Expense = {
+    ...data,
+    id: newId,
+    created_at: now,
+    harga_total: data.harga_total !== undefined ? data.harga_total : (data.qty * data.harga_satuan)
+  };
+
+  if (isSupabaseConfigured()) {
+    const res = await addSupabaseExpense(fullExpense);
+    if (res) {
+      addLocalExpense(fullExpense);
+      return res;
+    }
+  }
+  return addLocalExpense(fullExpense);
+}
+
+export async function updateExpense(id: string, updates: Partial<Expense>): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await updateSupabaseExpense(id, updates);
+  }
+  return updateLocalExpense(id, updates);
+}
+
+export async function deleteExpense(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    await deleteSupabaseExpense(id);
+  }
+  return deleteLocalExpense(id);
+}
+
+export async function getFinanceSummary(): Promise<FinanceSummary> {
+  const { registrants_with_po } = await getAllAdminData();
+  const expenses = await getExpenses();
+
+  let total_pemasukan_lunas = 0;
+  let total_qty_jersey_lunas = 0;
+  let total_estimasi_pending = 0;
+  let total_qty_jersey_pending = 0;
+  const recent_pemasukan: Array<{
+    id: string;
+    nama_lengkap: string;
+    nomor_bib: number;
+    komunitas: string;
+    jersey_spec_str: string;
+    harga_total: number;
+    paid_at?: string;
+  }> = [];
+
+  registrants_with_po.forEach(({ registrant: r, jersey_po: p }) => {
+    if (!p) return;
+    const qty = p.qty || 1;
+    const total = p.harga_total || 0;
+
+    if (p.status_pembayaran === 'lunas') {
+      total_pemasukan_lunas += total;
+      total_qty_jersey_lunas += qty;
+
+      const sleeve = p.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve';
+      const kat = p.kategori_ukuran === 'anak' ? ' (Anak)' : '';
+      recent_pemasukan.push({
+        id: p.id,
+        nama_lengkap: r.nama_lengkap,
+        nomor_bib: r.nomor_bib,
+        komunitas: r.komunitas || 'Umum',
+        jersey_spec_str: `Jersey ${sleeve}${kat} Size ${p.ukuran} (${qty}x)`,
+        harga_total: total,
+        paid_at: p.paid_at || p.verified_at || r.created_at
+      });
+    } else if (p.status_pembayaran === 'menunggu_verifikasi' || p.status_pembayaran === 'perlu_klarifikasi') {
+      // Sesuai instruksi: estimasi pending TIDAK dimasukkan ke total_pemasukan_lunas
+      total_estimasi_pending += total;
+      total_qty_jersey_pending += qty;
+    }
+  });
+
+  const total_pengeluaran = expenses.reduce((acc, e) => acc + (e.harga_total || 0), 0);
+  const saldo_kas = total_pemasukan_lunas - total_pengeluaran;
+
+  recent_pemasukan.sort((a, b) => new Date(b.paid_at || 0).getTime() - new Date(a.paid_at || 0).getTime());
+
+  return {
+    total_pemasukan_lunas,
+    total_qty_jersey_lunas,
+    total_estimasi_pending,
+    total_qty_jersey_pending,
+    total_pengeluaran,
+    saldo_kas,
+    expenses,
+    recent_pemasukan
+  };
 }
 

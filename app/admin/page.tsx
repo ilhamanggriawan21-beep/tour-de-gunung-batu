@@ -43,14 +43,20 @@ import {
   Factory,
   Copy,
   Check,
-  Filter
+  Filter,
+  Wallet,
+  Receipt,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  PlusCircle
 } from 'lucide-react';
 import { compressImage, estimateDataUrlSize } from '@/lib/imageCompression';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'checkin' | 'logistik' | 'verifikasi' | 'batch_produksi' | 'rekap' | 'pengaturan' | 'profil' | 'kelola_pic'>('checkin');
+  const [activeTab, setActiveTab] = useState<'checkin' | 'logistik' | 'verifikasi' | 'batch_produksi' | 'keuangan' | 'rekap' | 'pengaturan' | 'profil' | 'kelola_pic'>('checkin');
 
   const [loading, setLoading] = useState(true);
   const [registrantsData, setRegistrantsData] = useState<any[]>([]);
@@ -73,6 +79,33 @@ export default function AdminDashboardPage() {
   const [shippingFilter, setShippingFilter] = useState<'semua' | 'belum_kirim' | 'sudah_kirim'>('semua');
   const [editingResiId, setEditingResiId] = useState<string | null>(null);
   const [tempResiValue, setTempResiValue] = useState('');
+
+  // Finance (Keuangan) State
+  const [financeData, setFinanceData] = useState<any>({
+    total_pemasukan_lunas: 0,
+    total_qty_jersey_lunas: 0,
+    total_estimasi_pending: 0,
+    total_qty_jersey_pending: 0,
+    total_pengeluaran: 0,
+    saldo_kas: 0,
+    expenses: []
+  });
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeSearch, setFinanceSearch] = useState('');
+  const [expenseForm, setExpenseForm] = useState({
+    deskripsi: '',
+    kategori: 'operasional',
+    qty: 1,
+    harga_satuan: 0,
+    bukti_url: '',
+    tanggal: new Date().toISOString().split('T')[0]
+  });
+  const [expenseProofCompressInfo, setExpenseProofCompressInfo] = useState<string | null>(null);
+  const [compressingExpenseProof, setCompressingExpenseProof] = useState(false);
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [editingExpenseItem, setEditingExpenseItem] = useState<any | null>(null);
+  const [deleteExpenseId, setDeleteExpenseId] = useState<{ id: string; deskripsi: string } | null>(null);
+  const [previewExpenseProof, setPreviewExpenseProof] = useState<{ url: string; title: string; total: number; date?: string; category?: string } | null>(null);
 
   // Settings form state
   const [settingsForm, setSettingsForm] = useState({
@@ -381,12 +414,195 @@ export default function AdminDashboardPage() {
     });
     fetchAdminData(true);
 
-    const handleFocus = () => fetchAdminData(false);
+    const isFinanceAuth = session?.role === 'superadmin' || session?.pihak === 'superadmin' || session?.email_login === 'bungs@tourdegunungbatu.com' || session?.email_login === 'admin.tourdegunungbatu.com';
+    if (isFinanceAuth) {
+      fetchFinanceData(session);
+    }
+
+    const handleFocus = () => {
+      fetchAdminData(false);
+      if (isFinanceAuth) {
+        fetchFinanceData(session);
+      }
+    };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [router]);
 
   const isSuperAdmin = adminSession?.role === 'superadmin' || adminSession?.pihak === 'superadmin';
+  const canAccessFinance = isSuperAdmin || adminSession?.email_login === 'bungs@tourdegunungbatu.com' || adminSession?.email_login === 'admin.tourdegunungbatu.com';
+
+  const fetchFinanceData = async (overrideSession?: any) => {
+    const s = overrideSession || adminSession;
+    if (!s) return;
+    const isAuth = s.role === 'superadmin' || s.pihak === 'superadmin' || s.email_login === 'bungs@tourdegunungbatu.com' || s.email_login === 'admin.tourdegunungbatu.com';
+    if (!isAuth) return;
+
+    setFinanceLoading(true);
+    try {
+      const params = new URLSearchParams({
+        email: s.email_login || '',
+        role: s.role || '',
+        pihak: s.pihak || ''
+      });
+      const res = await fetch(`/api/admin/finance?${params.toString()}&t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFinanceData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching finance:', err);
+    } finally {
+      setFinanceLoading(false);
+    }
+  };
+
+  const handleExpenseProofFileChange = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar bukti (JPG/PNG/WebP).');
+      return;
+    }
+
+    setCompressingExpenseProof(true);
+    try {
+      const origSize = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+      const compressed = await compressImage(file, { maxDimension: 1600, quality: 0.75 });
+      const compSize = estimateDataUrlSize(compressed);
+
+      if (isEdit) {
+        setEditingExpenseItem((prev: any) => ({ ...prev, bukti_url: compressed }));
+      } else {
+        setExpenseForm(prev => ({ ...prev, bukti_url: compressed }));
+      }
+      setExpenseProofCompressInfo(`Bukti nota terkompresi otomatis: ${origSize} → ${compSize}`);
+    } catch (err) {
+      console.error('Gagal mengompres bukti pengeluaran:', err);
+      alert('Gagal mengompresi gambar bukti nota.');
+    } finally {
+      setCompressingExpenseProof(false);
+    }
+  };
+
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseForm.deskripsi.trim()) {
+      alert('Mohon isi deskripsi pengeluaran.');
+      return;
+    }
+    if (!expenseForm.harga_satuan || expenseForm.harga_satuan <= 0) {
+      alert('Harga satuan harus lebih dari 0.');
+      return;
+    }
+    setSavingExpense(true);
+    try {
+      const res = await fetch('/api/admin/finance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: adminSession?.email_login,
+          role: adminSession?.role,
+          pihak: adminSession?.pihak,
+          admin_name: adminSession?.nama_pic || adminSession?.email_login || 'Admin',
+          deskripsi: expenseForm.deskripsi,
+          kategori: expenseForm.kategori,
+          qty: expenseForm.qty,
+          harga_satuan: expenseForm.harga_satuan,
+          bukti_url: expenseForm.bukti_url,
+          tanggal: expenseForm.tanggal
+        })
+      });
+      const data = await res.json();
+      setSavingExpense(false);
+      if (data.success) {
+        setMessage(`Pengeluaran "${expenseForm.deskripsi}" berhasil dicatat!`);
+        setTimeout(() => setMessage(''), 3500);
+        setExpenseForm({
+          deskripsi: '',
+          kategori: 'operasional',
+          qty: 1,
+          harga_satuan: 0,
+          bukti_url: '',
+          tanggal: new Date().toISOString().split('T')[0]
+        });
+        setExpenseProofCompressInfo(null);
+        fetchFinanceData();
+      } else {
+        alert(data.error || 'Gagal menyimpan pengeluaran');
+      }
+    } catch (err) {
+      setSavingExpense(false);
+      alert('Terjadi kesalahan koneksi saat mencatat pengeluaran');
+    }
+  };
+
+  const handleUpdateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpenseItem) return;
+    setSavingExpense(true);
+    try {
+      const res = await fetch('/api/admin/finance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingExpenseItem.id,
+          email: adminSession?.email_login,
+          role: adminSession?.role,
+          pihak: adminSession?.pihak,
+          deskripsi: editingExpenseItem.deskripsi,
+          kategori: editingExpenseItem.kategori,
+          qty: editingExpenseItem.qty,
+          harga_satuan: editingExpenseItem.harga_satuan,
+          bukti_url: editingExpenseItem.bukti_url,
+          tanggal: editingExpenseItem.tanggal
+        })
+      });
+      const data = await res.json();
+      setSavingExpense(false);
+      if (data.success) {
+        setMessage('Data pengeluaran berhasil diperbarui.');
+        setTimeout(() => setMessage(''), 3000);
+        setEditingExpenseItem(null);
+        fetchFinanceData();
+      } else {
+        alert(data.error || 'Gagal memperbarui pengeluaran');
+      }
+    } catch (err) {
+      setSavingExpense(false);
+      alert('Terjadi kesalahan koneksi');
+    }
+  };
+
+  const confirmDeleteExpense = async () => {
+    if (!deleteExpenseId) return;
+    try {
+      const params = new URLSearchParams({
+        id: deleteExpenseId.id,
+        email: adminSession?.email_login || '',
+        role: adminSession?.role || '',
+        pihak: adminSession?.pihak || ''
+      });
+      const res = await fetch(`/api/admin/finance?${params.toString()}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      setDeleteExpenseId(null);
+      if (data.success) {
+        setMessage(`Pengeluaran "${deleteExpenseId.deskripsi}" berhasil dihapus.`);
+        setTimeout(() => setMessage(''), 3000);
+        fetchFinanceData();
+      } else {
+        alert(data.error || 'Gagal menghapus pengeluaran');
+      }
+    } catch (err) {
+      setDeleteExpenseId(null);
+      alert('Terjadi kesalahan koneksi');
+    }
+  };
 
   const handleVerify = async (poId: string, newStatus: 'lunas' | 'menunggu_verifikasi' | 'perlu_klarifikasi') => {
     const previousData = [...registrantsData];
@@ -1057,6 +1273,26 @@ export default function AdminDashboardPage() {
             <SettingsIcon className="w-4 h-4" />
             <span>Pengaturan</span>
           </button>
+
+          {canAccessFinance && (
+            <button
+              onClick={() => {
+                setActiveTab('keuangan');
+                fetchFinanceData();
+              }}
+              className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center space-x-2 whitespace-nowrap ${
+                activeTab === 'keuangan'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+              }`}
+            >
+              <Wallet className="w-4 h-4 text-emerald-600 group-hover:text-emerald-700" />
+              <span>Keuangan (Arus Kas)</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeTab === 'keuangan' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-200 text-emerald-900 font-bold'}`}>
+                Kas: Rp {((financeData?.saldo_kas || 0) / 1000).toLocaleString('id-ID')}k
+              </span>
+            </button>
+          )}
 
           {isSuperAdmin && (
             <button
@@ -2910,6 +3146,511 @@ export default function AdminDashboardPage() {
             </button>
           </form>
         )}
+
+        {/* TAB: KEUANGAN (ARUS KAS & PENGELUARAN) - KHUSUS SUPERADMIN & BUNGS */}
+        {activeTab === 'keuangan' && canAccessFinance && (
+          <div className="space-y-6">
+            {/* Header & Status Banner */}
+            <div className="bg-gradient-to-r from-emerald-900 via-brand-navy to-slate-900 rounded-3xl p-6 text-white shadow-xl border border-emerald-500/20 relative overflow-hidden">
+              <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-400/30 mb-2">
+                    <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Akses Terbatas: Superadmin &amp; Bungs</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                    Laporan Keuangan &amp; Arus Kas (LIVE)
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
+                    Pencatatan real-time pemasukan PO Jersey yang sudah lunas, estimasi PO belum lunas, dan pembukuan pengeluaran operasional acara.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fetchFinanceData()}
+                  className="self-start md:self-center px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold border border-white/20 flex items-center space-x-2 transition-all shadow-sm cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${financeLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh Data Keuangan</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 KPI Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Pemasukan Lunas */}
+              <div className="bg-white p-5 rounded-3xl border border-emerald-100 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pemasukan PO Lunas</span>
+                  <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="text-xl sm:text-2xl font-black text-emerald-600 font-mono tracking-tight">
+                    Rp {(financeData?.total_pemasukan_lunas || 0).toLocaleString('id-ID')}
+                  </div>
+                  <div className="flex items-center space-x-1.5 mt-1 text-[11px] font-bold text-slate-500">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>{financeData?.total_qty_jersey_lunas || 0} pcs jersey terbayar</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-emerald-700 font-bold bg-emerald-50/60 -mx-5 -mb-5 px-5 py-2">
+                  <span>Kas Masuk Riil</span>
+                  <span>100% Masuk Saldo</span>
+                </div>
+              </div>
+
+              {/* Total Pengeluaran */}
+              <div className="bg-white p-5 rounded-3xl border border-rose-100 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Pengeluaran</span>
+                  <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                    <TrendingDown className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="text-xl sm:text-2xl font-black text-rose-600 font-mono tracking-tight">
+                    Rp {(financeData?.total_pengeluaran || 0).toLocaleString('id-ID')}
+                  </div>
+                  <div className="flex items-center space-x-1.5 mt-1 text-[11px] font-bold text-slate-500">
+                    <Receipt className="w-3.5 h-3.5 text-rose-500" />
+                    <span>{(financeData?.expenses || []).length} pos pengeluaran tercatat</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-rose-700 font-bold bg-rose-50/60 -mx-5 -mb-5 px-5 py-2">
+                  <span>Kas Keluar Riil</span>
+                  <span>Operasional Event</span>
+                </div>
+              </div>
+
+              {/* Saldo Kas Bersih */}
+              <div className="bg-gradient-to-br from-brand-navy to-slate-900 p-5 rounded-3xl text-white shadow-md relative overflow-hidden border border-brand-navyLight">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Saldo Kas Bersih</span>
+                  <div className="w-9 h-9 rounded-2xl bg-white/10 text-brand-yellow flex items-center justify-center font-bold">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${(financeData?.saldo_kas || 0) >= 0 ? 'text-brand-yellow' : 'text-rose-400'}`}>
+                    Rp {(financeData?.saldo_kas || 0).toLocaleString('id-ID')}
+                  </div>
+                  <div className="flex items-center space-x-1.5 mt-1 text-[11px] text-slate-300">
+                    <span>(Pemasukan Lunas - Pengeluaran)</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px] text-brand-yellow font-bold bg-white/5 -mx-5 -mb-5 px-5 py-2">
+                  <span>Saldo Kas Efektif</span>
+                  <span>LIVE</span>
+                </div>
+              </div>
+
+              {/* Estimasi Belum Bayar */}
+              <div className="bg-amber-50/60 p-5 rounded-3xl border border-amber-200 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Estimasi Belum Bayar</span>
+                  <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="text-xl sm:text-2xl font-black text-amber-700 font-mono tracking-tight">
+                    Rp {(financeData?.total_estimasi_pending || 0).toLocaleString('id-ID')}
+                  </div>
+                  <div className="flex items-center space-x-1.5 mt-1 text-[11px] font-bold text-amber-900">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{financeData?.total_qty_jersey_pending || 0} pcs PO pending / verifikasi</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-amber-200 flex items-center justify-between text-[10px] text-amber-900 font-extrabold bg-amber-100/70 -mx-5 -mb-5 px-5 py-2">
+                  <span>Estimasi PO</span>
+                  <span className="text-rose-700 font-bold">TIDAK Masuk Kas</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Input Form Pengeluaran */}
+            <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                    <PlusCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900">Catat Pengeluaran Baru</h3>
+                    <p className="text-xs text-slate-500">Input nota belanja, logistik, vendor, atau kebutuhan acara lainnya</p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+                  PIC Pencatat: <strong className="text-brand-navy">{adminSession.nama_pic || adminSession.email_login}</strong>
+                </span>
+              </div>
+
+              <form onSubmit={handleCreateExpense} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Deskripsi Pengeluaran *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: DP Vendor Jersey Batch 1, Konsumsi Rapat Panitia, Sewa Ambulance..."
+                      value={expenseForm.deskripsi}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, deskripsi: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-brand-royal"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Kategori *
+                    </label>
+                    <select
+                      value={expenseForm.kategori}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, kategori: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-bold bg-white focus:ring-2 focus:ring-brand-royal"
+                    >
+                      <option value="operasional">Operasional Umum</option>
+                      <option value="jersey">Jersey &amp; Produksi</option>
+                      <option value="konsumsi">Konsumsi &amp; Snack</option>
+                      <option value="medis">Medis &amp; Ambulance</option>
+                      <option value="perlengkapan">Perlengkapan, Panggung &amp; Sound</option>
+                      <option value="publikasi">Publikasi, Banner &amp; Dokumentasi</option>
+                      <option value="lainnya">Lain-lain</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Tanggal Pengeluaran *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={expenseForm.tanggal}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, tanggal: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-brand-royal"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Kuantitas (Qty) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={expenseForm.qty}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, qty: parseInt(e.target.value, 10) || 1 })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-center bg-white focus:ring-2 focus:ring-brand-royal"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Harga Satuan (Rp) *
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="1000"
+                      required
+                      placeholder="0"
+                      value={expenseForm.harga_satuan || ''}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, harga_satuan: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-bold font-mono bg-white focus:ring-2 focus:ring-brand-royal"
+                    />
+                  </div>
+                </div>
+
+                {/* Auto Calculated Total Display Banner */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-xs text-slate-600">
+                    Perhitungan Otomatis: <span className="font-bold">{expenseForm.qty} pcs</span> x <span className="font-mono">Rp {(expenseForm.harga_satuan || 0).toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-slate-500 uppercase">Total Pengeluaran:</span>
+                    <span className="text-base sm:text-lg font-black font-mono text-rose-600">
+                      Rp {((expenseForm.qty || 1) * (expenseForm.harga_satuan || 0)).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Upload Bukti Pembayaran / Nota */}
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Upload Bukti Nota / Kwitansi / Struk (Opsional / Sangat Dianjurkan)</span>
+                    {expenseProofCompressInfo && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        ✓ {expenseProofCompressInfo}
+                      </span>
+                    )}
+                  </label>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-brand-navyLight text-brand-yellow font-bold text-xs cursor-pointer shadow-sm transition-all border border-brand-yellow/30">
+                      <Upload className="w-4 h-4" />
+                      <span>{compressingExpenseProof ? 'Mengompres Nota...' : 'Pilih Foto Bukti Nota'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={compressingExpenseProof || savingExpense}
+                        onChange={(e) => handleExpenseProofFileChange(e, false)}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {expenseForm.bukti_url && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewExpenseProof({
+                          url: expenseForm.bukti_url,
+                          title: expenseForm.deskripsi || 'Bukti Pengeluaran',
+                          total: (expenseForm.qty || 1) * (expenseForm.harga_satuan || 0),
+                          date: expenseForm.tanggal,
+                          category: expenseForm.kategori
+                        })}
+                        className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-brand-royal/10 text-brand-royal hover:bg-brand-royal/20 font-bold text-xs border border-brand-royal/30 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Lihat Nota ({estimateDataUrlSize(expenseForm.bukti_url)})</span>
+                      </button>
+                    )}
+
+                    {expenseForm.bukti_url && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExpenseForm(prev => ({ ...prev, bukti_url: '' }));
+                          setExpenseProofCompressInfo(null);
+                        }}
+                        className="inline-flex items-center space-x-1 px-3 py-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-xs border border-rose-200 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus Nota</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Thumbnail display */}
+                  {expenseForm.bukti_url && (
+                    <div className="relative w-full max-w-[180px] aspect-[4/3] rounded-2xl overflow-hidden border-2 border-slate-300 shadow-sm bg-black/5 mt-3">
+                      <img
+                        src={expenseForm.bukti_url}
+                        alt="Bukti Pengeluaran"
+                        className="w-full h-full object-cover cursor-pointer hover:opacity-90"
+                        onClick={() => setPreviewExpenseProof({
+                          url: expenseForm.bukti_url,
+                          title: expenseForm.deskripsi || 'Bukti Pengeluaran',
+                          total: (expenseForm.qty || 1) * (expenseForm.harga_satuan || 0),
+                          date: expenseForm.tanggal,
+                          category: expenseForm.kategori
+                        })}
+                      />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] px-1 py-0.5 text-center">
+                        Klik untuk perbesar
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual URL input fallback */}
+                  <details className="text-[11px] text-slate-500 mt-2">
+                    <summary className="cursor-pointer hover:text-slate-800 font-medium">
+                      Atau input tautan / URL nota langsung
+                    </summary>
+                    <input
+                      type="text"
+                      placeholder="https://... atau data:image/..."
+                      value={expenseForm.bukti_url}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, bukti_url: e.target.value })}
+                      className="w-full mt-1.5 px-3 py-1.5 rounded-lg border border-slate-300 font-mono text-[10px] bg-white"
+                    />
+                  </details>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={savingExpense || compressingExpenseProof}
+                    className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs shadow-md flex items-center space-x-2 transition-all cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4 text-emerald-100" />
+                    <span>{savingExpense ? 'Menyimpan Pengeluaran...' : 'Simpan Catatan Pengeluaran'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Tabel Daftar Pengeluaran */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-rose-500" />
+                    <span>Daftar Rincian Pengeluaran Terdaftar</span>
+                    <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-0.5 rounded-full font-mono">
+                      {(financeData?.expenses || []).length} Data
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Semua transaksi pengeluaran acara yang diinput panitia</p>
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Cari deskripsi atau kategori..."
+                    value={financeSearch}
+                    onChange={(e) => setFinanceSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-brand-royal"
+                  />
+                  {financeSearch && (
+                    <button
+                      onClick={() => setFinanceSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase text-[10px] tracking-wider font-extrabold">
+                      <th className="py-3.5 px-4 w-12 text-center">No</th>
+                      <th className="py-3.5 px-4">Tanggal</th>
+                      <th className="py-3.5 px-4">Deskripsi &amp; Kategori</th>
+                      <th className="py-3.5 px-4 text-center">Qty</th>
+                      <th className="py-3.5 px-4 text-right">Harga Satuan</th>
+                      <th className="py-3.5 px-4 text-right">Total Biaya</th>
+                      <th className="py-3.5 px-4 text-center">Bukti Nota</th>
+                      <th className="py-3.5 px-4">Dicatat Oleh</th>
+                      <th className="py-3.5 px-4 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {(() => {
+                      const list = (financeData?.expenses || []).filter((item: any) => {
+                        if (!financeSearch.trim()) return true;
+                        const q = financeSearch.toLowerCase().trim();
+                        return (
+                          (item.deskripsi || '').toLowerCase().includes(q) ||
+                          (item.kategori || '').toLowerCase().includes(q) ||
+                          (item.created_by || '').toLowerCase().includes(q)
+                        );
+                      });
+
+                      if (list.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={9} className="py-12 text-center text-slate-400">
+                              <Receipt className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                              <p className="font-bold text-sm text-slate-600">
+                                {financeSearch ? 'Tidak ada pengeluaran yang cocok dengan pencarian' : 'Belum ada data pengeluaran tercatat'}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                Gunakan form di atas untuk mencatat pengeluaran acara pertama Anda
+                              </p>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return list.map((item: any, idx: number) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                            {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-800 text-xs">{item.deskripsi}</div>
+                            <span className="inline-block mt-0.5 text-[9px] uppercase font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                              {item.kategori || 'Operasional'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold text-slate-700 font-mono">
+                            {item.qty}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-600 whitespace-nowrap">
+                            Rp {(item.harga_satuan || 0).toLocaleString('id-ID')}
+                          </td>
+                          <td className="py-3 px-4 text-right font-black font-mono text-rose-600 whitespace-nowrap text-xs">
+                            Rp {(item.harga_total || 0).toLocaleString('id-ID')}
+                          </td>
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            {item.bukti_url ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewExpenseProof({
+                                  url: item.bukti_url,
+                                  title: item.deskripsi,
+                                  total: item.harga_total,
+                                  date: item.tanggal,
+                                  category: item.kategori
+                                })}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-brand-royal/10 text-brand-royal hover:bg-brand-royal/20 text-[11px] font-bold border border-brand-royal/20 transition-all cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>Lihat Bukti</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-300 text-[11px] italic">Tanpa Nota</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                            {item.created_by || 'Admin'}
+                          </td>
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center space-x-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setEditingExpenseItem({ ...item })}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-brand-royal hover:bg-brand-royal/10 transition-colors cursor-pointer"
+                                title="Edit Pengeluaran"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteExpenseId({ id: item.id, deskripsi: item.deskripsi })}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Hapus Pengeluaran"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                  {(financeData?.expenses || []).length > 0 && (
+                    <tfoot>
+                      <tr className="bg-slate-50/80 font-bold border-t-2 border-slate-200">
+                        <td colSpan={5} className="py-3 px-4 text-right uppercase text-[11px] text-slate-600">
+                          Total Seluruh Pengeluaran:
+                        </td>
+                        <td className="py-3 px-4 text-right font-black font-mono text-rose-600 text-sm whitespace-nowrap">
+                          Rp {(financeData?.total_pengeluaran || 0).toLocaleString('id-ID')}
+                        </td>
+                        <td colSpan={3}></td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {previewImage && (
@@ -3537,6 +4278,269 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PRATINJAU BUKTI PENGELUARAN */}
+      {previewExpenseProof && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Bukti Nota Pengeluaran">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl relative my-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Bukti Pembayaran / Nota
+                </span>
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 mt-1">
+                  {previewExpenseProof.title}
+                </h3>
+                <div className="text-xs text-slate-500 flex items-center space-x-2 mt-0.5">
+                  {previewExpenseProof.date && (
+                    <span>{new Date(previewExpenseProof.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                  )}
+                  {previewExpenseProof.category && (
+                    <>
+                      <span>•</span>
+                      <span className="capitalize">{previewExpenseProof.category}</span>
+                    </>
+                  )}
+                  <span>•</span>
+                  <span className="font-mono font-black text-rose-600">Rp {(previewExpenseProof.total || 0).toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewExpenseProof(null)}
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto flex items-center justify-center bg-slate-950/5 rounded-2xl p-2 border border-slate-200">
+              {previewExpenseProof.url.startsWith('http') || previewExpenseProof.url.startsWith('data:') ? (
+                <img
+                  src={previewExpenseProof.url}
+                  alt={previewExpenseProof.title}
+                  className="max-w-full h-auto max-h-[55vh] object-contain rounded-xl shadow-sm"
+                />
+              ) : (
+                <div className="p-8 text-center text-xs text-slate-600">
+                  <p className="font-bold mb-2">Tautan Nota Pengeluaran:</p>
+                  <a
+                    href={previewExpenseProof.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-royal underline break-all font-semibold"
+                  >
+                    {previewExpenseProof.url}
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              {previewExpenseProof.url.startsWith('http') && (
+                <a
+                  href={previewExpenseProof.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-brand-royal font-bold hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Buka di Tab Baru</span>
+                </a>
+              )}
+              <div className="ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setPreviewExpenseProof(null)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT PENGELUARAN */}
+      {editingExpenseItem && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Edit Pengeluaran">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl relative my-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand-royal/10 text-brand-royal flex items-center justify-center font-bold">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-brand-navy">Edit Catatan Pengeluaran</h3>
+                  <p className="text-xs text-slate-500">Perbarui rincian, jumlah, atau nota belanja</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingExpenseItem(null)}
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateExpense} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Pengeluaran *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingExpenseItem.deskripsi}
+                  onChange={(e) => setEditingExpenseItem({ ...editingExpenseItem, deskripsi: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-brand-royal"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Kategori</label>
+                  <select
+                    value={editingExpenseItem.kategori}
+                    onChange={(e) => setEditingExpenseItem({ ...editingExpenseItem, kategori: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                  >
+                    <option value="operasional">Operasional Umum</option>
+                    <option value="jersey">Jersey &amp; Produksi</option>
+                    <option value="konsumsi">Konsumsi &amp; Snack</option>
+                    <option value="medis">Medis &amp; Ambulance</option>
+                    <option value="perlengkapan">Perlengkapan &amp; Panggung</option>
+                    <option value="publikasi">Publikasi &amp; Banner</option>
+                    <option value="lainnya">Lain-lain</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
+                  <input
+                    type="date"
+                    required
+                    value={editingExpenseItem.tanggal}
+                    onChange={(e) => setEditingExpenseItem({ ...editingExpenseItem, tanggal: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Kuantitas (Qty)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={editingExpenseItem.qty}
+                    onChange={(e) => setEditingExpenseItem({ ...editingExpenseItem, qty: parseInt(e.target.value, 10) || 1 })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-center bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Harga Satuan (Rp)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1000"
+                    required
+                    value={editingExpenseItem.harga_satuan}
+                    onChange={(e) => setEditingExpenseItem({ ...editingExpenseItem, harga_satuan: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold font-mono bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-bold">Total Baru:</span>
+                <span className="font-mono font-black text-rose-600 text-sm">
+                  Rp {((editingExpenseItem.qty || 1) * (editingExpenseItem.harga_satuan || 0)).toLocaleString('id-ID')}
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Ganti Foto Bukti Nota</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-brand-navy hover:bg-brand-navyLight text-brand-yellow font-bold text-xs cursor-pointer shadow-sm">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{compressingExpenseProof ? 'Mengompres...' : 'Ganti Foto Nota'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={compressingExpenseProof || savingExpense}
+                      onChange={(e) => handleExpenseProofFileChange(e, true)}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {editingExpenseItem.bukti_url && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingExpenseItem({ ...editingExpenseItem, bukti_url: '' })}
+                      className="inline-flex items-center space-x-1 px-3 py-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-xs border border-rose-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus Nota</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingExpenseItem(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingExpense || compressingExpenseProof}
+                  className="px-5 py-2.5 rounded-xl bg-brand-royal hover:bg-brand-royalDark disabled:opacity-50 text-white text-xs font-extrabold shadow flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Save className="w-4 h-4 text-brand-yellow" />
+                  <span>{savingExpense ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS PENGELUARAN */}
+      {deleteExpenseId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus pengeluaran">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-center my-auto">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+              <Trash2 className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-slate-900">Hapus Catatan Pengeluaran?</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Apakah Anda yakin ingin menghapus pengeluaran <strong className="text-slate-800">"{deleteExpenseId.deskripsi}"</strong>? Data yang dihapus tidak dapat dipulihkan.
+              </p>
+            </div>
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteExpenseId(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 w-1/2"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteExpense}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow w-1/2 cursor-pointer"
+              >
+                Ya, Hapus
+              </button>
+            </div>
           </div>
         </div>
       )}

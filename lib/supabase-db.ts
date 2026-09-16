@@ -1,5 +1,5 @@
 import { getSupabaseAdmin, isSupabaseConfigured } from './supabase';
-import { normalizeCommunityName, type Registrant, type JerseyPO, type Settings, type AdminUser, type BibLookupParticipant, type JerseyKategori, type JerseySize } from './db';
+import { normalizeCommunityName, type Registrant, type JerseyPO, type Settings, type AdminUser, type BibLookupParticipant, type JerseyKategori, type JerseySize, type Expense } from './db';
 
 // ==========================================
 // 1. SETTINGS
@@ -1010,5 +1010,63 @@ export async function assignSupabaseUnbatchedToBatch(batchNumber: number): Promi
   }
 
   return count;
+}
+
+// ==========================================
+// 12. PENGELUARAN & KEUANGAN (FINANCE)
+// ==========================================
+export async function getSupabaseExpenses(): Promise<Expense[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase.from('expenses').select('*').order('tanggal', { ascending: false });
+    if (!error && data) {
+      return data as Expense[];
+    }
+  } catch (e) {
+    console.warn('Supabase expenses query fallback:', e);
+  }
+  return [];
+}
+
+export async function addSupabaseExpense(expense: Expense): Promise<Expense | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase.from('expenses').insert(expense).select().single();
+    if (!error && data) {
+      return data as Expense;
+    }
+    console.warn('Supabase insert expense failed (table might need creation):', error?.message);
+  } catch (e) {
+    console.warn('Failed addSupabaseExpense:', e);
+  }
+  return null;
+}
+
+export async function updateSupabaseExpense(id: string, updates: Partial<Expense>): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase.from('expenses').update(updates).eq('id', id);
+    return !error;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function deleteSupabaseExpense(id: string): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    return !error;
+  } catch (e) {
+    return false;
+  }
 }
 

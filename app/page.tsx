@@ -6,6 +6,7 @@ import SizeChart from '@/components/SizeChart';
 import PeaderalImpactGallery from '@/components/PeaderalImpactGallery';
 import GpxDownloadCard from '@/components/GpxDownloadCard';
 import CharityGoalProgressBar from '@/components/CharityGoalProgressBar';
+import FinancialTransparencyTable from '@/components/FinancialTransparencyTable';
 import {
   Bike,
   Heart,
@@ -19,7 +20,7 @@ import {
   Award,
   Download
 } from 'lucide-react';
-import { getSettings, getWallOfHeroesData } from '@/lib/db';
+import { getSettings, getWallOfHeroesData, getFinanceSummary } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Dynamic server render
@@ -27,6 +28,7 @@ export const revalidate = 0; // Dynamic server render
 export default async function HomePage() {
   const settings = await getSettings();
   const heroData = await getWallOfHeroesData();
+  const financeSummary = await getFinanceSummary();
 
   return (
     <div className="relative bg-brand-iceBg min-h-screen overflow-hidden">
@@ -157,6 +159,27 @@ export default async function HomePage() {
       <section className="py-10 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-8">
         {/* Charity Goal Target 100 Jersey Progress Bar */}
         <CharityGoalProgressBar currentCount={heroData.total_partisipan_jersey} targetCount={100} />
+
+        {/* LIVE Financial Transparency Table (Transparansi Kas Acara) */}
+        <FinancialTransparencyTable
+          initialData={{
+            total_pemasukan_lunas: financeSummary.total_pemasukan_lunas,
+            total_qty_jersey_lunas: financeSummary.total_qty_jersey_lunas,
+            total_pengeluaran: financeSummary.total_pengeluaran,
+            saldo_kas: financeSummary.saldo_kas,
+            expenses: financeSummary.expenses.map((e) => ({
+              id: e.id,
+              deskripsi: e.deskripsi,
+              kategori: e.kategori || 'operasional',
+              qty: e.qty,
+              harga_satuan: e.harga_satuan,
+              harga_total: e.harga_total,
+              bukti_url: e.bukti_url || null,
+              tanggal: e.tanggal,
+              created_at: e.created_at
+            }))
+          }}
+        />
 
         <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-10 border border-brand-sky/30 shadow-card relative overflow-hidden">
           <div className="text-center max-w-2xl sm:max-w-3xl mx-auto mb-6 sm:mb-8 space-y-2 sm:space-y-3">
