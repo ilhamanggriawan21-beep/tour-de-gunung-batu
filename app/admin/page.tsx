@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import TopoBackground from '@/components/TopoBackground';
 import BibCard from '@/components/BibCard';
 import { downloadBibCard } from '@/lib/downloadBib';
+import { generateBulkBibZip, triggerDownload, BulkBibProgress, ParticipantForBib } from '@/lib/bulkBibZip';
 import {
   ShieldCheck,
   Users,
   Shirt,
   Download,
+  FolderArchive,
+  Loader2,
   Settings as SettingsIcon,
   User,
   CheckCircle,
@@ -168,6 +171,106 @@ export default function AdminDashboardPage() {
   const [deleteRegistrantId, setDeleteRegistrantId] = useState<{ id: string; nama: string } | null>(null);
   const [deletePoId, setDeletePoId] = useState<{ id: string; nama: string } | null>(null);
   const [selectedBibParticipant, setSelectedBibParticipant] = useState<any>(null);
+
+  // Bulk BIB Download Modal State
+  const [showBulkBibModal, setShowBulkBibModal] = useState(false);
+  const [bulkBibRangeMode, setBulkBibRangeMode] = useState<'all' | 'verified' | 'batch' | 'custom'>('all');
+  const [bulkBibBatchPreset, setBulkBibBatchPreset] = useState<'1-100' | '101-200' | '201-300' | '301-400'>('1-100');
+  const [bulkBibCustomMin, setBulkBibCustomMin] = useState<number>(1);
+  const [bulkBibCustomMax, setBulkBibCustomMax] = useState<number>(100);
+  const [bulkBibProcessing, setBulkBibProcessing] = useState(false);
+  const [bulkBibProgress, setBulkBibProgress] = useState<BulkBibProgress | null>(null);
+  const [bulkBibAbortCtrl, setBulkBibAbortCtrl] = useState<AbortController | null>(null);
+  const [bulkBibSuccessMessage, setBulkBibSuccessMessage] = useState<string | null>(null);
+
+  const getBulkBibTargetList = (): ParticipantForBib[] => {
+    const all: ParticipantForBib[] = registrantsData
+      .map((item) => {
+        const r = item.registrant;
+        const po = item.jersey_po;
+        return {
+          id: r.id,
+          nomor_bib: Number(r.nomor_bib) || 0,
+          nama_lengkap: r.nama_lengkap || '',
+          komunitas: r.komunitas || '',
+          nomor_registrasi: r.nomor_registrasi || '',
+          jenis_registrasi: r.jenis_registrasi,
+          status_pembayaran: po?.status_pembayaran || (r.jenis_registrasi === 'daftar_saja' ? 'lunas' : 'menunggu_verifikasi'),
+        };
+      })
+      .filter((p) => p.nomor_bib > 0)
+      .sort((a, b) => a.nomor_bib - b.nomor_bib);
+
+    if (bulkBibRangeMode === 'verified') {
+      return all.filter((p) => p.status_pembayaran === 'lunas');
+    }
+
+    if (bulkBibRangeMode === 'batch') {
+      const [minStr, maxStr] = bulkBibBatchPreset.split('-');
+      const min = parseInt(minStr, 10);
+      const max = parseInt(maxStr, 10);
+      return all.filter((p) => p.nomor_bib >= min && p.nomor_bib <= max);
+    }
+
+    if (bulkBibRangeMode === 'custom') {
+      const min = Number(bulkBibCustomMin) || 1;
+      const max = Number(bulkBibCustomMax) || 9999;
+      return all.filter((p) => p.nomor_bib >= min && p.nomor_bib <= max);
+    }
+
+    return all;
+  };
+
+  const handleStartBulkBibDownload = async () => {
+    const list = getBulkBibTargetList();
+    if (list.length === 0) {
+      alert('Tidak ada peserta pada filter/rentang nomor BIB yang dipilih.');
+      return;
+    }
+
+    const controller = new AbortController();
+    setBulkBibAbortCtrl(controller);
+    setBulkBibProcessing(true);
+    setBulkBibSuccessMessage(null);
+
+    try {
+      const zipBlob = await generateBulkBibZip(
+        list,
+        (progress) => {
+          setBulkBibProgress(progress);
+        },
+        controller.signal
+      );
+
+      if (zipBlob) {
+        let zipName = `BIB_Semua_Peserta_${list.length}_Nomor.zip`;
+        if (bulkBibRangeMode === 'verified') {
+          zipName = `BIB_Peserta_Lunas_${list.length}_Nomor.zip`;
+        } else if (bulkBibRangeMode === 'batch') {
+          zipName = `BIB_Batch_${bulkBibBatchPreset}.zip`;
+        } else if (bulkBibRangeMode === 'custom') {
+          zipName = `BIB_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}.zip`;
+        }
+
+        triggerDownload(zipBlob, zipName);
+        setBulkBibSuccessMessage(`Selesai! ${list.length} file gambar BIB berhasil dikemas dalam ${zipName}.`);
+      }
+    } catch (err: any) {
+      console.error('Bulk BIB generation error:', err);
+      alert('Terjadi kesalahan saat memproses gambar BIB: ' + (err?.message || 'Error tidak diketahui'));
+    } finally {
+      setBulkBibProcessing(false);
+      setBulkBibAbortCtrl(null);
+    }
+  };
+
+  const handleCancelBulkBib = () => {
+    if (bulkBibAbortCtrl) {
+      bulkBibAbortCtrl.abort();
+    }
+    setBulkBibProcessing(false);
+    setBulkBibProgress(null);
+  };
 
   // Quick Upload Proof Modal State
   const [quickUploadItem, setQuickUploadItem] = useState<any | null>(null);
@@ -1375,23 +1478,37 @@ export default function AdminDashboardPage() {
 
             {/* Instant Search Bar */}
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Ketik No. BIB (misal: 1001), Nama Peserta, atau Komunitas..."
-                  value={checkInSearch}
-                  onChange={(e) => setCheckInSearch(e.target.value)}
-                  className="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 bg-slate-50/50"
-                />
-                {checkInSearch && (
-                  <button
-                    onClick={() => setCheckInSearch('')}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Ketik No. BIB (misal: 1001), Nama Peserta, atau Komunitas..."
+                    value={checkInSearch}
+                    onChange={(e) => setCheckInSearch(e.target.value)}
+                    className="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 bg-slate-50/50"
+                  />
+                  {checkInSearch && (
+                    <button
+                      onClick={() => setCheckInSearch('')}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkBibSuccessMessage(null);
+                    setShowBulkBibModal(true);
+                  }}
+                  className="shrink-0 bg-brand-navy hover:bg-brand-royal text-white text-xs font-bold px-4 py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition-colors min-h-[46px]"
+                >
+                  <Download className="w-4 h-4 text-brand-yellow" />
+                  <span>Unduh Massal BIB (.ZIP)</span>
+                </button>
               </div>
 
               {/* Fast Filter Chips */}
@@ -2538,15 +2655,28 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
 
-              <a
-                href="/api/admin/export"
-                target="_blank"
-                download
-                className="w-full sm:w-auto min-h-11 justify-center bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center space-x-1.5"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download File Rekap CSV</span>
-              </a>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkBibSuccessMessage(null);
+                    setShowBulkBibModal(true);
+                  }}
+                  className="w-full sm:w-auto min-h-11 justify-center bg-brand-navy hover:bg-brand-royal text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center space-x-1.5 transition-colors"
+                >
+                  <Download className="w-4 h-4 text-brand-yellow" />
+                  <span>Unduh Massal BIB (.ZIP)</span>
+                </button>
+                <a
+                  href="/api/admin/export"
+                  target="_blank"
+                  download
+                  className="w-full sm:w-auto min-h-11 justify-center bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center space-x-1.5"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download File Rekap CSV</span>
+                </a>
+              </div>
             </div>
 
             <div className="relative w-full max-w-md">
@@ -4225,6 +4355,278 @@ export default function AdminDashboardPage() {
               nomorRegistrasi={selectedBibParticipant.nomor_registrasi}
               jenisRegistrasi={selectedBibParticipant.jenis_registrasi}
             />
+          </div>
+        </div>
+      )}
+
+      {/* BULK BIB DOWNLOAD MODAL */}
+      {showBulkBibModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Unduh Massal Nomor BIB Peserta">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-5 sm:p-7 space-y-5 shadow-2xl relative border border-brand-sky/40 my-auto animate-in fade-in zoom-in duration-200">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                if (bulkBibProcessing) {
+                  if (confirm('Proses download sedang berjalan. Yakin ingin membatalkan?')) {
+                    handleCancelBulkBib();
+                    setShowBulkBibModal(false);
+                  }
+                } else {
+                  setShowBulkBibModal(false);
+                  setBulkBibSuccessMessage(null);
+                  setBulkBibProgress(null);
+                }
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors z-10"
+              aria-label="Tutup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Title & Info */}
+            <div className="text-left pr-8">
+              <div className="inline-flex items-center space-x-2 bg-brand-navy/10 text-brand-navy font-bold text-xs px-3 py-1 rounded-full mb-2">
+                <FolderArchive className="w-3.5 h-3.5 text-brand-royal" />
+                <span>Bulk BIB Generator (Siap Cetak)</span>
+              </div>
+              <h3 className="font-extrabold text-xl sm:text-2xl text-brand-navy">
+                Unduh Massal Nomor BIB (.ZIP)
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Render seluruh kartu nomor BIB digital beresolusi tinggi (2482×1749 px) dan dikemas otomatis menjadi 1 file ZIP siap diserahkan ke vendor percetakan.
+              </p>
+            </div>
+
+            {/* Filter / Scope Options */}
+            {!bulkBibProcessing && (
+              <div className="space-y-4 pt-1">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-2">
+                    Pilih Cakupan Peserta:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBulkBibRangeMode('all')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        bulkBibRangeMode === 'all'
+                          ? 'border-brand-royal bg-brand-royal/5 ring-2 ring-brand-royal/20 text-brand-navy font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">Semua Peserta</span>
+                      <span className="block text-[11px] text-slate-400 mt-0.5">Semua nomor BIB terdaftar</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBulkBibRangeMode('verified')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        bulkBibRangeMode === 'verified'
+                          ? 'border-brand-royal bg-brand-royal/5 ring-2 ring-brand-royal/20 text-brand-navy font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">Hanya Yang Lunas</span>
+                      <span className="block text-[11px] text-slate-400 mt-0.5">Daftar saja &amp; PO Lunas</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBulkBibRangeMode('batch')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        bulkBibRangeMode === 'batch'
+                          ? 'border-brand-royal bg-brand-royal/5 ring-2 ring-brand-royal/20 text-brand-navy font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">Batch 100 Nomor</span>
+                      <span className="block text-[11px] text-slate-400 mt-0.5">Rekomendasi cetak bertahap</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBulkBibRangeMode('custom')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        bulkBibRangeMode === 'custom'
+                          ? 'border-brand-royal bg-brand-royal/5 ring-2 ring-brand-royal/20 text-brand-navy font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">Rentang Khusus</span>
+                      <span className="block text-[11px] text-slate-400 mt-0.5">Tentukan nomor min &amp; max</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Batch Presets */}
+                {bulkBibRangeMode === 'batch' && (
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                    <label className="text-[11px] font-bold text-slate-600 block">Pilih Kelompok Batch:</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: '1-100', label: 'BIB 001 - 100' },
+                        { id: '101-200', label: 'BIB 101 - 200' },
+                        { id: '201-300', label: 'BIB 201 - 300' },
+                        { id: '301-400', label: 'BIB 301 - 400' },
+                      ].map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setBulkBibBatchPreset(b.id as any)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            bulkBibBatchPreset === b.id
+                              ? 'bg-brand-royal text-white shadow-sm'
+                              : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Range Inputs */}
+                {bulkBibRangeMode === 'custom' && (
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                    <label className="text-[11px] font-bold text-slate-600 block">Rentang Nomor BIB:</label>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-1">
+                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Dari BIB:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={9999}
+                          value={bulkBibCustomMin}
+                          onChange={(e) => setBulkBibCustomMin(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold"
+                        />
+                      </div>
+                      <span className="text-slate-400 font-bold mt-4">s/d</span>
+                      <div className="flex-1">
+                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Sampai BIB:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={9999}
+                          value={bulkBibCustomMax}
+                          onChange={(e) => setBulkBibCustomMax(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Target Count Preview */}
+                {(() => {
+                  const targetList = getBulkBibTargetList();
+                  return (
+                    <div className="p-3.5 bg-brand-iceBg rounded-2xl border border-brand-sky/40 flex items-center justify-between">
+                      <div className="text-xs">
+                        <span className="text-slate-500 font-medium block">Total yang akan di-render:</span>
+                        <span className="text-brand-navy font-black text-sm">
+                          {targetList.length} Kartu BIB
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-bold text-brand-royal bg-white px-2.5 py-1 rounded-lg border border-brand-sky/60 shadow-sm">
+                        Format PNG 2.5K
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Progress Bar & Live Status */}
+            {bulkBibProcessing && (
+              <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-brand-navy flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 text-brand-royal animate-spin" />
+                    <span>
+                      {bulkBibProgress?.stage === 'loading_assets' && 'Memuat template desain...'}
+                      {bulkBibProgress?.stage === 'rendering' && `Merender Kartu ${bulkBibProgress.current} dari ${bulkBibProgress.total}`}
+                      {bulkBibProgress?.stage === 'zipping' && 'Mengompres file ZIP...'}
+                      {bulkBibProgress?.stage === 'done' && 'Proses Selesai!'}
+                    </span>
+                  </span>
+                  <span className="font-mono font-black text-brand-royal text-sm">
+                    {bulkBibProgress?.percent || 0}%
+                  </span>
+                </div>
+
+                {/* Progress Bar Track */}
+                <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden p-0.5">
+                  <div
+                    className="bg-gradient-to-r from-brand-royal to-brand-yellow h-full rounded-full transition-all duration-200 ease-out"
+                    style={{ width: `${bulkBibProgress?.percent || 0}%` }}
+                  />
+                </div>
+
+                {bulkBibProgress?.currentName && (
+                  <p className="text-[11px] text-slate-500 truncate font-mono">
+                    Sedang memproses: <strong className="text-slate-700">{bulkBibProgress.currentName}</strong>
+                  </p>
+                )}
+
+                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-800 flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <span>
+                    Mohon jangan menutup atau memuat ulang halaman ini hingga proses download file ZIP selesai otomatis.
+                  </span>
+                </div>
+
+                <div className="pt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={handleCancelBulkBib}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline"
+                  >
+                    Batalkan Pembuatan
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {bulkBibSuccessMessage && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span className="font-bold">{bulkBibSuccessMessage}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={bulkBibProcessing}
+                onClick={() => {
+                  setShowBulkBibModal(false);
+                  setBulkBibSuccessMessage(null);
+                  setBulkBibProgress(null);
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 disabled:opacity-50"
+              >
+                Tutup
+              </button>
+
+              {!bulkBibProcessing && (
+                <button
+                  type="button"
+                  disabled={getBulkBibTargetList().length === 0}
+                  onClick={handleStartBulkBibDownload}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>
+                    Mulai Unduh ZIP ({getBulkBibTargetList().length} Peserta)
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
