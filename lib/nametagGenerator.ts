@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import jsPDF from 'jspdf';
 import { ensureSakanaFontLoaded } from './bulkBibZip';
 
 export interface PanitiaMember {
@@ -8,6 +9,7 @@ export interface PanitiaMember {
   nomor_panitia?: string;
   kontak?: string;
   golongan_darah?: string;
+  tugas?: string[];
 }
 
 export interface NametagDivisionConfig {
@@ -33,6 +35,89 @@ export const DIVISION_PRESETS: Record<string, NametagDivisionConfig> = {
   'PANITIA UMUM': { bg: '#1D3AAE', color: '#FFFFFF', borderColor: '#60A5FA' },
 };
 
+export const DEFAULT_DIVISION_TASKS: Record<string, string[]> = {
+  'KETUA PELAKSANA': [
+    'Memimpin komando & koordinasi seluruh divisi panitia.',
+    'Pengambil keputusan utama operasional rute & venue.',
+    'Pusat komunikasi dengan kepolisian, Dishub, dan aparatur desa.',
+    'Memastikan seluruh rundown acara berjalan tertib & aman.',
+    'Evaluasi & mitigasi risiko keselamatan selama event berlangsung.',
+  ],
+  'CO-LEAD / WAKIL': [
+    'Mendampingi Ketua Pelaksana dalam pengawasan lapangan.',
+    'Supervisi operasional divisi marshall, sweeper, dan logistik.',
+    'Penanggung jawab alur penanganan kendala tak terduga di jalur.',
+    'Monitoring alur check-in peserta dan kesiapan venue finish.',
+  ],
+  'MARSHALL': [
+    'Memandu rombongan pesepeda sesuai rute resmi Tour de Gunung Batu.',
+    'Mengatur ritme kecepatan dan kerapian barisan peloton.',
+    'Siaga di persimpangan rawan & turunan curam pegunungan.',
+    'Komunikasi aktif via Radio/WA dengan Sweeper dan Tim Medis.',
+    'Menjaga keselamatan peserta dari arus kendaraan umum.',
+  ],
+  'ROAD CAPTAIN': [
+    'Memimpin rombongan depan (pace maker) dengan aman.',
+    'Menentukan titik regruping dan istirahat sementara.',
+    'Memperingatkan peserta terkait kondisi jalan berlubang/tajam.',
+    'Berkoordinasi dengan tim voorijder dan keamanan rute.',
+  ],
+  'TIM MEDIS': [
+    'Siaga pertolongan pertama (P3K) di ambulans dan posko kesehatan.',
+    'Penanganan cepat kram, dehidrasi, luka jatuh, & kelelahan.',
+    'Koordinasi darurat dengan RS rujukan terdekat jalur Jonggol.',
+    'Monitoring kondisi fisik peserta di segmen tanjakan terjal.',
+  ],
+  'SWEEPER': [
+    'Menyapu posisi paling belakang rombongan (No rider left behind).',
+    'Mendampingi dan memotivasi peserta yang tertinggal di tanjakan.',
+    'Evakuasi peserta & sepeda ke mobil SAG jika DNF / cut-off.',
+    'Memastikan rute bersih dari peserta sebelum evakuasi akhir.',
+  ],
+  'SAG WAGON': [
+    'Mengemudikan mobil pick-up / evakuasi di belakang sweeper.',
+    'Memuat sepeda dan peserta yang mengalami kendala teknis/fisik.',
+    'Menyediakan pompa cadangan, ban dalam, dan toolkit sepeda.',
+    'Mengantar peserta evakuasi ke venue finish Gunung Batu.',
+  ],
+  'REGISTRASI & BIB': [
+    'Melayani check-in kehadiran peserta di meja registrasi.',
+    'Verifikasi identitas dan pembagian nomor BIB + Goodie Bag.',
+    'Pencatatan ukuran jersey dan distribusi pesanan PO.',
+    'Menangani peserta susulan dan rekap kehadiran final.',
+  ],
+  'LOGISTIK': [
+    'Mengelola persediaan air mineral, isotonic, & buah di WS.',
+    'Distribusi perlengkapan tenda, sound system, & banner.',
+    'Pengelolaan drop bag peserta dari start hingga finish.',
+    'Loading dan inventarisasi peralatan sebelum & sesudah event.',
+  ],
+  'DOKUMENTASI': [
+    'Mengambil foto & video aksi peserta di spot terbaik rute.',
+    'Operasional drone di tanjakan ikonik Gunung Batu.',
+    'Live update konten reels/story Instagram resmi event.',
+    'Penyortiran dan pengarsipan hasil dokumentasi peserta.',
+  ],
+  'KONSUMSI': [
+    'Menyiapkan snack pagi dan makan siang untuk peserta & panitia.',
+    'Memastikan pasokan logistik buah di tiap Water Station.',
+    'Distribusi konsumsi tepat waktu sesuai jadwal rundown.',
+    'Menjaga kebersihan area makan dan kantong sampah venue.',
+  ],
+  'KEAMANAN': [
+    'Mensterilkan titik start, finish, dan persimpangan padat.',
+    'Mengatur area parkir kendaraan peserta dan panitia.',
+    'Koordinasi dengan warga lokal dan aparat keamanan setempat.',
+    'Mengamankan sepeda dan barang bawaan peserta di venue.',
+  ],
+  'PANITIA UMUM': [
+    'Membantu kelancaran operasional di seluruh area event.',
+    'Siaga menerima instruksi fleksibel dari Koordinator.',
+    'Membantu mobilisasi peserta di area start dan finish.',
+    'Menjaga ketertiban, kebersihan, dan keselamatan bersama.',
+  ],
+};
+
 export function getDivisionConfig(divisi: string): NametagDivisionConfig {
   const upper = divisi.trim().toUpperCase();
   for (const [key, config] of Object.entries(DIVISION_PRESETS)) {
@@ -43,519 +128,579 @@ export function getDivisionConfig(divisi: string): NametagDivisionConfig {
   return DIVISION_PRESETS['PANITIA UMUM'];
 }
 
-// Single ID card dimensions @ 300 DPI (~85 x 125 mm)
-export const NAMETAG_WIDTH = 1000;
-export const NAMETAG_HEIGHT = 1480;
+export function getDivisionTasks(divisi: string): string[] {
+  const upper = divisi.trim().toUpperCase();
+  for (const [key, tasks] of Object.entries(DEFAULT_DIVISION_TASKS)) {
+    if (upper.includes(key) || key.includes(upper)) {
+      return tasks;
+    }
+  }
+  return DEFAULT_DIVISION_TASKS['PANITIA UMUM'];
+}
 
-let cachedEventLogo: HTMLImageElement | null = null;
+// B4 Paper size @ 300 DPI: 9.6 cm x 13.3 cm
+// 96 mm / 25.4 * 300 = 1133.85 -> 1134 px
+// 133 mm / 25.4 * 300 = 1570.86 -> 1572 px
+export const NAMETAG_WIDTH = 1134;
+export const NAMETAG_HEIGHT = 1572;
 
-async function ensureEventLogoLoaded(): Promise<HTMLImageElement | null> {
-  if (cachedEventLogo && cachedEventLogo.complete && cachedEventLogo.naturalWidth > 0) {
-    return cachedEventLogo;
+// A3+ Paper dimensions @ 300 DPI: 329 x 483 mm
+const A3_PLUS_WIDTH = 3886;
+const A3_PLUS_HEIGHT = 5705;
+
+let cachedNametagTemplate: HTMLImageElement | null = null;
+
+export async function ensureNametagTemplateLoaded(): Promise<HTMLImageElement | null> {
+  if (cachedNametagTemplate && cachedNametagTemplate.complete && cachedNametagTemplate.naturalWidth > 0) {
+    return cachedNametagTemplate;
   }
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = '/images/logo_event.png';
+    img.src = '/NAMETAG.jpg?v=2';
     img.onload = () => {
-      cachedEventLogo = img;
+      cachedNametagTemplate = img;
       resolve(img);
     };
-    img.onerror = () => {
-      // Fallback
-      resolve(null);
-    };
+    img.onerror = () => resolve(null);
   });
 }
 
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const width = ctx.measureText(testLine).width;
+    if (width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
 /**
- * Render a single Nametag onto a 1000 x 1480 canvas
+ * Draw Tampak Depan (Front) of Panitia Nametag (1134 x 1572 px @ 300 DPI)
+ */
+export function drawNametagFront(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  member: PanitiaMember,
+  templateImg: HTMLImageElement | null,
+  hasSakanaFont: boolean
+) {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // 1. Draw Template Image Left Half (0, 0, 1134, 1572)
+  if (templateImg && templateImg.complete && templateImg.naturalWidth > 0) {
+    ctx.drawImage(templateImg, 0, 0, 1134, 1572, 0, 0, w, h);
+  } else {
+    // Fallback gradient if image not found
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, '#0F2060');
+    grad.addColorStop(1, '#080D28');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // 2. Member Name (Centered inside white bar area below "PANITIA", y: 800 - 950)
+  ctx.save();
+  const cleanName = member.nama.trim().toUpperCase();
+  let nameFontSize = 62;
+  ctx.font = `900 ${nameFontSize}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  const maxNameW = w * 0.84; // ~950 px
+  let measuredW = ctx.measureText(cleanName).width;
+  if (measuredW > maxNameW) {
+    nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
+    ctx.font = `900 ${nameFontSize}px sans-serif`;
+  }
+
+  // Name drop shadow
+  ctx.shadowColor = 'rgba(10, 19, 56, 0.25)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = '#0A1338'; // Deep Royal Navy
+  ctx.fillText(cleanName, w / 2, 895);
+  ctx.restore();
+
+  // 3. Division Pill Badge (y: 955 to 1035)
+  const divConfig = getDivisionConfig(member.divisi);
+  ctx.save();
+  const divText = member.divisi.trim().toUpperCase();
+
+  let divFontSize = 38;
+  ctx.font = `900 ${divFontSize}px sans-serif`;
+  const divTextW = ctx.measureText(divText).width;
+  const pillW = Math.min(w * 0.82, Math.max(380, divTextW + 80));
+  const pillH = 74;
+  const pillX = (w - pillW) / 2;
+  const pillY = 960;
+
+  // Badge background & shadow
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 5;
+  ctx.fillStyle = divConfig.bg;
+  ctx.beginPath();
+  if (typeof (ctx as any).roundRect === 'function') {
+    (ctx as any).roundRect(pillX, pillY, pillW, pillH, 22);
+  } else {
+    ctx.fillRect(pillX, pillY, pillW, pillH);
+  }
+  ctx.fill();
+
+  // Badge border
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = '#0A1338';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Division text
+  ctx.fillStyle = divConfig.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(divText, w / 2, pillY + pillH / 2);
+  ctx.restore();
+
+  // 4. Sub-details footer (Kode Kru, No WhatsApp, Gol Darah)
+  ctx.save();
+  const subText = `${member.nomor_panitia || 'CREW'}  •  WA: ${member.kontak || '-'}  •  GOL: ${member.golongan_darah || 'O'}`;
+  ctx.fillStyle = '#1D3AAE';
+  ctx.font = 'bold 25px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(subText, w / 2, 1085);
+  ctx.restore();
+}
+
+/**
+ * Draw Tampak Belakang (Back - Tugas) of Panitia Nametag (1134 x 1572 px @ 300 DPI)
+ */
+export function drawNametagBack(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  member: PanitiaMember,
+  templateImg: HTMLImageElement | null,
+  hasSakanaFont: boolean
+) {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // 1. Draw Template Image Right Half (1134, 0, 1134, 1572)
+  if (templateImg && templateImg.complete && templateImg.naturalWidth > 0) {
+    ctx.drawImage(templateImg, 1134, 0, 1134, 1572, 0, 0, w, h);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, '#0F2060');
+    grad.addColorStop(1, '#080D28');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const divConfig = getDivisionConfig(member.divisi);
+  const tasks = member.tugas && member.tugas.length > 0 ? member.tugas : getDivisionTasks(member.divisi);
+
+  // 2. Sub-header below "TUGAS :"
+  ctx.save();
+  ctx.fillStyle = '#0A1338';
+  ctx.font = '900 32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`DIVISI: ${member.divisi.toUpperCase()}`, w / 2, 515);
+
+  // Accent divider line
+  ctx.fillStyle = divConfig.bg;
+  ctx.fillRect((w - 280) / 2, 560, 280, 5);
+  ctx.restore();
+
+  // 3. List of Duties (Bullets)
+  let currentY = 600;
+  const bulletX = 145;
+  const textX = 185;
+  const maxTextW = 820;
+
+  for (let i = 0; i < tasks.length && i < 5; i++) {
+    const task = tasks[i];
+
+    ctx.save();
+    // Numbered circular bullet badge
+    ctx.fillStyle = '#1D3AAE';
+    ctx.beginPath();
+    ctx.arc(bulletX, currentY + 16, 17, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), bulletX, currentY + 16);
+
+    // Duty text (with multi-line wrap support)
+    ctx.fillStyle = '#1E293B';
+    ctx.font = 'bold 27px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    const lines = wrapText(ctx, task, maxTextW);
+    for (let l = 0; l < lines.length; l++) {
+      ctx.fillText(lines[l], textX, currentY + l * 38);
+    }
+    ctx.restore();
+
+    currentY += Math.max(lines.length * 38 + 22, 64);
+  }
+
+  // 4. Bottom Info Card Footer
+  ctx.save();
+  const boxW = 880;
+  const boxH = 90;
+  const boxX = (w - boxW) / 2;
+  const boxY = 1350;
+
+  ctx.fillStyle = 'rgba(29, 58, 174, 0.08)';
+  ctx.strokeStyle = 'rgba(29, 58, 174, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (typeof (ctx as any).roundRect === 'function') {
+    (ctx as any).roundRect(boxX, boxY, boxW, boxH, 16);
+  } else {
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+  }
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#0A1338';
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('RADIO MARSHALL CH-01  •  DARURAT: 0877-4587-0767', w / 2, boxY + 34);
+
+  ctx.fillStyle = '#64748B';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText('TOUR DE GUNUNG BATU 2026  •  OFFICIAL COMMITTEE', w / 2, boxY + 64);
+  ctx.restore();
+}
+
+/**
+ * Universal Draw Function (Tampak Depan or Belakang)
  */
 export function drawSingleNametag(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   member: PanitiaMember,
-  eventLogo: HTMLImageElement | null,
-  hasSakanaFont: boolean
+  templateImg: HTMLImageElement | null,
+  hasSakanaFont: boolean,
+  side: 'front' | 'back' = 'front'
 ) {
-  const w = canvas.width;
-  const h = canvas.height;
-
-  // Clear
-  ctx.clearRect(0, 0, w, h);
-
-  // 1. Background Gradient (Deep Navy)
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-  bgGrad.addColorStop(0, '#0E1742');
-  bgGrad.addColorStop(0.5, '#0A1032');
-  bgGrad.addColorStop(1, '#05091D');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, w, h);
-
-  // Background subtle accent lines (Cyber-athletic elevation contour curves)
-  ctx.save();
-  ctx.strokeStyle = 'rgba(244, 199, 22, 0.07)';
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 5; i++) {
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.35 + i * 90);
-    ctx.bezierCurveTo(w * 0.3, h * 0.3 + i * 80, w * 0.7, h * 0.42 + i * 90, w, h * 0.36 + i * 85);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // 2. Outer Border (Dual Gold & Sky)
-  ctx.save();
-  ctx.strokeStyle = '#F4C716';
-  ctx.lineWidth = 10;
-  ctx.strokeRect(20, 20, w - 40, h - 40);
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(32, 32, w - 64, h - 64);
-  ctx.restore();
-
-  // 3. Top Punch Slot Marker (Guide for Lanyard Clip / Hole Punch)
-  ctx.save();
-  ctx.fillStyle = '#1E293B';
-  ctx.strokeStyle = 'rgba(244, 199, 22, 0.6)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 6]);
-  const punchW = 120;
-  const punchH = 32;
-  const punchX = (w - punchW) / 2;
-  const punchY = 48;
-  if (typeof (ctx as any).roundRect === 'function') {
-    (ctx as any).roundRect(punchX, punchY, punchW, punchH, 16);
+  canvas.width = NAMETAG_WIDTH;
+  canvas.height = NAMETAG_HEIGHT;
+  if (side === 'back') {
+    drawNametagBack(canvas, ctx, member, templateImg, hasSakanaFont);
   } else {
-    ctx.rect(punchX, punchY, punchW, punchH);
+    drawNametagFront(canvas, ctx, member, templateImg, hasSakanaFont);
   }
-  ctx.stroke();
-  ctx.restore();
-
-  // 4. Header: Event Title & Branding
-  ctx.save();
-  ctx.textAlign = 'center';
-
-  // Event logo or fallback text
-  if (eventLogo && eventLogo.complete && eventLogo.naturalWidth > 0) {
-    const logoW = 190;
-    const logoH = 105;
-    ctx.drawImage(eventLogo, (w - logoW) / 2, 100, logoW, logoH);
-  }
-
-  // Event Name
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 40px sans-serif';
-  ctx.fillText('TOUR DE GUNUNG BATU', w / 2, 240);
-
-  ctx.fillStyle = '#F4C716';
-  ctx.font = '900 24px sans-serif';
-  ctx.letterSpacing = '6px';
-  ctx.fillText('• 2 0 2 6 •', w / 2, 276);
-
-  // Sub-header Banner: OFFICIAL COMMITTEE
-  ctx.fillStyle = '#1D3AAE';
-  const badgeH = 50;
-  const badgeW = 440;
-  const badgeY = 308;
-  const badgeX = (w - badgeW) / 2;
-  if (typeof (ctx as any).roundRect === 'function') {
-    ctx.beginPath();
-    (ctx as any).roundRect(badgeX, badgeY, badgeW, badgeH, 25);
-    ctx.fill();
-    ctx.strokeStyle = '#F4C716';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-  } else {
-    ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-  }
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 22px sans-serif';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('OFFICIAL COMMITTEE / PANITIA', w / 2, badgeY + badgeH / 2);
-  ctx.restore();
-
-  // 5. Central Division / Role Badge (Large & Eye-Catching)
-  const divConfig = getDivisionConfig(member.divisi);
-  ctx.save();
-  const roleBoxW = w * 0.88;
-  const roleBoxH = 170;
-  const roleBoxX = (w - roleBoxW) / 2;
-  const roleBoxY = 410;
-
-  // Box shadow / glow
-  ctx.shadowColor = divConfig.bg;
-  ctx.shadowBlur = 30;
-  ctx.fillStyle = divConfig.bg;
-  ctx.beginPath();
-  if (typeof (ctx as any).roundRect === 'function') {
-    (ctx as any).roundRect(roleBoxX, roleBoxY, roleBoxW, roleBoxH, 28);
-  } else {
-    ctx.fillRect(roleBoxX, roleBoxY, roleBoxW, roleBoxH);
-  }
-  ctx.fill();
-
-  ctx.shadowBlur = 0; // reset
-  ctx.strokeStyle = divConfig.borderColor;
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  // Division Label
-  ctx.fillStyle = divConfig.color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  // Auto-scale division font if long
-  let divFontSize = 64;
-  ctx.font = `900 ${divFontSize}px sans-serif`;
-  const divText = member.divisi.toUpperCase();
-  const maxDivTextW = roleBoxW * 0.88;
-  let divTextW = ctx.measureText(divText).width;
-  if (divTextW > maxDivTextW) {
-    divFontSize = Math.floor(divFontSize * (maxDivTextW / divTextW));
-    ctx.font = `900 ${divFontSize}px sans-serif`;
-  }
-  ctx.fillText(divText, w / 2, roleBoxY + roleBoxH / 2);
-  ctx.restore();
-
-  // 6. Committee ID / Crew Number (e.g. CREW #01)
-  ctx.save();
-  const crewCode = member.nomor_panitia || 'CREW';
-  ctx.fillStyle = 'rgba(244, 199, 22, 0.9)';
-  ctx.font = 'bold 28px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(crewCode.toUpperCase(), w / 2, 640);
-  ctx.restore();
-
-  // 7. Committee Member Name (Prominent, Bold)
-  ctx.save();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  const cleanName = member.nama.trim().toUpperCase();
-  let nameFontSize = 76;
-  ctx.font = `900 ${nameFontSize}px sans-serif`;
-  const maxNameW = w * 0.86;
-  let measuredNameW = ctx.measureText(cleanName).width;
-  if (measuredNameW > maxNameW) {
-    nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredNameW));
-    ctx.font = `900 ${nameFontSize}px sans-serif`;
-  }
-
-  // Name glow
-  ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
-  ctx.shadowBlur = 15;
-  ctx.fillText(cleanName, w / 2, 730);
-  ctx.shadowBlur = 0;
-
-  // Name separator bar
-  ctx.fillStyle = '#F4C716';
-  ctx.fillRect((w - 240) / 2, 790, 240, 6);
-  ctx.restore();
-
-  // 8. Details Box: Contact & Emergency
-  ctx.save();
-  const infoBoxW = w * 0.86;
-  const infoBoxH = 260;
-  const infoBoxX = (w - infoBoxW) / 2;
-  const infoBoxY = 840;
-
-  ctx.fillStyle = 'rgba(14, 23, 66, 0.8)';
-  ctx.beginPath();
-  if (typeof (ctx as any).roundRect === 'function') {
-    (ctx as any).roundRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH, 20);
-  } else {
-    ctx.fillRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH);
-  }
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(244, 199, 22, 0.4)';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-
-  // Info details inside box
-  ctx.textAlign = 'left';
-  const labelX = infoBoxX + 40;
-  const valX = infoBoxX + infoBoxW - 40;
-
-  // Row 1: WhatsApp Contact
-  ctx.font = 'bold 24px sans-serif';
-  ctx.fillStyle = '#94A3B8';
-  ctx.fillText('KONTAK WA / HP', labelX, infoBoxY + 65);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#38BDF8';
-  ctx.font = 'bold 28px monospace';
-  ctx.fillText(member.kontak || '-', valX, infoBoxY + 65);
-
-  // Divider
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(labelX, infoBoxY + 105);
-  ctx.lineTo(valX, infoBoxY + 105);
-  ctx.stroke();
-
-  // Row 2: Golongan Darah
-  ctx.textAlign = 'left';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.fillStyle = '#94A3B8';
-  ctx.fillText('GOLONGAN DARAH', labelX, infoBoxY + 155);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#EF4444';
-  ctx.font = '900 32px sans-serif';
-  ctx.fillText(member.golongan_darah || 'O / -', valX, infoBoxY + 155);
-
-  // Divider
-  ctx.beginPath();
-  ctx.moveTo(labelX, infoBoxY + 195);
-  ctx.lineTo(valX, infoBoxY + 195);
-  ctx.stroke();
-
-  // Row 3: Tanggung Jawab
-  ctx.textAlign = 'left';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.fillStyle = '#94A3B8';
-  ctx.fillText('STATUS TUGAS', labelX, infoBoxY + 235);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#F4C716';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.fillText('FULL ACCESS • RUTE & VENUE', valX, infoBoxY + 235);
-  ctx.restore();
-
-  // 9. Footer: Event Slogan & Date
-  ctx.save();
-  ctx.fillStyle = '#F4C716';
-  ctx.font = '900 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('PEADERAL x RUDEBOYS CYCLIST', w / 2, 1165);
-
-  ctx.fillStyle = '#CBD5E1';
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillText('JONGGOL ➔ GUNUNG BATU • ELEVATION GAIN ±700M', w / 2, 1205);
-
-  ctx.fillStyle = 'rgba(244, 199, 22, 0.5)';
-  ctx.font = '500 18px monospace';
-  ctx.fillText('JIKA MENEMUKAN KARTU INI HUBUNGI PANITIA RESMI', w / 2, 1245);
-  ctx.restore();
-
-  // 10. Punch Cut Guide line at edge for standard plastic card holder
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(4, 4, w - 8, h - 8);
-  ctx.restore();
 }
 
 /**
  * Draw Crop Marks around an ID card in an imposition sheet
  */
-function drawNametagCropMarks(
+function drawCropMarks(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
-  markLen = 35,
-  gap = 10
+  markLen = 40,
+  markGap = 12
 ) {
   ctx.save();
-  ctx.strokeStyle = '#0F172A';
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#1E293B';
+  ctx.lineWidth = 3.5;
   ctx.lineCap = 'square';
 
   // TL
   ctx.beginPath();
-  ctx.moveTo(x - gap, y);
-  ctx.lineTo(x - gap - markLen, y);
-  ctx.moveTo(x, y - gap);
-  ctx.lineTo(x, y - gap - markLen);
+  ctx.moveTo(x - markGap, y);
+  ctx.lineTo(x - markGap - markLen, y);
+  ctx.moveTo(x, y - markGap);
+  ctx.lineTo(x, y - markGap - markLen);
   ctx.stroke();
 
   // TR
   ctx.beginPath();
-  ctx.moveTo(x + w + gap, y);
-  ctx.lineTo(x + w + gap + markLen, y);
-  ctx.moveTo(x + w, y - gap);
-  ctx.lineTo(x + w, y - gap - markLen);
+  ctx.moveTo(x + w + markGap, y);
+  ctx.lineTo(x + w + markGap + markLen, y);
+  ctx.moveTo(x + w, y - markGap);
+  ctx.lineTo(x + w, y - markGap - markLen);
   ctx.stroke();
 
   // BL
   ctx.beginPath();
-  ctx.moveTo(x - gap, y + h);
-  ctx.lineTo(x - gap - markLen, y + h);
-  ctx.moveTo(x, y + h + gap);
-  ctx.lineTo(x, y + h + gap + markLen);
+  ctx.moveTo(x - markGap, y + h);
+  ctx.lineTo(x - markGap - markLen, y + h);
+  ctx.moveTo(x, y + h + markGap);
+  ctx.lineTo(x, y + h + markGap + markLen);
   ctx.stroke();
 
   // BR
   ctx.beginPath();
-  ctx.moveTo(x + w + gap, y + h);
-  ctx.lineTo(x + w + gap + markLen, y + h);
-  ctx.moveTo(x + w, y + h + gap);
-  ctx.lineTo(x + w, y + h + gap + markLen);
+  ctx.moveTo(x + w + markGap, y + h);
+  ctx.lineTo(x + w + markGap + markLen, y + h);
+  ctx.moveTo(x + w, y + h + markGap);
+  ctx.lineTo(x + w, y + h + markGap + markLen);
   ctx.stroke();
 
   ctx.restore();
 }
 
-/**
- * Render an A4 Sheet containing up to 4 Nametags (2x2)
- * A4 dimensions @ 300 DPI Portrait: 2480 x 3508 px
- */
-export function renderNametagA4Sheet(
-  sheetCanvas: HTMLCanvasElement,
-  sheetCtx: CanvasRenderingContext2D,
-  cardCanvases: HTMLCanvasElement[],
-  members: PanitiaMember[],
-  sheetIdx: number,
-  totalSheets: number
+function drawCuttingGuide(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
 ) {
-  const w = 2480;
-  const h = 3508;
-  sheetCanvas.width = w;
-  sheetCanvas.height = h;
-
-  sheetCtx.fillStyle = '#FFFFFF';
-  sheetCtx.fillRect(0, 0, w, h);
-
-  // Card size on sheet: e.g. 1040 x 1540 px
-  const cardW = 1050;
-  const cardH = 1554;
-  const gapX = 120;
-  const gapY = 120;
-  const startX = Math.round((w - (cardW * 2 + gapX)) / 2);
-  const startY = Math.round((h - (cardH * 2 + gapY)) / 2) + 20;
-
-  // Header slug
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#0F172A';
-  sheetCtx.font = 'bold 28px sans-serif';
-  sheetCtx.fillText(
-    `TOUR DE GUNUNG BATU 2026 — LEMBAR CETAK NAMETAG PANITIA (A4: LEMBAR ${sheetIdx + 1} DARI ${totalSheets})`,
-    startX,
-    45
-  );
-  sheetCtx.fillStyle = '#64748B';
-  sheetCtx.font = '500 20px sans-serif';
-  sheetCtx.textAlign = 'right';
-  sheetCtx.fillText('FORMAT A4 • 300 DPI • POTONG MENGIKUTI GARIS SIKU POTONG', w - startX, 45);
-  sheetCtx.restore();
-
-  const positions = [
-    { x: startX, y: startY },
-    { x: startX + cardW + gapX, y: startY },
-    { x: startX, y: startY + cardH + gapY },
-    { x: startX + cardW + gapX, y: startY + cardH + gapY },
-  ];
-
-  for (let i = 0; i < members.length && i < 4; i++) {
-    const pos = positions[i];
-    sheetCtx.drawImage(cardCanvases[i], 0, 0, NAMETAG_WIDTH, NAMETAG_HEIGHT, pos.x, pos.y, cardW, cardH);
-    drawNametagCropMarks(sheetCtx, pos.x, pos.y, cardW, cardH, 40, 10);
-  }
-
-  // Footer
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#94A3B8';
-  sheetCtx.font = 'bold 18px sans-serif';
-  sheetCtx.textAlign = 'center';
-  sheetCtx.fillText(
-    'KARTU RESMI PANITIA TOUR DE GUNUNG BATU 2026 — UKURAN STANDAR ID CARD HOLDER B3/B4',
-    w / 2,
-    h - 25
-  );
-  sheetCtx.restore();
+  ctx.save();
+  ctx.strokeStyle = '#94A3B8';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 10]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /**
- * Render an A3 Sheet containing up to 8 Nametags (4x2)
- * A3 dimensions @ 300 DPI Landscape: 4960 x 3508 px
+ * Render an A3+ Sheet (329 x 483 mm) containing up to 9 ID cards (3 columns x 3 rows)
+ * Max printable area: 310 x 470 mm
+ * Card size: 1134 x 1572 px (9.6 x 13.3 cm B4)
+ * @param mirrorCols Set true for Back side in duplex printing so Column 1 matches Column 3 when flipped
  */
-export function renderNametagA3Sheet(
+export function renderNametagA3PlusSheet(
   sheetCanvas: HTMLCanvasElement,
   sheetCtx: CanvasRenderingContext2D,
   cardCanvases: HTMLCanvasElement[],
   members: PanitiaMember[],
+  side: 'front' | 'back',
   sheetIdx: number,
-  totalSheets: number
+  totalSheets: number,
+  mirrorCols = false
 ) {
-  const w = 4960;
-  const h = 3508;
+  const w = A3_PLUS_WIDTH;
+  const h = A3_PLUS_HEIGHT;
   sheetCanvas.width = w;
   sheetCanvas.height = h;
 
   sheetCtx.fillStyle = '#FFFFFF';
   sheetCtx.fillRect(0, 0, w, h);
 
-  // 4 columns x 2 rows = 8 cards
-  const cardW = 1050;
-  const cardH = 1554;
-  const gapX = 90;
-  const gapY = 100;
-  const startX = Math.round((w - (cardW * 4 + gapX * 3)) / 2);
-  const startY = Math.round((h - (cardH * 2 + gapY)) / 2) + 20;
+  const cardW = NAMETAG_WIDTH; // 1134 px
+  const cardH = NAMETAG_HEIGHT; // 1572 px
+  const gapX = 60; // gap between columns (~5.1 mm)
+  const gapY = 60; // gap between rows (~5.1 mm)
+
+  const totalGridW = cardW * 3 + gapX * 2; // 3402 + 120 = 3522 px (fits inside 3661 px printable area)
+  const totalGridH = cardH * 3 + gapY * 2; // 4716 + 120 = 4836 px (fits inside 5551 px printable area)
+
+  const startX = Math.round((w - totalGridW) / 2); // 182 px (~15.4 mm margin)
+  const startY = Math.round((h - totalGridH) / 2); // 434 px (~36.7 mm margin)
 
   // Header slug
   sheetCtx.save();
   sheetCtx.fillStyle = '#0F172A';
-  sheetCtx.font = 'bold 32px sans-serif';
+  sheetCtx.font = 'bold 36px sans-serif';
   sheetCtx.fillText(
-    `TOUR DE GUNUNG BATU 2026 — LEMBAR CETAK A3 NAMETAG PANITIA (LEMBAR ${sheetIdx + 1} DARI ${totalSheets})`,
+    `TOUR DE GUNUNG BATU 2026  |  LEMBAR A3+ ID CARD PANITIA (LEMBAR ${sheetIdx + 1} / ${totalSheets})  |  ${side === 'front' ? 'TAMPAK DEPAN' : 'TAMPAK BELAKANG (TUGAS)'}`,
     startX,
-    50
+    startY - 160
   );
-  sheetCtx.fillStyle = '#64748B';
+
+  sheetCtx.font = 'bold 26px sans-serif';
+  sheetCtx.fillStyle = '#1D3AAE';
+  sheetCtx.fillText(
+    'KERTAS A3+ (329×483mm) • AREA CETAK 310×470mm • 9 PCS KARTU B4 (9.6×13.3cm) • 300 DPI',
+    startX,
+    startY - 110
+  );
+
   sheetCtx.font = '500 24px sans-serif';
+  sheetCtx.fillStyle = '#64748B';
   sheetCtx.textAlign = 'right';
-  sheetCtx.fillText('FORMAT A3 • 300 DPI • 8 PCS PER LEMBAR • DILENGKAPI GARIS SIKU POTONG', w - startX, 50);
+  sheetCtx.fillText(
+    mirrorCols ? 'DUPLEX FLIP LONG-EDGE (POSISI MIRROR SESUAI DEPAN)' : 'POTONG MENGIKUTI GARIS SIKU POTONG',
+    w - startX,
+    startY - 110
+  );
   sheetCtx.restore();
 
-  for (let i = 0; i < members.length && i < 8; i++) {
-    const col = i % 4;
-    const row = Math.floor(i / 4);
+  // Draw 3 columns x 3 rows = 9 cards
+  for (let i = 0; i < members.length && i < 9; i++) {
+    const origCol = i % 3;
+    const row = Math.floor(i / 3);
+    // If mirrorCols is true (back page in duplex), invert column: 0->2, 1->1, 2->0
+    const col = mirrorCols ? 2 - origCol : origCol;
+
     const posX = startX + col * (cardW + gapX);
     const posY = startY + row * (cardH + gapY);
 
     sheetCtx.drawImage(cardCanvases[i], 0, 0, NAMETAG_WIDTH, NAMETAG_HEIGHT, posX, posY, cardW, cardH);
-    drawNametagCropMarks(sheetCtx, posX, posY, cardW, cardH, 35, 10);
+    drawCropMarks(sheetCtx, posX, posY, cardW, cardH, 40, 10);
   }
 
-  // Footer
+  // Cutting guidelines
+  const midX1 = startX + cardW + gapX / 2;
+  const midX2 = startX + cardW * 2 + gapX * 1.5;
+  drawCuttingGuide(sheetCtx, midX1, startY - 20, midX1, startY + totalGridH + 20);
+  drawCuttingGuide(sheetCtx, midX2, startY - 20, midX2, startY + totalGridH + 20);
+
+  const midY1 = startY + cardH + gapY / 2;
+  const midY2 = startY + cardH * 2 + gapY * 1.5;
+  drawCuttingGuide(sheetCtx, startX - 20, midY1, startX + totalGridW + 20, midY1);
+  drawCuttingGuide(sheetCtx, startX - 20, midY2, startX + totalGridW + 20, midY2);
+
+  // Footer slug
   sheetCtx.save();
   sheetCtx.fillStyle = '#94A3B8';
-  sheetCtx.font = 'bold 22px sans-serif';
+  sheetCtx.font = 'bold 24px sans-serif';
   sheetCtx.textAlign = 'center';
   sheetCtx.fillText(
-    'KARTU RESMI PANITIA TOUR DE GUNUNG BATU 2026 — SIAP CETAK DIGITAL PRINTING A3',
+    'ID CARD RESMI PANITIA TOUR DE GUNUNG BATU 2026 — UKURAN B4 (KERTAS 9.6×13.3cm / PLASTIK 10×15cm)',
     w / 2,
-    h - 30
+    h - 60
   );
   sheetCtx.restore();
 }
 
 /**
- * Bulk Generate Nametags as ZIP of Sheets (A4 or A3) or Individual Cards
+ * Bulk Generate Nametags as a SINGLE MULTI-PAGE PDF (Duplex A3+ Ready)
  */
-export async function generateBulkNametagZip(
+export async function generateBulkNametagPdf(
   members: PanitiaMember[],
-  mode: 'sheet_a4' | 'sheet_a3' | 'individual',
+  mode: 'duplex_a3_plus' | 'front_only_a3_plus' | 'back_only_a3_plus',
   onProgress?: (percent: number, message: string) => void
 ): Promise<Blob> {
   const total = members.length;
   if (total === 0) throw new Error('Tidak ada data panitia.');
 
-  onProgress?.(5, 'Memuat aset logo & font...');
-  const [hasSakana, eventLogo] = await Promise.all([
+  onProgress?.(5, 'Memuat template NAMETAG.jpg & font...');
+  const [hasSakana, templateImg] = await Promise.all([
     ensureSakanaFontLoaded(),
-    ensureEventLogoLoaded(),
+    ensureNametagTemplateLoaded(),
+  ]);
+
+  const perSheet = 9;
+  const totalBatches = Math.ceil(total / perSheet);
+
+  // Create 9 card canvases for rendering
+  const cardCanvases: HTMLCanvasElement[] = [];
+  const cardContexts: CanvasRenderingContext2D[] = [];
+  for (let i = 0; i < perSheet; i++) {
+    const c = document.createElement('canvas');
+    c.width = NAMETAG_WIDTH;
+    c.height = NAMETAG_HEIGHT;
+    const ctx = c.getContext('2d');
+    if (!ctx) throw new Error('Canvas context tidak didukung.');
+    cardCanvases.push(c);
+    cardContexts.push(ctx);
+  }
+
+  const sheetCanvas = document.createElement('canvas');
+  sheetCanvas.width = A3_PLUS_WIDTH;
+  sheetCanvas.height = A3_PLUS_HEIGHT;
+  const sheetCtx = sheetCanvas.getContext('2d');
+  if (!sheetCtx) throw new Error('Canvas context sheet tidak didukung.');
+
+  // jsPDF A3+ Portrait (329 x 483 mm)
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [329, 483],
+    compress: true,
+  });
+
+  let pageCounter = 0;
+
+  for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+    const slice = members.slice(batchIdx * perSheet, (batchIdx + 1) * perSheet);
+
+    // 1. Render FRONT side
+    if (mode === 'duplex_a3_plus' || mode === 'front_only_a3_plus') {
+      const p = Math.round(10 + (batchIdx / totalBatches) * 40);
+      onProgress?.(p, `Merender Lembar Depan Batch #${batchIdx + 1} (${slice.length} Panitia)...`);
+
+      for (let c = 0; c < slice.length; c++) {
+        drawNametagFront(cardCanvases[c], cardContexts[c], slice[c], templateImg, hasSakana);
+      }
+
+      renderNametagA3PlusSheet(sheetCanvas, sheetCtx, cardCanvases, slice, 'front', batchIdx, totalBatches, false);
+      const imgData = sheetCanvas.toDataURL('image/jpeg', 0.90);
+
+      if (pageCounter > 0) doc.addPage([329, 483], 'portrait');
+      doc.addImage(imgData, 'JPEG', 0, 0, 329, 483, undefined, 'FAST');
+      pageCounter++;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+
+    // 2. Render BACK side (with horizontal mirror for duplex flip on long edge)
+    if (mode === 'duplex_a3_plus' || mode === 'back_only_a3_plus') {
+      const p = Math.round(50 + (batchIdx / totalBatches) * 40);
+      onProgress?.(p, `Merender Lembar Belakang Batch #${batchIdx + 1} (Tugas)...`);
+
+      for (let c = 0; c < slice.length; c++) {
+        drawNametagBack(cardCanvases[c], cardContexts[c], slice[c], templateImg, hasSakana);
+      }
+
+      renderNametagA3PlusSheet(sheetCanvas, sheetCtx, cardCanvases, slice, 'back', batchIdx, totalBatches, mode === 'duplex_a3_plus');
+      const imgData = sheetCanvas.toDataURL('image/jpeg', 0.90);
+
+      if (pageCounter > 0) doc.addPage([329, 483], 'portrait');
+      doc.addImage(imgData, 'JPEG', 0, 0, 329, 483, undefined, 'FAST');
+      pageCounter++;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  }
+
+  onProgress?.(95, 'Menyelesaikan file PDF...');
+  const pdfBlob = doc.output('blob');
+  onProgress?.(100, 'Selesai!');
+  return pdfBlob;
+}
+
+/**
+ * Bulk Generate Nametags as ZIP of A3+ sheets or individual cards
+ */
+export async function generateBulkNametagZip(
+  members: PanitiaMember[],
+  mode: 'sheet_a3_plus' | 'individual',
+  onProgress?: (percent: number, message: string) => void
+): Promise<Blob> {
+  const total = members.length;
+  if (total === 0) throw new Error('Tidak ada data panitia.');
+
+  onProgress?.(5, 'Memuat template NAMETAG.jpg...');
+  const [hasSakana, templateImg] = await Promise.all([
+    ensureSakanaFontLoaded(),
+    ensureNametagTemplateLoaded(),
   ]);
 
   const zip = new JSZip();
 
   if (mode === 'individual') {
-    const folder = zip.folder('ID_Card_Panitia_Satuan') || zip;
+    const folder = zip.folder('ID_Card_Panitia_B4_Depan_Belakang') || zip;
     const canvas = document.createElement('canvas');
     canvas.width = NAMETAG_WIDTH;
     canvas.height = NAMETAG_HEIGHT;
@@ -564,24 +709,28 @@ export async function generateBulkNametagZip(
 
     for (let i = 0; i < total; i++) {
       const m = members[i];
-      const percent = Math.round(10 + (i / total) * 80);
-      onProgress?.(percent, `Merender Kartu ${i + 1}/${total}: ${m.nama}`);
+      const p = Math.round(10 + (i / total) * 80);
+      onProgress?.(p, `Merender Kartu ${i + 1}/${total}: ${m.nama}`);
 
-      drawSingleNametag(canvas, ctx, m, eventLogo, hasSakana);
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
-      if (blob) {
-        const cleanDiv = m.divisi.replace(/[^a-zA-Z0-9]/g, '_');
-        const cleanNm = m.nama.replace(/[^a-zA-Z0-9]/g, '_');
-        folder.file(`Nametag_${cleanDiv}_${cleanNm}.png`, blob);
-      }
+      const cleanNm = m.nama.replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanDiv = m.divisi.replace(/[^a-zA-Z0-9]/g, '_');
+
+      // Front
+      drawNametagFront(canvas, ctx, m, templateImg, hasSakana);
+      const frontBlob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
+      if (frontBlob) folder.file(`${String(i + 1).padStart(2, '0')}_DEPAN_${cleanDiv}_${cleanNm}.jpg`, frontBlob);
+
+      // Back
+      drawNametagBack(canvas, ctx, m, templateImg, hasSakana);
+      const backBlob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
+      if (backBlob) folder.file(`${String(i + 1).padStart(2, '0')}_BELAKANG_TUGAS_${cleanDiv}_${cleanNm}.jpg`, backBlob);
     }
   } else {
-    // Sheet mode (A4 = 4 per sheet, A3 = 8 per sheet)
-    const perSheet = mode === 'sheet_a3' ? 8 : 4;
-    const totalSheets = Math.ceil(total / perSheet);
-    const folder = zip.folder(mode === 'sheet_a3' ? 'Lembar_A3_Nametag_Panitia' : 'Lembar_A4_Nametag_Panitia') || zip;
+    // Sheet A3+ (9 per sheet)
+    const perSheet = 9;
+    const totalBatches = Math.ceil(total / perSheet);
+    const folder = zip.folder('LEMBAR_A3_PLUS_NAMETAG_PANITIA_B4') || zip;
 
-    // Create reusable card canvases
     const cardCanvases: HTMLCanvasElement[] = [];
     const cardContexts: CanvasRenderingContext2D[] = [];
     for (let i = 0; i < perSheet; i++) {
@@ -589,38 +738,38 @@ export async function generateBulkNametagZip(
       c.width = NAMETAG_WIDTH;
       c.height = NAMETAG_HEIGHT;
       const ctx = c.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D tidak didukung.');
+      if (!ctx) throw new Error('Canvas context tidak didukung.');
       cardCanvases.push(c);
       cardContexts.push(ctx);
     }
 
     const sheetCanvas = document.createElement('canvas');
+    sheetCanvas.width = A3_PLUS_WIDTH;
+    sheetCanvas.height = A3_PLUS_HEIGHT;
     const sheetCtx = sheetCanvas.getContext('2d');
     if (!sheetCtx) throw new Error('Canvas context sheet tidak didukung.');
 
-    for (let sIdx = 0; sIdx < totalSheets; sIdx++) {
-      const p = Math.round(10 + (sIdx / totalSheets) * 80);
-      onProgress?.(p, `Merender Lembar #${sIdx + 1} dari ${totalSheets}...`);
+    for (let b = 0; b < totalBatches; b++) {
+      const p = Math.round(10 + (b / totalBatches) * 80);
+      onProgress?.(p, `Merender Lembar A3+ Batch #${b + 1} dari ${totalBatches}...`);
 
-      const slice = members.slice(sIdx * perSheet, (sIdx + 1) * perSheet);
+      const slice = members.slice(b * perSheet, (b + 1) * perSheet);
 
-      // Render cards into buffer
+      // Front Sheet
       for (let c = 0; c < slice.length; c++) {
-        drawSingleNametag(cardCanvases[c], cardContexts[c], slice[c], eventLogo, hasSakana);
+        drawNametagFront(cardCanvases[c], cardContexts[c], slice[c], templateImg, hasSakana);
       }
+      renderNametagA3PlusSheet(sheetCanvas, sheetCtx, cardCanvases, slice, 'front', b, totalBatches, false);
+      const frontBlob = await new Promise<Blob | null>((res) => sheetCanvas.toBlob(res, 'image/jpeg', 0.92));
+      if (frontBlob) folder.file(`Lembar_${String(b + 1).padStart(2, '0')}_TAMPAK_DEPAN.jpg`, frontBlob);
 
-      if (mode === 'sheet_a3') {
-        renderNametagA3Sheet(sheetCanvas, sheetCtx, cardCanvases, slice, sIdx, totalSheets);
-      } else {
-        renderNametagA4Sheet(sheetCanvas, sheetCtx, cardCanvases, slice, sIdx, totalSheets);
+      // Back Sheet (Mirrored for Duplex)
+      for (let c = 0; c < slice.length; c++) {
+        drawNametagBack(cardCanvases[c], cardContexts[c], slice[c], templateImg, hasSakana);
       }
-
-      const sheetBlob = await new Promise<Blob | null>((res) =>
-        sheetCanvas.toBlob(res, 'image/jpeg', 0.94)
-      );
-      if (sheetBlob) {
-        folder.file(`Lembar_${String(sIdx + 1).padStart(2, '0')}.jpg`, sheetBlob);
-      }
+      renderNametagA3PlusSheet(sheetCanvas, sheetCtx, cardCanvases, slice, 'back', b, totalBatches, true);
+      const backBlob = await new Promise<Blob | null>((res) => sheetCanvas.toBlob(res, 'image/jpeg', 0.92));
+      if (backBlob) folder.file(`Lembar_${String(b + 1).padStart(2, '0')}_TAMPAK_BELAKANG_TUGAS.jpg`, backBlob);
     }
   }
 

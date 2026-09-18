@@ -15,14 +15,21 @@ import {
   Sparkles,
   RefreshCw,
   FileText,
-  AlertCircle,
+  Layers,
+  ArrowLeftRight,
+  Check,
+  Info,
 } from 'lucide-react';
 import {
   PanitiaMember,
   DIVISION_PRESETS,
+  DEFAULT_DIVISION_TASKS,
   getDivisionConfig,
+  getDivisionTasks,
   drawSingleNametag,
+  generateBulkNametagPdf,
   generateBulkNametagZip,
+  ensureNametagTemplateLoaded,
   NAMETAG_WIDTH,
   NAMETAG_HEIGHT,
 } from '@/lib/nametagGenerator';
@@ -39,7 +46,7 @@ const DEFAULT_PANITIA: PanitiaMember[] = [
   { id: '8', nama: 'Dokumentasi & Media Video', divisi: 'DOKUMENTASI', nomor_panitia: 'CREW #08', kontak: '0819-7788-9900', golongan_darah: 'O' },
 ];
 
-const LOCAL_STORAGE_KEY = 'tdgb_panitia_list_v1';
+const LOCAL_STORAGE_KEY = 'tdgb_panitia_list_v2';
 
 interface NametagPanitiaModalProps {
   isOpen: boolean;
@@ -50,6 +57,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
   const [members, setMembers] = useState<PanitiaMember[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'manage' | 'paste' | 'export'>('manage');
+  const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
 
   // Form input single
   const [formNama, setFormNama] = useState('');
@@ -57,6 +65,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
   const [formKontak, setFormKontak] = useState('');
   const [formNomor, setFormNomor] = useState('');
   const [formGoldar, setFormGoldar] = useState('O');
+  const [formTugasText, setFormTugasText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Bulk paste text
@@ -69,7 +78,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
 
   // Canvas ref for live preview
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [eventLogo, setEventLogo] = useState<HTMLImageElement | null>(null);
+  const [templateImg, setTemplateImg] = useState<HTMLImageElement | null>(null);
 
   // Load from LocalStorage
   useEffect(() => {
@@ -101,18 +110,17 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
     }
   }, [members]);
 
-  // Load logo once
+  // Pre-load Nametag template
   useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = '/images/logo_event.png';
-    img.onload = () => setEventLogo(img);
-    img.onerror = () => setEventLogo(null);
+    ensureNametagTemplateLoaded().then((img) => {
+      setTemplateImg(img);
+    });
   }, []);
 
-  // Render live preview on canvas
+  // Selected member
   const selectedMember = members.find((m) => m.id === selectedMemberId) || members[0];
 
+  // Render live preview on canvas
   useEffect(() => {
     if (!previewCanvasRef.current || !selectedMember) return;
     const canvas = previewCanvasRef.current;
@@ -120,9 +128,9 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
     if (!ctx) return;
 
     ensureSakanaFontLoaded().then((hasSakana) => {
-      drawSingleNametag(canvas, ctx, selectedMember, eventLogo, hasSakana);
+      drawSingleNametag(canvas, ctx, selectedMember, templateImg, hasSakana, previewSide);
     });
-  }, [selectedMember, eventLogo]);
+  }, [selectedMember, templateImg, previewSide]);
 
   if (!isOpen) return null;
 
@@ -133,6 +141,11 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
       alert('Nama panitia wajib diisi.');
       return;
     }
+
+    const customTasks = formTugasText
+      .split('\n')
+      .map((t) => t.trim().replace(/^[-•*0-9\.\)]\s*/, ''))
+      .filter(Boolean);
 
     if (editingId) {
       setMembers((prev) =>
@@ -145,6 +158,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                 kontak: formKontak.trim(),
                 nomor_panitia: formNomor.trim() || `CREW #${String(prev.findIndex((p) => p.id === editingId) + 1).padStart(2, '0')}`,
                 golongan_darah: formGoldar,
+                tugas: customTasks.length > 0 ? customTasks : undefined,
               }
             : m
         )
@@ -159,6 +173,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
         kontak: formKontak.trim(),
         nomor_panitia: formNomor.trim() || `CREW #${String(members.length + 1).padStart(2, '0')}`,
         golongan_darah: formGoldar,
+        tugas: customTasks.length > 0 ? customTasks : undefined,
       };
       setMembers((prev) => [...prev, newMember]);
       setSelectedMemberId(newId);
@@ -168,6 +183,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
     setFormNama('');
     setFormKontak('');
     setFormNomor('');
+    setFormTugasText('');
   };
 
   const handleEditClick = (m: PanitiaMember) => {
@@ -177,6 +193,8 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
     setFormKontak(m.kontak || '');
     setFormNomor(m.nomor_panitia || '');
     setFormGoldar(m.golongan_darah || 'O');
+    const memberTasks = m.tugas && m.tugas.length > 0 ? m.tugas : getDivisionTasks(m.divisi);
+    setFormTugasText(memberTasks.join('\n'));
     setSelectedMemberId(m.id);
     setActiveTab('manage');
   };
@@ -215,7 +233,6 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
     let counter = members.length + 1;
 
     for (const line of lines) {
-      // Clean leading numbering like "1. ", "1 - "
       const cleanLine = line.replace(/^\d+[\.\-\)]\s*/, '');
       const parts = cleanLine.split(/[-–,|]/).map((p) => p.trim());
 
@@ -239,17 +256,53 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
       setSelectedMemberId(parsed[0].id);
       setPasteText('');
       setActiveTab('manage');
-      setSuccessMessage(`Berhasil menambahkan ${parsed.length} nama panitia dari daftar WhatsApp!`);
+      setSuccessMessage(`Berhasil menambahkan ${parsed.length} nama panitia dari daftar!`);
       setTimeout(() => setSuccessMessage(null), 4000);
     }
   };
 
-  // Export handlers
-  const handleExportZip = async (mode: 'sheet_a4' | 'sheet_a3' | 'individual') => {
+  // Export PDF Handlers
+  const handleExportPdf = async (mode: 'duplex_a3_plus' | 'front_only_a3_plus' | 'back_only_a3_plus') => {
     if (members.length === 0) return;
     setIsExporting(true);
     setSuccessMessage(null);
-    setExportProgress({ percent: 5, message: 'Menyiapkan canvas & aset...' });
+    setExportProgress({ percent: 5, message: 'Menyiapkan layout A3+ & template...' });
+
+    try {
+      const blob = await generateBulkNametagPdf(members, mode, (percent, message) => {
+        setExportProgress({ percent, message });
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      let filename = `ID_Card_Panitia_TDGB_A3Plus_Duplex_${members.length}_Orang.pdf`;
+      if (mode === 'front_only_a3_plus') filename = `ID_Card_Panitia_TDGB_A3Plus_DEPAN_${members.length}_Orang.pdf`;
+      if (mode === 'back_only_a3_plus') filename = `ID_Card_Panitia_TDGB_A3Plus_BELAKANG_${members.length}_Orang.pdf`;
+
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccessMessage(`Berhasil! Dokumen siap cetak ${filename} berhasil diunduh.`);
+    } catch (err: any) {
+      console.error('Export PDF error:', err);
+      alert('Gagal membuat PDF: ' + (err?.message || 'Error tidak diketahui'));
+    } finally {
+      setIsExporting(false);
+      setExportProgress(null);
+    }
+  };
+
+  // Export ZIP Handlers
+  const handleExportZip = async (mode: 'sheet_a3_plus' | 'individual') => {
+    if (members.length === 0) return;
+    setIsExporting(true);
+    setSuccessMessage(null);
+    setExportProgress({ percent: 5, message: 'Menyiapkan canvas cetak & template...' });
 
     try {
       const blob = await generateBulkNametagZip(members, mode, (percent, message) => {
@@ -259,10 +312,9 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      let filename = `Nametag_Panitia_TourDeGunungBatu_${mode}.zip`;
-      if (mode === 'sheet_a4') filename = `Lembar_Cetak_A4_Nametag_Panitia_${members.length}_Orang.zip`;
-      if (mode === 'sheet_a3') filename = `Lembar_Cetak_A3_Nametag_Panitia_${members.length}_Orang.zip`;
-      if (mode === 'individual') filename = `Nametag_Panitia_Satuan_PNG.zip`;
+
+      let filename = `Lembar_Cetak_A3Plus_Nametag_Panitia_9Up.zip`;
+      if (mode === 'individual') filename = `Nametag_Panitia_B4_Satuan_Depan_Belakang.zip`;
 
       link.download = filename;
       document.body.appendChild(link);
@@ -272,7 +324,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
 
       setSuccessMessage(`Selesai! File ${filename} berhasil diunduh.`);
     } catch (err: any) {
-      console.error('Export error:', err);
+      console.error('Export ZIP error:', err);
       alert('Gagal mengunduh: ' + (err?.message || 'Error tidak diketahui'));
     } finally {
       setIsExporting(false);
@@ -288,34 +340,35 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Nametag_${selectedMember.divisi}_${selectedMember.nama.replace(/\s+/g, '_')}.png`;
+      const sideLabel = previewSide === 'front' ? 'DEPAN' : 'BELAKANG_TUGAS';
+      a.download = `Nametag_${sideLabel}_${selectedMember.divisi}_${selectedMember.nama.replace(/\s+/g, '_')}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }, 'image/png');
+    }, 'image/jpeg', 0.95);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-6xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header Modal */}
-        <div className="bg-brand-navy px-6 py-4 flex items-center justify-between text-white border-b border-brand-yellow/30">
+        <div className="bg-brand-navy px-5 sm:px-6 py-4 flex items-center justify-between text-white border-b border-brand-yellow/30 shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-brand-yellow text-brand-navy flex items-center justify-center font-black shadow-lg">
               <Users className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="font-extrabold text-lg sm:text-xl text-white tracking-wide">
-                  Generator & Cetak Nametag Panitia
+                <h3 className="font-extrabold text-base sm:text-xl text-white tracking-wide">
+                  Generator & Cetak Nametag Panitia (Depan & Belakang)
                 </h3>
                 <span className="text-[10px] font-bold bg-brand-royal text-brand-yellow px-2 py-0.5 rounded-full uppercase tracking-wider border border-brand-yellow/30">
-                  Resmi 2026
+                  B4 (9.6 × 13.3 cm)
                 </span>
               </div>
-              <p className="text-xs text-slate-300">
-                Otomatisasi ID Card Panitia siap potong ke Lembar A4 & A3 (Tour de Gunung Batu)
+              <p className="text-xs text-slate-300 hidden sm:block">
+                Template Resmi Depan (Nama & Divisi) & Belakang (Jobdesk/Tugas) • Pas di Plastik ID Card B4 (10×15cm)
               </p>
             </div>
           </div>
@@ -329,7 +382,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: List & Forms (7 cols) */}
+          {/* Left Column: Management & Export Tabs (7 cols) */}
           <div className="lg:col-span-7 flex flex-col space-y-4">
             {/* Tabs Navigation */}
             <div className="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 text-xs font-bold">
@@ -367,7 +420,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                 }`}
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Cetak / Ekspor</span>
+                <span>Cetak Lembar A3+</span>
               </button>
             </div>
 
@@ -390,7 +443,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-brand-navy flex items-center space-x-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-brand-royal" />
-                      <span>{editingId ? 'Edit Data Panitia' : 'Tambah Panitia Baru'}</span>
+                      <span>{editingId ? 'Edit Data Panitia & Tugas' : 'Tambah Panitia Baru'}</span>
                     </span>
                     {editingId && (
                       <button
@@ -400,6 +453,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                           setFormNama('');
                           setFormKontak('');
                           setFormNomor('');
+                          setFormTugasText('');
                         }}
                         className="text-[11px] text-rose-600 font-bold hover:underline"
                       >
@@ -413,7 +467,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                       <label className="text-[11px] font-bold text-slate-600 block mb-1">Nama Panitia *</label>
                       <input
                         type="text"
-                        placeholder="Contoh: Budi Santoso"
+                        placeholder="Contoh: Rangga Rudeboys"
                         value={formNama}
                         onChange={(e) => setFormNama(e.target.value)}
                         className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-royal"
@@ -422,10 +476,16 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Divisi / Tugas *</label>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Divisi / Penugasan *</label>
                       <select
                         value={formDivisi}
-                        onChange={(e) => setFormDivisi(e.target.value)}
+                        onChange={(e) => {
+                          const newDiv = e.target.value;
+                          setFormDivisi(newDiv);
+                          if (!editingId || !formTugasText) {
+                            setFormTugasText(getDivisionTasks(newDiv).join('\n'));
+                          }
+                        }}
                         className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-royal bg-white"
                       >
                         {Object.keys(DIVISION_PRESETS).map((k) => (
@@ -440,7 +500,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                       <label className="text-[11px] font-bold text-slate-600 block mb-1">No. WhatsApp Darurat</label>
                       <input
                         type="text"
-                        placeholder="0812-XXXX-XXXX"
+                        placeholder="0877-4587-0767"
                         value={formKontak}
                         onChange={(e) => setFormKontak(e.target.value)}
                         className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-royal font-mono"
@@ -449,7 +509,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
 
                     <div className="flex space-x-2">
                       <div className="flex-1">
-                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Kode Panitia</label>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Kode Kru</label>
                         <input
                           type="text"
                           placeholder="CREW #01"
@@ -475,12 +535,35 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                     </div>
                   </div>
 
+                  {/* Keterangan Tugas (Tampak Belakang) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-600">
+                        Keterangan Tugas / Jobdesk (Tampak Belakang)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setFormTugasText(getDivisionTasks(formDivisi).join('\n'))}
+                        className="text-[10px] text-brand-royal font-bold hover:underline"
+                      >
+                        Pakai Default Divisi
+                      </button>
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={formTugasText}
+                      onChange={(e) => setFormTugasText(e.target.value)}
+                      placeholder="Tulis 1 poin tugas per baris (maksimal 5 poin agar rapi)..."
+                      className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-royal"
+                    />
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-brand-navy hover:bg-slate-800 text-white text-xs font-black flex items-center justify-center space-x-2 transition-all shadow-md active:scale-95"
                   >
                     <Plus className="w-4 h-4 text-brand-yellow" />
-                    <span>{editingId ? 'Simpan Perubahan' : 'Tambahkan ke Daftar'}</span>
+                    <span>{editingId ? 'Simpan Perubahan Panitia' : 'Tambahkan ke Daftar'}</span>
                   </button>
                 </form>
 
@@ -488,7 +571,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-extrabold text-brand-navy">
-                      Daftar Panitia ({members.length} Orang)
+                      Daftar Panitia Terdaftar ({members.length} Orang)
                     </span>
                     <button
                       type="button"
@@ -500,11 +583,11 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                     </button>
                   </div>
 
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-60 overflow-y-auto">
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead className="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 border-b border-slate-200">
                         <tr>
-                          <th className="p-2.5">Nama</th>
+                          <th className="p-2.5">Nama & Kontak</th>
                           <th className="p-2.5">Divisi</th>
                           <th className="p-2.5 text-center">Aksi</th>
                         </tr>
@@ -524,7 +607,7 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                               <td className="p-2.5">
                                 <div className="font-extrabold text-slate-900">{m.nama}</div>
                                 <div className="text-[10px] text-slate-400 font-mono">
-                                  {m.nomor_panitia || 'CREW'} • WA: {m.kontak || '-'}
+                                  {m.nomor_panitia || 'CREW'} • WA: {m.kontak || '-'} • Gol: {m.golongan_darah || 'O'}
                                 </div>
                               </td>
                               <td className="p-2.5">
@@ -612,81 +695,112 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
               </div>
             )}
 
-            {/* TAB 3: EXPORT & CETAK */}
+            {/* TAB 3: EXPORT & CETAK LEMBAR A3+ */}
             {activeTab === 'export' && (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-                <div>
-                  <h4 className="font-black text-brand-navy text-sm">
-                    Pilihan Format Cetak & Pengemasan
-                  </h4>
-                  <p className="text-xs text-slate-500">
-                    Pilih format yang paling efisien untuk kebutuhan cetak Anda
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
+                {/* Info Calculation Sheet */}
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3.5 space-y-1 text-xs text-blue-900">
+                  <div className="font-extrabold flex items-center space-x-1.5 text-brand-navy">
+                    <Info className="w-4 h-4 text-brand-royal shrink-0" />
+                    <span>Perhitungan Imposisi Kertas A3+ (329 × 483 mm)</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] leading-relaxed">
+                    • <strong>Ukuran Kartu B4:</strong> 9.6 × 13.3 cm (Pas untuk plastik ID card 10 × 15 cm)<br />
+                    • <strong>Area Cetak Maksimal:</strong> 310 × 470 mm<br />
+                    • <strong>Hasil Muat:</strong> Tepat <span className="font-bold text-brand-royal">9 pcs ID card per 1 lembar A3+</span> (Susunan 3 kolom × 3 baris)<br />
+                    • <strong>Cetak Bolak-Balik (Duplex):</strong> Halaman belakang sudah otomatis dicerminkan (kolom 1 ke 3) agar simetris saat dibalik di mesin percetakan.
                   </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Option A4 */}
-                  <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 hover:border-brand-royal space-y-2.5 transition-all">
-                    <div className="flex items-center space-x-2 text-brand-navy font-black text-xs sm:text-sm">
-                      <FileText className="w-4 h-4 text-brand-royal" />
-                      <span>Lembar A4 (4 ID Card / Lembar)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Sangat pas untuk printer kantor / rumahan. Lengkap dengan garis potong (siku potong) sehingga tinggal gunting rapi.
-                    </p>
-                    <div className="text-[10px] font-bold text-brand-royal bg-blue-50 px-2 py-1 rounded-lg">
-                      Total: {Math.ceil(members.length / 4)} Lembar A4
-                    </div>
-                    <button
-                      type="button"
-                      disabled={isExporting}
-                      onClick={() => handleExportZip('sheet_a4')}
-                      className="w-full py-2.5 rounded-xl bg-brand-navy hover:bg-slate-800 text-brand-yellow font-black text-xs flex items-center justify-center space-x-2 transition-all shadow-md disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Unduh ZIP Lembar A4</span>
-                    </button>
-                  </div>
-
-                  {/* Option A3 */}
-                  <div className="bg-white p-4 rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-white to-amber-50/30 space-y-2.5 transition-all">
-                    <div className="flex items-center space-x-2 text-brand-navy font-black text-xs sm:text-sm">
-                      <Printer className="w-4 h-4 text-amber-600" />
-                      <span>Lembar A3 (8 ID Card / Lembar)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Standar cetak digital printing percetakan (hemat biaya & kertas). Dilengkapi slug info dan tanda pisau potong.
-                    </p>
-                    <div className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-1 rounded-lg">
-                      Total: {Math.ceil(members.length / 8)} Lembar A3
-                    </div>
-                    <button
-                      type="button"
-                      disabled={isExporting}
-                      onClick={() => handleExportZip('sheet_a3')}
-                      className="w-full py-2.5 rounded-xl bg-brand-yellow hover:bg-amber-400 text-brand-navy font-black text-xs flex items-center justify-center space-x-2 transition-all shadow-md disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Unduh ZIP Lembar A3</span>
-                    </button>
+                  <div className="mt-2 pt-2 border-t border-blue-200/60 flex items-center justify-between text-[11px] font-bold">
+                    <span>Jumlah Panitia: {members.length} Orang</span>
+                    <span className="text-brand-royal font-black bg-white px-2.5 py-0.5 rounded-full border border-blue-200">
+                      Butuh {Math.ceil(members.length / 9)} Lembar A3+
+                    </span>
                   </div>
                 </div>
 
-                {/* Option Individual PNG */}
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 block">Unduh Semua File Satuan:</span>
-                    <span className="text-[11px] text-slate-500">Tiap panitia menjadi 1 file PNG 300 DPI resolusi tinggi</span>
+                {/* Export Options Grid */}
+                <div className="space-y-3">
+                  {/* Option 1: PDF Duplex A3+ (Recommended) */}
+                  <div className="bg-white p-4 rounded-2xl border-2 border-brand-yellow bg-gradient-to-r from-amber-50/40 via-white to-amber-50/20 shadow-sm space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-brand-navy font-black text-xs sm:text-sm">
+                        <Printer className="w-4 h-4 text-amber-600" />
+                        <span>PDF A3+ Bolak-Balik (Duplex Otomatis)</span>
+                      </div>
+                      <span className="text-[10px] font-black bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md uppercase">
+                        Rekomendasi Utama
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Satu file PDF multi-halaman siap kirim ke Digital Printing: Hal 1 (Depan 1..9), Hal 2 (Belakang Tugas 1..9 Mirror), Hal 3 (Depan 10..18), dst. Dilengkapi crop marks dan slug info.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => handleExportPdf('duplex_a3_plus')}
+                      className="w-full py-2.5 rounded-xl bg-brand-navy hover:bg-slate-800 text-brand-yellow font-black text-xs flex items-center justify-center space-x-2 transition-all shadow-md disabled:opacity-50 active:scale-95"
+                    >
+                      <Download className="w-4 h-4 text-brand-yellow" />
+                      <span>Unduh PDF A3+ Duplex (Siap Cetak)</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    disabled={isExporting}
-                    onClick={() => handleExportZip('individual')}
-                    className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center space-x-1.5 disabled:opacity-50"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>ZIP PNG Satuan</span>
-                  </button>
+
+                  {/* Option 2: Split PDF Front & Back */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => handleExportPdf('front_only_a3_plus')}
+                      className="p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-left space-y-1 transition-all disabled:opacity-50"
+                    >
+                      <div className="font-bold text-xs text-brand-navy flex items-center space-x-1.5">
+                        <FileText className="w-3.5 h-3.5 text-brand-royal" />
+                        <span>PDF Tampak Depan Saja</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500">Khusus cetak lembar depan (Nama & Divisi)</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => handleExportPdf('back_only_a3_plus')}
+                      className="p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-left space-y-1 transition-all disabled:opacity-50"
+                    >
+                      <div className="font-bold text-xs text-brand-navy flex items-center space-x-1.5">
+                        <FileText className="w-3.5 h-3.5 text-brand-royal" />
+                        <span>PDF Tampak Belakang Saja</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500">Khusus cetak lembar belakang (Jobdesk Tugas)</p>
+                    </button>
+                  </div>
+
+                  {/* Option 3: ZIP Format */}
+                  <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">Pilihan Format Arsip ZIP:</span>
+                      <span className="text-[10px] text-slate-500">Unduh lembar JPG A3+ atau kartu satuan resolusi 300 DPI</span>
+                    </div>
+                    <div className="flex space-x-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        disabled={isExporting}
+                        onClick={() => handleExportZip('sheet_a3_plus')}
+                        className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center space-x-1 disabled:opacity-50"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>ZIP Lembar A3+ (JPG)</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isExporting}
+                        onClick={() => handleExportZip('individual')}
+                        className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center space-x-1 disabled:opacity-50"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>ZIP Satuan (JPG)</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Export Progress */}
@@ -716,16 +830,44 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
             <div className="w-full flex items-center justify-between text-xs border-b border-slate-800 pb-2">
               <span className="font-bold text-slate-300 flex items-center space-x-1.5">
                 <Eye className="w-4 h-4 text-brand-yellow" />
-                <span>Live Preview Kartu Panitia</span>
+                <span>Live Preview Nametag B4</span>
               </span>
               <span className="font-mono text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">
-                Ukuran B3 (1000x1480px)
+                9.6 × 13.3 cm (300 DPI)
               </span>
             </div>
 
-            {/* Canvas Container with realistic badge shadow */}
-            <div className="w-full flex items-center justify-center p-2">
-              <div className="relative max-w-[280px] w-full rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/10">
+            {/* Toggle Sisi Depan vs Belakang */}
+            <div className="w-full grid grid-cols-2 gap-2 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+              <button
+                type="button"
+                onClick={() => setPreviewSide('front')}
+                className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-all ${
+                  previewSide === 'front'
+                    ? 'bg-brand-yellow text-brand-navy shadow font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Tampak Depan</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewSide('back')}
+                className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-all ${
+                  previewSide === 'back'
+                    ? 'bg-brand-yellow text-brand-navy shadow font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>Tampak Belakang (Tugas)</span>
+              </button>
+            </div>
+
+            {/* Canvas Container with badge shadow */}
+            <div className="w-full flex items-center justify-center p-1">
+              <div className="relative max-w-[270px] w-full rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/10">
                 <canvas
                   ref={previewCanvasRef}
                   width={NAMETAG_WIDTH}
@@ -750,18 +892,18 @@ export const NametagPanitiaModal: React.FC<NametagPanitiaModalProps> = ({ isOpen
                 className="w-full py-2.5 rounded-xl bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black flex items-center justify-center space-x-2 shadow-lg transition-transform active:scale-95"
               >
                 <Download className="w-4 h-4" />
-                <span>Unduh Gambar PNG Kartu Ini</span>
+                <span>Unduh Gambar {previewSide === 'front' ? 'Depan' : 'Belakang'} Kartu Ini</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Footer info bar */}
-        <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+        <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 shrink-0">
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              Tersimpan otomatis di browser. Anda tidak perlu mengulang ketik jika keluar.
+              Tersimpan otomatis di browser. Pas di plastik ID card B4 (10×15 cm).
             </span>
           </div>
           <button
