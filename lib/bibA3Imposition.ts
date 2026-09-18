@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import jsPDF from 'jspdf';
 import {
   ParticipantForBib,
   ensureSakanaFontLoaded,
@@ -569,4 +570,173 @@ export async function generateBulkBibA3Zip(
   });
 
   return zipBlob;
+}
+
+/**
+ * Main Generator for Bulk A3 / A3+ Imposition as a SINGLE MULTI-PAGE PDF
+ * Optimal compression (JPEG 0.88) for small file size while keeping crisp 300 DPI vector sharpness.
+ */
+export async function generateBulkBibA3Pdf(
+  participants: ParticipantForBib[],
+  options: BibA3Options = { layout: '8_per_sheet_a3_plus', includeCropMarks: true },
+  onProgress?: (progress: BibA3SheetProgress) => void,
+  abortSignal?: AbortSignal
+): Promise<Blob | null> {
+  const total = participants.length;
+  if (total === 0) {
+    throw new Error('Tidak ada data peserta untuk dibuatkan PDF A3.');
+  }
+
+  const isA3Plus = options.layout === '8_per_sheet_a3_plus';
+  const itemsPerSheet = isA3Plus ? 8 : options.layout === '2_per_sheet' ? 2 : 4;
+  const totalSheets = Math.ceil(total / itemsPerSheet);
+
+  onProgress?.({
+    currentSheet: 0,
+    totalSheets,
+    percent: 0,
+    currentLabel: 'Memuat template BIB & font Sakana...',
+    stage: 'loading_assets',
+  });
+
+  const [hasSakanaFont, templateImg] = await Promise.all([
+    ensureSakanaFontLoaded(),
+    ensureTemplateImageLoaded(),
+  ]);
+
+  if (abortSignal?.aborted) {
+    onProgress?.({ currentSheet: 0, totalSheets, percent: 0, currentLabel: '', stage: 'cancelled' });
+    return null;
+  }
+
+  // Create reusable card buffer canvases
+  const cardCanvases: HTMLCanvasElement[] = [];
+  const cardContexts: CanvasRenderingContext2D[] = [];
+  for (let i = 0; i < itemsPerSheet; i++) {
+    const c = document.createElement('canvas');
+    c.width = CARD_BUFFER_WIDTH;
+    c.height = CARD_BUFFER_HEIGHT;
+    const ctx = c.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context tidak didukung.');
+    cardCanvases.push(c);
+    cardContexts.push(ctx);
+  }
+
+  // Create master sheet canvas
+  const sheetCanvas = document.createElement('canvas');
+  sheetCanvas.width = isA3Plus ? A3_PLUS_WIDTH : A3_WIDTH;
+  sheetCanvas.height = isA3Plus ? A3_PLUS_HEIGHT : A3_HEIGHT;
+  const sheetCtx = sheetCanvas.getContext('2d');
+  if (!sheetCtx) throw new Error('Canvas 2D context master sheet tidak didukung.');
+
+  // Dimensions in mm for jsPDF
+  // A3+ Portrait: 329 mm W x 483 mm H
+  // Standard A3 Landscape: 420 mm W x 297 mm H
+  const pdfWidthMm = isA3Plus ? 329 : 420;
+  const pdfHeightMm = isA3Plus ? 483 : 297;
+  const orientation = isA3Plus ? 'portrait' : 'landscape';
+
+  const doc = new jsPDF({
+    orientation,
+    unit: 'mm',
+    format: [pdfWidthMm, pdfHeightMm],
+    compress: true,
+  });
+
+  // Render sheets one by one and embed into PDF
+  for (let sheetIdx = 0; sheetIdx < totalSheets; sheetIdx++) {
+    if (abortSignal?.aborted) {
+      onProgress?.({ currentSheet: sheetIdx, totalSheets, percent: 0, currentLabel: '', stage: 'cancelled' });
+      return null;
+    }
+
+    const startIdx = sheetIdx * itemsPerSheet;
+    const sheetParticipants = participants.slice(startIdx, startIdx + itemsPerSheet);
+
+    const firstBib = String(sheetParticipants[0].nomor_bib).padStart(4, '0');
+    const lastBib = String(sheetParticipants[sheetParticipants.length - 1].nomor_bib).padStart(4, '0');
+
+    const percent = Math.round(((sheetIdx + 1) / totalSheets) * 92);
+    onProgress?.({
+      currentSheet: sheetIdx + 1,
+      totalSheets,
+      percent,
+      currentLabel: `Menyusun Halaman PDF #${sheetIdx + 1} (${firstBib} s/d ${lastBib})`,
+      stage: 'rendering_sheets',
+    });
+
+    // 1. Render cards into buffer
+    for (let cIdx = 0; cIdx < sheetParticipants.length; cIdx++) {
+      drawBibParticipant(
+        cardCanvases[cIdx],
+        cardContexts[cIdx],
+        templateImg,
+        hasSakanaFont,
+        sheetParticipants[cIdx]
+      );
+    }
+
+    // 2. Compose into master sheet
+    if (options.layout === '8_per_sheet_a3_plus') {
+      renderA3PlusSheet8Up(
+        sheetCanvas,
+        sheetCtx,
+        cardCanvases,
+        sheetParticipants,
+        sheetIdx,
+        totalSheets,
+        options
+      );
+    } else if (options.layout === '2_per_sheet') {
+      renderA3Sheet2Up(
+        sheetCanvas,
+        sheetCtx,
+        cardCanvases,
+        sheetParticipants,
+        sheetIdx,
+        totalSheets,
+        options
+      );
+    } else {
+      renderA3Sheet4Up(
+        sheetCanvas,
+        sheetCtx,
+        cardCanvases,
+        sheetParticipants,
+        sheetIdx,
+        totalSheets,
+        options
+      );
+    }
+
+    // 3. Convert sheet to high quality compressed JPEG (0.88 quality is razor sharp for print and very lightweight)
+    const imgData = sheetCanvas.toDataURL('image/jpeg', 0.88);
+
+    if (sheetIdx > 0) {
+      doc.addPage([pdfWidthMm, pdfHeightMm], orientation);
+    }
+    doc.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm, undefined, 'FAST');
+
+    await new Promise((r) => setTimeout(r, 20));
+  }
+
+  onProgress?.({
+    currentSheet: totalSheets,
+    totalSheets,
+    percent: 96,
+    currentLabel: 'Menyelesaikan kompilasi dokumen PDF...',
+    stage: 'zipping',
+  });
+
+  const pdfBlob = doc.output('blob');
+
+  onProgress?.({
+    currentSheet: totalSheets,
+    totalSheets,
+    percent: 100,
+    currentLabel: 'Selesai!',
+    stage: 'done',
+  });
+
+  return pdfBlob;
 }

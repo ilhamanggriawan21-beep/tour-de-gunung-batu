@@ -6,7 +6,7 @@ import TopoBackground from '@/components/TopoBackground';
 import BibCard from '@/components/BibCard';
 import { downloadBibCard } from '@/lib/downloadBib';
 import { generateBulkBibZip, triggerDownload, BulkBibProgress, ParticipantForBib } from '@/lib/bulkBibZip';
-import { generateBulkBibA3Zip } from '@/lib/bibA3Imposition';
+import { generateBulkBibA3Zip, generateBulkBibA3Pdf } from '@/lib/bibA3Imposition';
 import { NametagPanitiaModal } from '@/components/NametagPanitiaModal';
 import {
   ShieldCheck,
@@ -177,6 +177,7 @@ export default function AdminDashboardPage() {
   // Bulk BIB Download Modal State
   const [showBulkBibModal, setShowBulkBibModal] = useState(false);
   const [bulkBibFormatMode, setBulkBibFormatMode] = useState<'a3_sheet' | 'individual'>('a3_sheet');
+  const [bulkBibFileType, setBulkBibFileType] = useState<'pdf' | 'zip'>('pdf');
   const [bulkBibA3Layout, setBulkBibA3Layout] = useState<'8_per_sheet_a3_plus' | '4_per_sheet' | '2_per_sheet'>('8_per_sheet_a3_plus');
   const [bulkBibRangeMode, setBulkBibRangeMode] = useState<'all' | 'verified' | 'batch' | 'custom'>('all');
   const [bulkBibBatchPreset, setBulkBibBatchPreset] = useState<'1-100' | '101-200' | '201-300' | '301-400'>('1-100');
@@ -252,30 +253,56 @@ export default function AdminDashboardPage() {
             ? 2
             : 4;
         const totalSheets = Math.ceil(list.length / perSheet);
-
-        zipBlob = await generateBulkBibA3Zip(
-          list,
-          { layout: bulkBibA3Layout, includeCropMarks: true },
-          (progress) => {
-            setBulkBibProgress({
-              current: progress.currentSheet,
-              total: progress.totalSheets,
-              percent: progress.percent,
-              currentName: progress.currentLabel,
-              stage: progress.stage === 'rendering_sheets' ? 'rendering' : (progress.stage as any),
-            });
-          },
-          controller.signal
-        );
-
         const prefix = bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'LEMBAR_A3_PLUS_8_BIB' : 'LEMBAR_A3_BIB';
-        zipName = `${prefix}_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
-        if (bulkBibRangeMode === 'verified') {
-          zipName = `${prefix}_Lunas_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
-        } else if (bulkBibRangeMode === 'batch') {
-          zipName = `${prefix}_Batch_${bulkBibBatchPreset}_${totalSheets}_Lembar.zip`;
-        } else if (bulkBibRangeMode === 'custom') {
-          zipName = `${prefix}_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Lembar.zip`;
+
+        if (bulkBibFileType === 'pdf') {
+          zipBlob = await generateBulkBibA3Pdf(
+            list,
+            { layout: bulkBibA3Layout, includeCropMarks: true },
+            (progress) => {
+              setBulkBibProgress({
+                current: progress.currentSheet,
+                total: progress.totalSheets,
+                percent: progress.percent,
+                currentName: progress.currentLabel,
+                stage: progress.stage === 'rendering_sheets' ? 'rendering' : (progress.stage as any),
+              });
+            },
+            controller.signal
+          );
+
+          zipName = `${prefix}_TourDeGunungBatu_${list.length}_Peserta_${totalSheets}_Halaman.pdf`;
+          if (bulkBibRangeMode === 'verified') {
+            zipName = `${prefix}_Lunas_${list.length}_Peserta_${totalSheets}_Halaman.pdf`;
+          } else if (bulkBibRangeMode === 'batch') {
+            zipName = `${prefix}_Batch_${bulkBibBatchPreset}_${totalSheets}_Halaman.pdf`;
+          } else if (bulkBibRangeMode === 'custom') {
+            zipName = `${prefix}_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Halaman.pdf`;
+          }
+        } else {
+          zipBlob = await generateBulkBibA3Zip(
+            list,
+            { layout: bulkBibA3Layout, includeCropMarks: true },
+            (progress) => {
+              setBulkBibProgress({
+                current: progress.currentSheet,
+                total: progress.totalSheets,
+                percent: progress.percent,
+                currentName: progress.currentLabel,
+                stage: progress.stage === 'rendering_sheets' ? 'rendering' : (progress.stage as any),
+              });
+            },
+            controller.signal
+          );
+
+          zipName = `${prefix}_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
+          if (bulkBibRangeMode === 'verified') {
+            zipName = `${prefix}_Lunas_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
+          } else if (bulkBibRangeMode === 'batch') {
+            zipName = `${prefix}_Batch_${bulkBibBatchPreset}_${totalSheets}_Lembar.zip`;
+          } else if (bulkBibRangeMode === 'custom') {
+            zipName = `${prefix}_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Lembar.zip`;
+          }
         }
       } else {
         zipBlob = await generateBulkBibZip(
@@ -4574,6 +4601,56 @@ export default function AdminDashboardPage() {
                         </div>
                       </button>
                     </div>
+
+                    {/* File Output Type: PDF vs ZIP */}
+                    <div className="pt-2.5 border-t border-amber-200/80 space-y-1.5">
+                      <label className="text-[11px] font-bold text-amber-900 block">
+                        Tipe Dokumen Hasil Ekspor:
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setBulkBibFileType('pdf')}
+                          className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                            bulkBibFileType === 'pdf'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-400/40 font-black'
+                              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-black flex items-center space-x-1">
+                              <span>📄 1 File PDF Multi-Halaman</span>
+                            </span>
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${bulkBibFileType === 'pdf' ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-800'}`}>
+                              Standar Percetakan
+                            </span>
+                          </div>
+                          <p className={`text-[10px] leading-tight ${bulkBibFileType === 'pdf' ? 'text-rose-100' : 'text-slate-500'}`}>
+                            Terkunci ukuran asli 300 DPI, operator tinggal buka &amp; klik Print All.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBulkBibFileType('zip')}
+                          className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                            bulkBibFileType === 'zip'
+                              ? 'bg-brand-royal text-white border-brand-royal shadow-md ring-2 ring-brand-royal/30 font-black'
+                              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-black">📦 File ZIP (Gambar JPG)</span>
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${bulkBibFileType === 'zip' ? 'bg-brand-yellow text-brand-navy' : 'bg-slate-100 text-slate-700'}`}>
+                              Gambar Lepasan
+                            </span>
+                          </div>
+                          <p className={`text-[10px] leading-tight ${bulkBibFileType === 'zip' ? 'text-blue-100' : 'text-slate-500'}`}>
+                            Kumpulan file gambar per lembar dalam arsip ZIP.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -4813,7 +4890,11 @@ export default function AdminDashboardPage() {
                   type="button"
                   disabled={getBulkBibTargetList().length === 0}
                   onClick={handleStartBulkBibDownload}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95"
+                  className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95 ${
+                    bulkBibFormatMode === 'a3_sheet' && bulkBibFileType === 'pdf'
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                      : 'bg-brand-yellow hover:bg-amber-400 text-brand-navy'
+                  }`}
                 >
                   <Download className="w-4 h-4" />
                   <span>
@@ -4828,6 +4909,9 @@ export default function AdminDashboardPage() {
                             : 4;
                         const totalSheets = Math.ceil(list.length / perSheet);
                         const paperLabel = bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'Lembar A3+' : 'Lembar A3';
+                        if (bulkBibFileType === 'pdf') {
+                          return `Unduh PDF (${totalSheets} Halaman • ${list.length} BIB)`;
+                        }
                         return `Unduh ZIP ${totalSheets} ${paperLabel} (${list.length} BIB)`;
                       }
                       return `Unduh ZIP ${list.length} File PNG`;
