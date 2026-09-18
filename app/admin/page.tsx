@@ -177,7 +177,7 @@ export default function AdminDashboardPage() {
   // Bulk BIB Download Modal State
   const [showBulkBibModal, setShowBulkBibModal] = useState(false);
   const [bulkBibFormatMode, setBulkBibFormatMode] = useState<'a3_sheet' | 'individual'>('a3_sheet');
-  const [bulkBibA3Layout, setBulkBibA3Layout] = useState<'4_per_sheet' | '2_per_sheet'>('4_per_sheet');
+  const [bulkBibA3Layout, setBulkBibA3Layout] = useState<'8_per_sheet_a3_plus' | '4_per_sheet' | '2_per_sheet'>('8_per_sheet_a3_plus');
   const [bulkBibRangeMode, setBulkBibRangeMode] = useState<'all' | 'verified' | 'batch' | 'custom'>('all');
   const [bulkBibBatchPreset, setBulkBibBatchPreset] = useState<'1-100' | '101-200' | '201-300' | '301-400'>('1-100');
   const [bulkBibCustomMin, setBulkBibCustomMin] = useState<number>(1);
@@ -245,7 +245,12 @@ export default function AdminDashboardPage() {
       let zipName = '';
 
       if (bulkBibFormatMode === 'a3_sheet') {
-        const perSheet = bulkBibA3Layout === '2_per_sheet' ? 2 : 4;
+        const perSheet =
+          bulkBibA3Layout === '8_per_sheet_a3_plus'
+            ? 8
+            : bulkBibA3Layout === '2_per_sheet'
+            ? 2
+            : 4;
         const totalSheets = Math.ceil(list.length / perSheet);
 
         zipBlob = await generateBulkBibA3Zip(
@@ -263,13 +268,14 @@ export default function AdminDashboardPage() {
           controller.signal
         );
 
-        zipName = `LEMBAR_A3_BIB_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
+        const prefix = bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'LEMBAR_A3_PLUS_8_BIB' : 'LEMBAR_A3_BIB';
+        zipName = `${prefix}_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
         if (bulkBibRangeMode === 'verified') {
-          zipName = `LEMBAR_A3_BIB_Lunas_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
+          zipName = `${prefix}_Lunas_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
         } else if (bulkBibRangeMode === 'batch') {
-          zipName = `LEMBAR_A3_BIB_Batch_${bulkBibBatchPreset}_${totalSheets}_Lembar.zip`;
+          zipName = `${prefix}_Batch_${bulkBibBatchPreset}_${totalSheets}_Lembar.zip`;
         } else if (bulkBibRangeMode === 'custom') {
-          zipName = `LEMBAR_A3_BIB_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Lembar.zip`;
+          zipName = `${prefix}_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Lembar.zip`;
         }
       } else {
         zipBlob = await generateBulkBibZip(
@@ -4501,25 +4507,54 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {/* If A3 Layout is selected: Option 4-up vs 2-up */}
+                {/* If A3 Layout is selected: Option 8-up (A3+) vs 4-up vs 2-up */}
                 {bulkBibFormatMode === 'a3_sheet' && (
                   <div className="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 space-y-2">
-                    <label className="text-[11px] font-bold text-amber-900 block">
-                      Konfigurasi Grid Lembar A3:
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-amber-900 block">
+                        Pilihan Ukuran Kertas &amp; Susunan Grid:
+                      </label>
+                      <span className="text-[10px] font-black bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md">
+                        Standar Digital Printing
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBulkBibA3Layout('8_per_sheet_a3_plus')}
+                        className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all relative ${
+                          bulkBibA3Layout === '8_per_sheet_a3_plus'
+                            ? 'bg-brand-royal text-white border-brand-royal shadow-md ring-2 ring-brand-royal/30'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black">8 BIB / Lembar</span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'bg-brand-yellow text-brand-navy' : 'bg-emerald-100 text-emerald-800'}`}>
+                            Kertas A3+
+                          </span>
+                        </div>
+                        <div className={`text-[10px] mt-1 font-semibold ${bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'text-blue-100' : 'text-slate-500'}`}>
+                          Kertas: 329×483 mm<br />
+                          Area Max: 310×470 mm<br />
+                          Kartu: 15.0×10.5 cm
+                        </div>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setBulkBibA3Layout('4_per_sheet')}
                         className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
                           bulkBibA3Layout === '4_per_sheet'
-                            ? 'bg-brand-royal text-white border-brand-royal shadow-sm'
+                            ? 'bg-brand-royal text-white border-brand-royal shadow-md'
                             : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="font-extrabold">4 BIB per Lembar (2x2)</div>
-                        <div className={`text-[10px] font-normal ${bulkBibA3Layout === '4_per_sheet' ? 'text-blue-100' : 'text-slate-500'}`}>
-                          Ukuran A5 proporsional (Standar Event Sepeda)
+                        <div className="font-extrabold">4 BIB / Lembar</div>
+                        <div className={`text-[10px] mt-1 font-normal ${bulkBibA3Layout === '4_per_sheet' ? 'text-blue-100' : 'text-slate-500'}`}>
+                          Kertas: A3 (297×420 mm)<br />
+                          Ukuran: A5 (20×14 cm)
                         </div>
                       </button>
 
@@ -4528,13 +4563,14 @@ export default function AdminDashboardPage() {
                         onClick={() => setBulkBibA3Layout('2_per_sheet')}
                         className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
                           bulkBibA3Layout === '2_per_sheet'
-                            ? 'bg-brand-royal text-white border-brand-royal shadow-sm'
+                            ? 'bg-brand-royal text-white border-brand-royal shadow-md'
                             : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="font-extrabold">2 BIB per Lembar (2x1)</div>
-                        <div className={`text-[10px] font-normal ${bulkBibA3Layout === '2_per_sheet' ? 'text-blue-100' : 'text-slate-500'}`}>
-                          Ukuran Jumbo Ekstra Besar
+                        <div className="font-extrabold">2 BIB / Lembar</div>
+                        <div className={`text-[10px] mt-1 font-normal ${bulkBibA3Layout === '2_per_sheet' ? 'text-blue-100' : 'text-slate-500'}`}>
+                          Kertas: A3 (297×420 mm)<br />
+                          Ukuran: Jumbo (28×20 cm)
                         </div>
                       </button>
                     </div>
@@ -4663,8 +4699,17 @@ export default function AdminDashboardPage() {
                 {/* Target Count Preview */}
                 {(() => {
                   const targetList = getBulkBibTargetList();
-                  const perSheet = bulkBibA3Layout === '2_per_sheet' ? 2 : 4;
+                  const perSheet =
+                    bulkBibA3Layout === '8_per_sheet_a3_plus'
+                      ? 8
+                      : bulkBibA3Layout === '2_per_sheet'
+                      ? 2
+                      : 4;
                   const totalSheets = Math.ceil(targetList.length / perSheet);
+                  const sheetTypeName =
+                    bulkBibA3Layout === '8_per_sheet_a3_plus'
+                      ? 'Lembar A3+ (329×483 mm)'
+                      : 'Lembar A3 Standar';
 
                   return (
                     <div className="p-3.5 bg-brand-iceBg rounded-2xl border border-brand-sky/40 flex items-center justify-between">
@@ -4672,12 +4717,16 @@ export default function AdminDashboardPage() {
                         <span className="text-slate-500 font-medium block">Total yang akan di-render:</span>
                         <span className="text-brand-navy font-black text-sm">
                           {bulkBibFormatMode === 'a3_sheet'
-                            ? `${totalSheets} Lembar A3 (${targetList.length} Nomor BIB)`
+                            ? `${totalSheets} ${sheetTypeName} (${targetList.length} Nomor BIB)`
                             : `${targetList.length} Kartu BIB (PNG)`}
                         </span>
                       </div>
                       <span className="text-[11px] font-bold text-brand-royal bg-white px-2.5 py-1 rounded-lg border border-brand-sky/60 shadow-sm">
-                        {bulkBibFormatMode === 'a3_sheet' ? '300 DPI + Garis Siku Potong' : 'Format PNG 2.5K'}
+                        {bulkBibFormatMode === 'a3_sheet'
+                          ? bulkBibA3Layout === '8_per_sheet_a3_plus'
+                            ? 'A3+ 300 DPI (Area 310×470mm)'
+                            : '300 DPI + Garis Siku'
+                          : 'Format PNG 2.5K'}
                       </span>
                     </div>
                   );
@@ -4771,9 +4820,15 @@ export default function AdminDashboardPage() {
                     {(() => {
                       const list = getBulkBibTargetList();
                       if (bulkBibFormatMode === 'a3_sheet') {
-                        const perSheet = bulkBibA3Layout === '2_per_sheet' ? 2 : 4;
+                        const perSheet =
+                          bulkBibA3Layout === '8_per_sheet_a3_plus'
+                            ? 8
+                            : bulkBibA3Layout === '2_per_sheet'
+                            ? 2
+                            : 4;
                         const totalSheets = Math.ceil(list.length / perSheet);
-                        return `Unduh ZIP ${totalSheets} Lembar A3 (${list.length} BIB)`;
+                        const paperLabel = bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'Lembar A3+' : 'Lembar A3';
+                        return `Unduh ZIP ${totalSheets} ${paperLabel} (${list.length} BIB)`;
                       }
                       return `Unduh ZIP ${list.length} File PNG`;
                     })()}

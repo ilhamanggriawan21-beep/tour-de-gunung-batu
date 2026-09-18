@@ -15,11 +15,17 @@ export interface BibA3SheetProgress {
 }
 
 export interface BibA3Options {
-  layout: '4_per_sheet' | '2_per_sheet';
+  layout: '8_per_sheet_a3_plus' | '4_per_sheet' | '2_per_sheet';
   includeCropMarks: boolean;
 }
 
-// Canvas dimensions for A3 @ 300 DPI Landscape
+// Canvas dimensions for A3+ (329 x 483 mm) @ 300 DPI Portrait
+// 329 mm: 3886 px, 483 mm: 5705 px
+// Max printable area: 310 x 470 mm (3661 x 5551 px @ 300 DPI)
+const A3_PLUS_WIDTH = 3886;
+const A3_PLUS_HEIGHT = 5705;
+
+// Canvas dimensions for standard A3 (297 x 420 mm) @ 300 DPI Landscape
 const A3_WIDTH = 4960;
 const A3_HEIGHT = 3508;
 
@@ -269,11 +275,124 @@ function renderA3Sheet2Up(
 }
 
 /**
+ * Render a single A3+ sheet (329 x 483 mm) containing up to 8 BIBs (2 columns x 4 rows)
+ * Max printable area: 310 x 470 mm
+ * Card size: 1770 x 1247 px (~150 x 105.7 mm @ 300 DPI)
+ */
+function renderA3PlusSheet8Up(
+  sheetCanvas: HTMLCanvasElement,
+  sheetCtx: CanvasRenderingContext2D,
+  cardCanvases: HTMLCanvasElement[],
+  participants: ParticipantForBib[],
+  sheetIndex: number,
+  totalSheets: number,
+  options: BibA3Options
+) {
+  const w = A3_PLUS_WIDTH;
+  const h = A3_PLUS_HEIGHT;
+  sheetCanvas.width = w;
+  sheetCanvas.height = h;
+
+  // Clear sheet to pure white
+  sheetCtx.fillStyle = '#FFFFFF';
+  sheetCtx.fillRect(0, 0, w, h);
+
+  // Card dimensions: 1770 x 1247 px (~150 mm x 105.7 mm @ 300 DPI)
+  const cardW = 1770;
+  const cardH = 1247;
+  const gapX = 70; // gap between 2 columns (~5.9 mm)
+  const gapY = 50; // gap between 4 rows (~4.2 mm)
+
+  const totalGridW = cardW * 2 + gapX; // 3610 px (fits within 3661 px printable W)
+  const totalGridH = cardH * 4 + gapY * 3; // 5138 px (fits within 5551 px printable H)
+
+  const startX = Math.round((w - totalGridW) / 2); // 138 px (~11.7 mm margin)
+  const startY = 240; // leaving top margin for slug & crop marks
+
+  // 1. Draw Sheet Header (Slug Area for print operator)
+  sheetCtx.save();
+  sheetCtx.fillStyle = '#0F172A';
+  sheetCtx.font = 'bold 36px sans-serif';
+  sheetCtx.textAlign = 'left';
+  sheetCtx.textBaseline = 'top';
+
+  const bibNums = participants.map((p) => `#${String(p.nomor_bib).padStart(4, '0')}`).join(', ');
+  sheetCtx.fillText(
+    `TOUR DE GUNUNG BATU 2026  |  LEMBAR A3+ (${sheetIndex + 1} / ${totalSheets})  |  NOMOR BIB: ${bibNums}`,
+    startX,
+    75
+  );
+
+  sheetCtx.font = 'bold 26px sans-serif';
+  sheetCtx.fillStyle = '#1D3AAE';
+  sheetCtx.fillText(
+    'KERTAS A3+ (329×483mm) • AREA CETAK MAX 310×470mm • 8 BIB/LEMBAR (15×10.5cm) • 300 DPI',
+    startX,
+    125
+  );
+
+  sheetCtx.font = '500 24px sans-serif';
+  sheetCtx.fillStyle = '#64748B';
+  sheetCtx.textAlign = 'right';
+  sheetCtx.fillText(
+    'POTONG MENGIKUTI GARIS SIKU & GARIS PUTUS-PUTUS PUSAT',
+    w - startX,
+    125
+  );
+  sheetCtx.restore();
+
+  // Grid: 2 columns x 4 rows (8 cards)
+  for (let i = 0; i < participants.length && i < 8; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const posX = startX + col * (cardW + gapX);
+    const posY = startY + row * (cardH + gapY);
+
+    const cardCanvas = cardCanvases[i];
+
+    // Stamp the card buffer
+    sheetCtx.drawImage(cardCanvas, 0, 0, CARD_BUFFER_WIDTH, CARD_BUFFER_HEIGHT, posX, posY, cardW, cardH);
+
+    // Draw Crop Marks if enabled
+    if (options.includeCropMarks) {
+      drawCropMarks(sheetCtx, posX, posY, cardW, cardH, 45, 12);
+    }
+  }
+
+  // Draw central cutting guidelines between cards
+  if (options.includeCropMarks) {
+    const midX = startX + cardW + gapX / 2;
+
+    // Vertical dashed center line
+    drawCuttingGuideBetween(sheetCtx, midX, startY - 15, midX, startY + totalGridH + 15);
+
+    // Horizontal dashed lines between rows
+    for (let r = 1; r < 4; r++) {
+      const lineY = startY + r * cardH + (r - 0.5) * gapY;
+      drawCuttingGuideBetween(sheetCtx, startX - 20, lineY, startX + totalGridW + 20, lineY);
+    }
+  }
+
+  // Footer slug note
+  sheetCtx.save();
+  sheetCtx.fillStyle = '#94A3B8';
+  sheetCtx.font = 'bold 24px sans-serif';
+  sheetCtx.textAlign = 'center';
+  sheetCtx.textBaseline = 'bottom';
+  sheetCtx.fillText(
+    `SISTEM OTOMATISASI CETAK TOUR DE GUNUNG BATU — FORMAT A3+ DIGITAL PRINTING (300 DPI)`,
+    w / 2,
+    h - 40
+  );
+  sheetCtx.restore();
+}
+
+/**
  * Main Generator for Bulk A3 Imposition ZIP
  */
 export async function generateBulkBibA3Zip(
   participants: ParticipantForBib[],
-  options: BibA3Options = { layout: '4_per_sheet', includeCropMarks: true },
+  options: BibA3Options = { layout: '8_per_sheet_a3_plus', includeCropMarks: true },
   onProgress?: (progress: BibA3SheetProgress) => void,
   abortSignal?: AbortSignal
 ): Promise<Blob | null> {
@@ -282,7 +401,12 @@ export async function generateBulkBibA3Zip(
     throw new Error('Tidak ada data peserta untuk dibuatkan lembar A3.');
   }
 
-  const itemsPerSheet = options.layout === '2_per_sheet' ? 2 : 4;
+  const itemsPerSheet =
+    options.layout === '8_per_sheet_a3_plus'
+      ? 8
+      : options.layout === '2_per_sheet'
+      ? 2
+      : 4;
   const totalSheets = Math.ceil(total / itemsPerSheet);
 
   onProgress?.({
@@ -303,10 +427,10 @@ export async function generateBulkBibA3Zip(
     return null;
   }
 
-  // Create 4 reusable card buffer canvases
+  // Create reusable card buffer canvases (up to 8 for A3+)
   const cardCanvases: HTMLCanvasElement[] = [];
   const cardContexts: CanvasRenderingContext2D[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < itemsPerSheet; i++) {
     const c = document.createElement('canvas');
     c.width = CARD_BUFFER_WIDTH;
     c.height = CARD_BUFFER_HEIGHT;
@@ -316,15 +440,19 @@ export async function generateBulkBibA3Zip(
     cardContexts.push(ctx);
   }
 
-  // Create single A3 master sheet canvas
+  // Create master sheet canvas
   const sheetCanvas = document.createElement('canvas');
-  sheetCanvas.width = A3_WIDTH;
-  sheetCanvas.height = A3_HEIGHT;
+  const isA3Plus = options.layout === '8_per_sheet_a3_plus';
+  sheetCanvas.width = isA3Plus ? A3_PLUS_WIDTH : A3_WIDTH;
+  sheetCanvas.height = isA3Plus ? A3_PLUS_HEIGHT : A3_HEIGHT;
   const sheetCtx = sheetCanvas.getContext('2d');
-  if (!sheetCtx) throw new Error('Canvas 2D context A3 tidak didukung.');
+  if (!sheetCtx) throw new Error('Canvas 2D context master sheet tidak didukung.');
 
   const zip = new JSZip();
-  const folder = zip.folder('LEMBAR_A3_BIB_TourDeGunungBatu') || zip;
+  const folderName = isA3Plus
+    ? 'LEMBAR_A3_PLUS_8_BIB_TourDeGunungBatu'
+    : 'LEMBAR_A3_BIB_TourDeGunungBatu';
+  const folder = zip.folder(folderName) || zip;
 
   // Process sheets one by one
   for (let sheetIdx = 0; sheetIdx < totalSheets; sheetIdx++) {
@@ -345,7 +473,7 @@ export async function generateBulkBibA3Zip(
       currentSheet: sheetIdx + 1,
       totalSheets,
       percent,
-      currentLabel: `Merender Lembar A3 #${sheetIdx + 1} (${firstBib} s/d ${lastBib})`,
+      currentLabel: `Merender Lembar ${isA3Plus ? 'A3+' : 'A3'} #${sheetIdx + 1} (${firstBib} s/d ${lastBib})`,
       stage: 'rendering_sheets',
     });
 
@@ -360,8 +488,18 @@ export async function generateBulkBibA3Zip(
       );
     }
 
-    // 2. Compose into master A3 sheet
-    if (options.layout === '2_per_sheet') {
+    // 2. Compose into master sheet
+    if (options.layout === '8_per_sheet_a3_plus') {
+      renderA3PlusSheet8Up(
+        sheetCanvas,
+        sheetCtx,
+        cardCanvases,
+        sheetParticipants,
+        sheetIdx,
+        totalSheets,
+        options
+      );
+    } else if (options.layout === '2_per_sheet') {
       renderA3Sheet2Up(
         sheetCanvas,
         sheetCtx,
