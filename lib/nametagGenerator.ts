@@ -211,20 +211,19 @@ export function drawNametagFront(
     ctx.fillRect(0, 0, w, h);
   }
 
-  // 2. Member Name (Besar & Dominan di area putih di bawah tulisan "PANITIA")
+  // 2. Member Name (Font sama persis dengan nama peserta BIB: 900 sans-serif, diperbesar maksimal)
   ctx.save();
   const cleanName = member.nama.trim().toUpperCase();
-  let nameFontSize = 105; // Diperbesar secara signifikan
-  const nameFontFamily = hasSakanaFont ? 'SakanaCanvas' : 'sans-serif';
-  ctx.font = `${nameFontSize}px ${nameFontFamily}`;
+  let nameFontSize = 130; // Diperbesar maksimal
+  ctx.font = `900 ${nameFontSize}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  const maxNameW = w * 0.88; // ~1000 px
+  const maxNameW = w * 0.90; // ~1020 px
   let measuredW = ctx.measureText(cleanName).width;
   if (measuredW > maxNameW) {
     nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
-    ctx.font = `${nameFontSize}px ${nameFontFamily}`;
+    ctx.font = `900 ${nameFontSize}px sans-serif`;
   }
 
   // Name drop shadow
@@ -232,21 +231,21 @@ export function drawNametagFront(
   ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 4;
   ctx.fillStyle = '#0A1338'; // Deep Royal Navy
-  ctx.fillText(cleanName, w / 2, 925);
+  ctx.fillText(cleanName, w / 2, 920);
   ctx.restore();
 
-  // 3. Division Pill Badge (Tepat di bawah Nama Panitia)
+  // 3. Division Pill Badge (Diturunkan lebih ke bawah)
   const divConfig = getDivisionConfig(member.divisi);
   ctx.save();
   const divText = member.divisi.trim().toUpperCase();
 
-  let divFontSize = 42;
+  let divFontSize = 46;
   ctx.font = `900 ${divFontSize}px sans-serif`;
   const divTextW = ctx.measureText(divText).width;
-  const pillW = Math.min(w * 0.85, Math.max(420, divTextW + 90));
-  const pillH = 82;
+  const pillW = Math.min(w * 0.88, Math.max(440, divTextW + 100));
+  const pillH = 88;
   const pillX = (w - pillW) / 2;
-  const pillY = 980;
+  const pillY = 1045; // Diturunkan ke bawah
 
   // Badge background & shadow
   ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
@@ -255,7 +254,7 @@ export function drawNametagFront(
   ctx.fillStyle = divConfig.bg;
   ctx.beginPath();
   if (typeof (ctx as any).roundRect === 'function') {
-    (ctx as any).roundRect(pillX, pillY, pillW, pillH, 24);
+    (ctx as any).roundRect(pillX, pillY, pillW, pillH, 26);
   } else {
     ctx.fillRect(pillX, pillY, pillW, pillH);
   }
@@ -265,7 +264,7 @@ export function drawNametagFront(
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
   ctx.strokeStyle = '#0A1338';
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 4.5;
   ctx.stroke();
 
   // Division text
