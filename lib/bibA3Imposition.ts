@@ -148,31 +148,7 @@ function renderA3Sheet4Up(
   const gapX = 100;
   const gapY = 80;
   const startX = Math.round((w - (cardW * 2 + gapX)) / 2);
-  const startY = Math.round((h - (cardH * 2 + gapY)) / 2) + 20;
-
-  // 1. Draw Sheet Header (Slug Area for print operator)
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#0F172A';
-  sheetCtx.font = 'bold 34px sans-serif';
-  sheetCtx.textAlign = 'left';
-  sheetCtx.textBaseline = 'top';
-
-  const bibNums = participants.map((p) => `#${String(p.nomor_bib).padStart(4, '0')}`).join(', ');
-  sheetCtx.fillText(
-    `TOUR DE GUNUNG BATU 2026  |  LEMBAR CETAK A3 (${sheetIndex + 1} / ${totalSheets})  |  NOMOR BIB: ${bibNums}`,
-    startX,
-    45
-  );
-
-  sheetCtx.font = '500 28px sans-serif';
-  sheetCtx.fillStyle = '#64748B';
-  sheetCtx.textAlign = 'right';
-  sheetCtx.fillText(
-    'UKURAN A3 (297x420mm) • 300 DPI • 4 KARTU A5 PER LEMBAR • POTONG SESUAI GARIS SIKU',
-    w - startX,
-    50
-  );
-  sheetCtx.restore();
+  const startY = Math.round((h - (cardH * 2 + gapY)) / 2);
 
   // Grid Positions:
   const positions = [
@@ -206,19 +182,6 @@ function renderA3Sheet4Up(
     // Horizontal dashed center line
     drawCuttingGuideBetween(sheetCtx, startX - 20, midY, startX + cardW * 2 + gapX + 20, midY);
   }
-
-  // Footer slug note
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#94A3B8';
-  sheetCtx.font = 'bold 24px sans-serif';
-  sheetCtx.textAlign = 'center';
-  sheetCtx.textBaseline = 'bottom';
-  sheetCtx.fillText(
-    `SISTEM OTOMATISASI CETAK TOUR DE GUNUNG BATU — FILE SIAP CETAK DIGITAL PRINTING A3 DUPLEX/SIMPLEX`,
-    w / 2,
-    h - 25
-  );
-  sheetCtx.restore();
 }
 
 /**
@@ -243,17 +206,7 @@ function renderA3Sheet2Up(
   const cardH = 1550;
   const gapY = 120;
   const startX = Math.round((w - cardW) / 2);
-  const startY = Math.round((h - (cardH * 2 + gapY)) / 2) + 20;
-
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#0F172A';
-  sheetCtx.font = 'bold 36px sans-serif';
-  sheetCtx.fillText(
-    `TOUR DE GUNUNG BATU 2026  |  LEMBAR CETAK A3 JUMBO (${sheetIndex + 1} / ${totalSheets})`,
-    startX,
-    55
-  );
-  sheetCtx.restore();
+  const startY = Math.round((h - (cardH * 2 + gapY)) / 2);
 
   const positions = [
     { x: startX, y: startY },
@@ -308,39 +261,7 @@ function renderA3PlusSheet8Up(
   const totalGridH = cardH * 4 + gapY * 3; // 5138 px (fits within 5551 px printable H)
 
   const startX = Math.round((w - totalGridW) / 2); // 138 px (~11.7 mm margin)
-  const startY = 240; // leaving top margin for slug & crop marks
-
-  // 1. Draw Sheet Header (Slug Area for print operator)
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#0F172A';
-  sheetCtx.font = 'bold 36px sans-serif';
-  sheetCtx.textAlign = 'left';
-  sheetCtx.textBaseline = 'top';
-
-  const bibNums = participants.map((p) => `#${String(p.nomor_bib).padStart(4, '0')}`).join(', ');
-  sheetCtx.fillText(
-    `TOUR DE GUNUNG BATU 2026  |  LEMBAR A3+ (${sheetIndex + 1} / ${totalSheets})  |  NOMOR BIB: ${bibNums}`,
-    startX,
-    75
-  );
-
-  sheetCtx.font = 'bold 26px sans-serif';
-  sheetCtx.fillStyle = '#1D3AAE';
-  sheetCtx.fillText(
-    'KERTAS A3+ (329×483mm) • AREA CETAK MAX 310×470mm • 8 BIB/LEMBAR (15×10.5cm) • 300 DPI',
-    startX,
-    125
-  );
-
-  sheetCtx.font = '500 24px sans-serif';
-  sheetCtx.fillStyle = '#64748B';
-  sheetCtx.textAlign = 'right';
-  sheetCtx.fillText(
-    'POTONG MENGIKUTI GARIS SIKU & GARIS PUTUS-PUTUS PUSAT',
-    w - startX,
-    125
-  );
-  sheetCtx.restore();
+  const startY = Math.round((h - totalGridH) / 2); // perfectly centered vertically
 
   // Grid: 2 columns x 4 rows (8 cards)
   for (let i = 0; i < participants.length && i < 8; i++) {
@@ -373,19 +294,6 @@ function renderA3PlusSheet8Up(
       drawCuttingGuideBetween(sheetCtx, startX - 20, lineY, startX + totalGridW + 20, lineY);
     }
   }
-
-  // Footer slug note
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#94A3B8';
-  sheetCtx.font = 'bold 24px sans-serif';
-  sheetCtx.textAlign = 'center';
-  sheetCtx.textBaseline = 'bottom';
-  sheetCtx.fillText(
-    `SISTEM OTOMATISASI CETAK TOUR DE GUNUNG BATU — FORMAT A3+ DIGITAL PRINTING (300 DPI)`,
-    w / 2,
-    h - 40
-  );
-  sheetCtx.restore();
 }
 
 /**
