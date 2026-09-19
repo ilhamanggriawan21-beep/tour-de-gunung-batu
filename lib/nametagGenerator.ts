@@ -211,15 +211,15 @@ export function drawNametagFront(
     ctx.fillRect(0, 0, w, h);
   }
 
-  // 2. Member Name (Font sama persis dengan nama peserta BIB: 900 sans-serif, diperbesar maksimal)
+  // 2. Member Name (Font 900 sans-serif tebal, diperbesar ekstra & agak ke bawah sedikit)
   ctx.save();
   const cleanName = member.nama.trim().toUpperCase();
-  let nameFontSize = 130; // Diperbesar maksimal
+  let nameFontSize = 160; // Diperbesar ekstra
   ctx.font = `900 ${nameFontSize}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  const maxNameW = w * 0.90; // ~1020 px
+  const maxNameW = w * 0.92; // ~1040 px
   let measuredW = ctx.measureText(cleanName).width;
   if (measuredW > maxNameW) {
     nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
@@ -231,10 +231,10 @@ export function drawNametagFront(
   ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 4;
   ctx.fillStyle = '#0A1338'; // Deep Royal Navy
-  ctx.fillText(cleanName, w / 2, 920);
+  ctx.fillText(cleanName, w / 2, 955); // Agak ke bawah sedikit (dari 920 ke 955)
   ctx.restore();
 
-  // 3. Division Pill Badge (Diturunkan lebih ke bawah)
+  // 3. Division Pill Badge (Diturunkan seimbang di bawah nama)
   const divConfig = getDivisionConfig(member.divisi);
   ctx.save();
   const divText = member.divisi.trim().toUpperCase();
@@ -245,7 +245,7 @@ export function drawNametagFront(
   const pillW = Math.min(w * 0.88, Math.max(440, divTextW + 100));
   const pillH = 88;
   const pillX = (w - pillW) / 2;
-  const pillY = 1045; // Diturunkan ke bawah
+  const pillY = 1065; // Diturunkan seimbang ke 1065
 
   // Badge background & shadow
   ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
