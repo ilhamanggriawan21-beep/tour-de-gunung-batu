@@ -7,6 +7,7 @@ import BibCard from '@/components/BibCard';
 import { downloadBibCard } from '@/lib/downloadBib';
 import { generateBulkBibZip, triggerDownload, BulkBibProgress, ParticipantForBib } from '@/lib/bulkBibZip';
 import { generateBulkBibA3Zip, generateBulkBibA3Pdf } from '@/lib/bibA3Imposition';
+import { generateBulkShippingLabelsPdf, ShippingItemForLabel } from '@/lib/shippingLabelsA3';
 import { NametagPanitiaModal } from '@/components/NametagPanitiaModal';
 import {
   ShieldCheck,
@@ -85,6 +86,8 @@ export default function AdminDashboardPage() {
   const [shippingFilter, setShippingFilter] = useState<'semua' | 'belum_kirim' | 'sudah_kirim'>('semua');
   const [editingResiId, setEditingResiId] = useState<string | null>(null);
   const [tempResiValue, setTempResiValue] = useState('');
+  const [downloadingShippingLabels, setDownloadingShippingLabels] = useState(false);
+  const [shippingLabelProgress, setShippingLabelProgress] = useState<{ percent: number; message: string } | null>(null);
 
   // Finance (Keuangan) State
   const [financeData, setFinanceData] = useState<any>({
@@ -1763,26 +1766,110 @@ export default function AdminDashboardPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs font-bold">
-                  {[
-                    { id: 'semua', label: `Semua (${shippingList.length})` },
-                    { id: 'belum_kirim', label: `Belum Kirim (${totalNotShipped})` },
-                    { id: 'sudah_kirim', label: `Sudah Kirim (${totalShipped})` }
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => setShippingFilter(f.id as any)}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        shippingFilter === f.id
-                          ? 'bg-brand-navy text-white shadow-sm'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold">
+                    {[
+                      { id: 'semua', label: `Semua (${shippingList.length})` },
+                      { id: 'belum_kirim', label: `Belum Kirim (${totalNotShipped})` },
+                      { id: 'sudah_kirim', label: `Sudah Kirim (${totalShipped})` }
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setShippingFilter(f.id as any)}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          shippingFilter === f.id
+                            ? 'bg-brand-navy text-white shadow-sm'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={downloadingShippingLabels || filteredShippingList.length === 0}
+                    onClick={async () => {
+                      if (filteredShippingList.length === 0) {
+                        alert('Tidak ada paket pengiriman yang dipilih.');
+                        return;
+                      }
+
+                      setDownloadingShippingLabels(true);
+                      setShippingLabelProgress({ percent: 5, message: 'Menyiapkan data paket pengiriman...' });
+
+                      try {
+                        const itemsToPrint: ShippingItemForLabel[] = filteredShippingList.map((item) => {
+                          const r = item.registrant;
+                          const p = item.jersey_po;
+                          return {
+                            id: p.id,
+                            nomor_bib: r?.nomor_bib || '',
+                            nomor_registrasi: r?.nomor_registrasi || '',
+                            nama_penerima: r?.nama_lengkap || 'PEMESAN JERSEY',
+                            no_telepon_penerima: r?.no_telepon || '',
+                            alamat_penerima: p.alamat_pengiriman || r?.alamat_lengkap || '',
+                            ukuran_jersey: p.ukuran || '',
+                            jenis_lengan: p.jenis_lengan || 'short_sleeve',
+                            qty: p.qty || 1,
+                            batch_produksi: p.batch_produksi,
+                            is_shipped: p.is_shipped,
+                          };
+                        });
+
+                        const pdfBlob = await generateBulkShippingLabelsPdf(itemsToPrint, (pct, msg) => {
+                          setShippingLabelProgress({ percent: pct, message: msg });
+                        });
+
+                        const url = URL.createObjectURL(pdfBlob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        const filterName = shippingFilter === 'belum_kirim' ? 'Belum_Kirim' : shippingFilter === 'sudah_kirim' ? 'Sudah_Kirim' : 'Semua';
+                        a.download = `LABEL_PENGIRIMAN_A3_TDGB_${filterName}_${itemsToPrint.length}_PAKET.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => {
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }, 1000);
+                      } catch (err: any) {
+                        console.error('Download error:', err);
+                        alert(`Gagal membuat PDF label pengiriman: ${err?.message || 'Error tidak diketahui'}`);
+                      } finally {
+                        setDownloadingShippingLabels(false);
+                        setShippingLabelProgress(null);
+                      }
+                    }}
+                    className="shrink-0 bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black px-4 py-2 rounded-xl shadow flex items-center justify-center space-x-1.5 transition-transform active:scale-95 disabled:opacity-50"
+                  >
+                    {downloadingShippingLabels ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-brand-navy" />
+                        <span>{shippingLabelProgress ? `${shippingLabelProgress.percent}%` : 'Memproses...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-brand-navy" />
+                        <span>Cetak Label &amp; Ucapan A3+ ({filteredShippingList.length})</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
+
+              {/* Live progress indicator when rendering labels */}
+              {downloadingShippingLabels && shippingLabelProgress && (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between text-xs font-bold text-amber-900 animate-in fade-in">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                    <span>{shippingLabelProgress.message}</span>
+                  </div>
+                  <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-300">
+                    {shippingLabelProgress.percent}%
+                  </span>
+                </div>
+              )}
 
               {/* Shipping List Cards */}
               <div className="space-y-2.5 pt-1">
