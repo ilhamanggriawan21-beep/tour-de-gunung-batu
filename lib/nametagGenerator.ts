@@ -509,34 +509,6 @@ export function renderNametagA3PlusSheet(
   const startX = Math.round((w - totalGridW) / 2); // 182 px (~15.4 mm margin)
   const startY = Math.round((h - totalGridH) / 2); // 434 px (~36.7 mm margin)
 
-  // Header slug
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#0F172A';
-  sheetCtx.font = 'bold 36px sans-serif';
-  sheetCtx.fillText(
-    `TOUR DE GUNUNG BATU 2026  |  LEMBAR A3+ ID CARD PANITIA (LEMBAR ${sheetIdx + 1} / ${totalSheets})  |  ${side === 'front' ? 'TAMPAK DEPAN' : 'TAMPAK BELAKANG (TUGAS)'}`,
-    startX,
-    startY - 160
-  );
-
-  sheetCtx.font = 'bold 26px sans-serif';
-  sheetCtx.fillStyle = '#1D3AAE';
-  sheetCtx.fillText(
-    'KERTAS A3+ (329×483mm) • AREA CETAK 310×470mm • 9 PCS KARTU B4 (9.6×13.3cm) • 300 DPI',
-    startX,
-    startY - 110
-  );
-
-  sheetCtx.font = '500 24px sans-serif';
-  sheetCtx.fillStyle = '#64748B';
-  sheetCtx.textAlign = 'right';
-  sheetCtx.fillText(
-    mirrorCols ? 'DUPLEX FLIP LONG-EDGE (POSISI MIRROR SESUAI DEPAN)' : 'POTONG MENGIKUTI GARIS SIKU POTONG',
-    w - startX,
-    startY - 110
-  );
-  sheetCtx.restore();
-
   // Draw 3 columns x 3 rows = 9 cards
   for (let i = 0; i < members.length && i < 9; i++) {
     const origCol = i % 3;
@@ -561,18 +533,6 @@ export function renderNametagA3PlusSheet(
   const midY2 = startY + cardH * 2 + gapY * 1.5;
   drawCuttingGuide(sheetCtx, startX - 20, midY1, startX + totalGridW + 20, midY1);
   drawCuttingGuide(sheetCtx, startX - 20, midY2, startX + totalGridW + 20, midY2);
-
-  // Footer slug
-  sheetCtx.save();
-  sheetCtx.fillStyle = '#94A3B8';
-  sheetCtx.font = 'bold 24px sans-serif';
-  sheetCtx.textAlign = 'center';
-  sheetCtx.fillText(
-    'ID CARD RESMI PANITIA TOUR DE GUNUNG BATU 2026 — UKURAN B4 (KERTAS 9.6×13.3cm / PLASTIK 10×15cm)',
-    w / 2,
-    h - 60
-  );
-  sheetCtx.restore();
 }
 
 /**
