@@ -23,7 +23,7 @@ export interface BulkBibProgress {
 let cachedTemplateImage: HTMLImageElement | null = null;
 let fontLoadedPromise: Promise<boolean> | null = null;
 
-async function ensureSakanaFontLoaded(): Promise<boolean> {
+export async function ensureSakanaFontLoaded(): Promise<boolean> {
   if (typeof document === 'undefined' || !('fonts' in document)) {
     return false;
   }
@@ -64,7 +64,7 @@ async function ensureSakanaFontLoaded(): Promise<boolean> {
   return fontLoadedPromise;
 }
 
-async function ensureTemplateImageLoaded(): Promise<HTMLImageElement> {
+export async function ensureTemplateImageLoaded(): Promise<HTMLImageElement> {
   if (cachedTemplateImage && cachedTemplateImage.complete && cachedTemplateImage.naturalWidth > 0) {
     return cachedTemplateImage;
   }
@@ -86,7 +86,7 @@ async function ensureTemplateImageLoaded(): Promise<HTMLImageElement> {
   });
 }
 
-function sanitizeFileName(name: string): string {
+export function sanitizeFileName(name: string): string {
   return name
     .trim()
     .toUpperCase()
@@ -95,7 +95,7 @@ function sanitizeFileName(name: string): string {
     .slice(0, 40);
 }
 
-function drawBibParticipant(
+export function drawBibParticipant(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   templateImg: HTMLImageElement,

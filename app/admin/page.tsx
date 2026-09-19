@@ -6,6 +6,8 @@ import TopoBackground from '@/components/TopoBackground';
 import BibCard from '@/components/BibCard';
 import { downloadBibCard } from '@/lib/downloadBib';
 import { generateBulkBibZip, triggerDownload, BulkBibProgress, ParticipantForBib } from '@/lib/bulkBibZip';
+import { generateBulkBibA3Zip, generateBulkBibA3Pdf } from '@/lib/bibA3Imposition';
+import { NametagPanitiaModal } from '@/components/NametagPanitiaModal';
 import {
   ShieldCheck,
   BadgeCheck,
@@ -176,6 +178,9 @@ export default function AdminDashboardPage() {
 
   // Bulk BIB Download Modal State
   const [showBulkBibModal, setShowBulkBibModal] = useState(false);
+  const [bulkBibFormatMode, setBulkBibFormatMode] = useState<'a3_sheet' | 'individual'>('a3_sheet');
+  const [bulkBibFileType, setBulkBibFileType] = useState<'pdf' | 'zip'>('pdf');
+  const [bulkBibA3Layout, setBulkBibA3Layout] = useState<'8_per_sheet_a3_plus' | '4_per_sheet' | '2_per_sheet'>('8_per_sheet_a3_plus');
   const [bulkBibRangeMode, setBulkBibRangeMode] = useState<'all' | 'verified' | 'batch' | 'custom'>('all');
   const [bulkBibBatchPreset, setBulkBibBatchPreset] = useState<'1-100' | '101-200' | '201-300' | '301-400'>('1-100');
   const [bulkBibCustomMin, setBulkBibCustomMin] = useState<number>(1);
@@ -184,6 +189,9 @@ export default function AdminDashboardPage() {
   const [bulkBibProgress, setBulkBibProgress] = useState<BulkBibProgress | null>(null);
   const [bulkBibAbortCtrl, setBulkBibAbortCtrl] = useState<AbortController | null>(null);
   const [bulkBibSuccessMessage, setBulkBibSuccessMessage] = useState<string | null>(null);
+
+  // Nametag Panitia Modal State
+  const [showNametagModal, setShowNametagModal] = useState(false);
 
   const getBulkBibTargetList = (): ParticipantForBib[] => {
     const all: ParticipantForBib[] = registrantsData
@@ -236,16 +244,78 @@ export default function AdminDashboardPage() {
     setBulkBibSuccessMessage(null);
 
     try {
-      const zipBlob = await generateBulkBibZip(
-        list,
-        (progress) => {
-          setBulkBibProgress(progress);
-        },
-        controller.signal
-      );
+      let zipBlob: Blob | null = null;
+      let zipName = '';
 
-      if (zipBlob) {
-        let zipName = `BIB_Semua_Peserta_${list.length}_Nomor.zip`;
+      if (bulkBibFormatMode === 'a3_sheet') {
+        const perSheet =
+          bulkBibA3Layout === '8_per_sheet_a3_plus'
+            ? 8
+            : bulkBibA3Layout === '2_per_sheet'
+            ? 2
+            : 4;
+        const totalSheets = Math.ceil(list.length / perSheet);
+        const prefix = bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'LEMBAR_A3_PLUS_8_BIB' : 'LEMBAR_A3_BIB';
+
+        if (bulkBibFileType === 'pdf') {
+          zipBlob = await generateBulkBibA3Pdf(
+            list,
+            { layout: bulkBibA3Layout, includeCropMarks: true },
+            (progress) => {
+              setBulkBibProgress({
+                current: progress.currentSheet,
+                total: progress.totalSheets,
+                percent: progress.percent,
+                currentName: progress.currentLabel,
+                stage: progress.stage === 'rendering_sheets' ? 'rendering' : (progress.stage as any),
+              });
+            },
+            controller.signal
+          );
+
+          zipName = `${prefix}_TourDeGunungBatu_${list.length}_Peserta_${totalSheets}_Halaman.pdf`;
+          if (bulkBibRangeMode === 'verified') {
+            zipName = `${prefix}_Lunas_${list.length}_Peserta_${totalSheets}_Halaman.pdf`;
+          } else if (bulkBibRangeMode === 'batch') {
+            zipName = `${prefix}_Batch_${bulkBibBatchPreset}_${totalSheets}_Halaman.pdf`;
+          } else if (bulkBibRangeMode === 'custom') {
+            zipName = `${prefix}_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Halaman.pdf`;
+          }
+        } else {
+          zipBlob = await generateBulkBibA3Zip(
+            list,
+            { layout: bulkBibA3Layout, includeCropMarks: true },
+            (progress) => {
+              setBulkBibProgress({
+                current: progress.currentSheet,
+                total: progress.totalSheets,
+                percent: progress.percent,
+                currentName: progress.currentLabel,
+                stage: progress.stage === 'rendering_sheets' ? 'rendering' : (progress.stage as any),
+              });
+            },
+            controller.signal
+          );
+
+          zipName = `${prefix}_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
+          if (bulkBibRangeMode === 'verified') {
+            zipName = `${prefix}_Lunas_${list.length}_Peserta_${totalSheets}_Lembar.zip`;
+          } else if (bulkBibRangeMode === 'batch') {
+            zipName = `${prefix}_Batch_${bulkBibBatchPreset}_${totalSheets}_Lembar.zip`;
+          } else if (bulkBibRangeMode === 'custom') {
+            zipName = `${prefix}_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}_${totalSheets}_Lembar.zip`;
+          }
+        }
+      } else {
+        zipBlob = await generateBulkBibZip(
+          list,
+          (progress) => {
+            setBulkBibProgress(progress);
+          },
+          controller.signal
+        );
+
+        zipName = `BIB_Semua_Peserta_${list.length}_Nomor.zip`;
         if (bulkBibRangeMode === 'verified') {
           zipName = `BIB_Peserta_Lunas_${list.length}_Nomor.zip`;
         } else if (bulkBibRangeMode === 'batch') {
@@ -253,9 +323,11 @@ export default function AdminDashboardPage() {
         } else if (bulkBibRangeMode === 'custom') {
           zipName = `BIB_Rentang_${bulkBibCustomMin}-${bulkBibCustomMax}.zip`;
         }
+      }
 
+      if (zipBlob) {
         triggerDownload(zipBlob, zipName);
-        setBulkBibSuccessMessage(`Selesai! ${list.length} file gambar BIB berhasil dikemas dalam ${zipName}.`);
+        setBulkBibSuccessMessage(`Selesai! File ${zipName} berhasil diunduh.`);
       }
     } catch (err: any) {
       console.error('Bulk BIB generation error:', err);
@@ -1261,6 +1333,14 @@ export default function AdminDashboardPage() {
 
           <div className="flex items-center gap-2 self-end sm:self-center">
             <button
+              onClick={() => setShowNametagModal(true)}
+              className="px-3 py-2 rounded-xl bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black shadow-sm flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+              title="Cetak ID Card & Nametag Panitia"
+            >
+              <Users className="w-3.5 h-3.5 text-brand-navy" />
+              <span>Nametag Panitia</span>
+            </button>
+            <button
               onClick={() => fetchAdminData(true)}
               className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/15 flex items-center space-x-1.5 transition-all"
               title="Perbarui Data"
@@ -1511,6 +1591,15 @@ export default function AdminDashboardPage() {
 
                 <button
                   type="button"
+                  onClick={() => setShowNametagModal(true)}
+                  className="shrink-0 bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black px-4 py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition-transform active:scale-95 min-h-[46px]"
+                >
+                  <Users className="w-4 h-4 text-brand-navy" />
+                  <span>Nametag Panitia</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     setBulkBibSuccessMessage(null);
                     setShowBulkBibModal(true);
@@ -1518,7 +1607,7 @@ export default function AdminDashboardPage() {
                   className="shrink-0 bg-brand-navy hover:bg-brand-royal text-white text-xs font-bold px-4 py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition-colors min-h-[46px]"
                 >
                   <Download className="w-4 h-4 text-brand-yellow" />
-                  <span>Unduh Massal BIB (.ZIP)</span>
+                  <span>Unduh Lembar A3 / BIB (.ZIP)</span>
                 </button>
               </div>
 
@@ -4463,6 +4552,171 @@ export default function AdminDashboardPage() {
             {/* Filter / Scope Options */}
             {!bulkBibProcessing && (
               <div className="space-y-4 pt-1">
+                {/* Format Output Mode */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-2">
+                    Format Hasil Unduhan:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBulkBibFormatMode('a3_sheet')}
+                      className={`p-3 rounded-xl border text-left transition-all relative ${
+                        bulkBibFormatMode === 'a3_sheet'
+                          ? 'border-brand-royal bg-blue-50/70 ring-2 ring-brand-royal/30 text-brand-navy font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-black text-brand-navy flex items-center space-x-1.5">
+                          <span>📄 Lembar A3 Siap Cetak</span>
+                        </span>
+                        <span className="text-[10px] font-black bg-brand-yellow text-brand-navy px-2 py-0.5 rounded-md uppercase">
+                          Standar Percetakan
+                        </span>
+                      </div>
+                      <span className="block text-[11px] text-slate-500 leading-relaxed">
+                        Disusun otomatis ke lembar A3 lengkap dengan <strong>garis potong (crop marks)</strong> dan info slug lembaran.
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBulkBibFormatMode('individual')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        bulkBibFormatMode === 'individual'
+                          ? 'border-brand-royal bg-brand-royal/5 ring-2 ring-brand-royal/20 text-brand-navy font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold mb-1">🖼️ File Gambar Satuan (PNG)</span>
+                      <span className="block text-[11px] text-slate-400 leading-relaxed">
+                        Satu file PNG per peserta (2482×1749 px) untuk arsip digital atau diedit terpisah.
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* If A3 Layout is selected: Option 8-up (A3+) vs 4-up vs 2-up */}
+                {bulkBibFormatMode === 'a3_sheet' && (
+                  <div className="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-amber-900 block">
+                        Pilihan Ukuran Kertas &amp; Susunan Grid:
+                      </label>
+                      <span className="text-[10px] font-black bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md">
+                        Standar Digital Printing
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBulkBibA3Layout('8_per_sheet_a3_plus')}
+                        className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all relative ${
+                          bulkBibA3Layout === '8_per_sheet_a3_plus'
+                            ? 'bg-brand-royal text-white border-brand-royal shadow-md ring-2 ring-brand-royal/30'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black">8 BIB / Lembar</span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'bg-brand-yellow text-brand-navy' : 'bg-emerald-100 text-emerald-800'}`}>
+                            Kertas A3+
+                          </span>
+                        </div>
+                        <div className={`text-[10px] mt-1 font-semibold ${bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'text-blue-100' : 'text-slate-500'}`}>
+                          Kertas: 329×483 mm<br />
+                          Area Max: 310×470 mm<br />
+                          Kartu: 15.0×10.5 cm
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBulkBibA3Layout('4_per_sheet')}
+                        className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                          bulkBibA3Layout === '4_per_sheet'
+                            ? 'bg-brand-royal text-white border-brand-royal shadow-md'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="font-extrabold">4 BIB / Lembar</div>
+                        <div className={`text-[10px] mt-1 font-normal ${bulkBibA3Layout === '4_per_sheet' ? 'text-blue-100' : 'text-slate-500'}`}>
+                          Kertas: A3 (297×420 mm)<br />
+                          Ukuran: A5 (20×14 cm)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBulkBibA3Layout('2_per_sheet')}
+                        className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                          bulkBibA3Layout === '2_per_sheet'
+                            ? 'bg-brand-royal text-white border-brand-royal shadow-md'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="font-extrabold">2 BIB / Lembar</div>
+                        <div className={`text-[10px] mt-1 font-normal ${bulkBibA3Layout === '2_per_sheet' ? 'text-blue-100' : 'text-slate-500'}`}>
+                          Kertas: A3 (297×420 mm)<br />
+                          Ukuran: Jumbo (28×20 cm)
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* File Output Type: PDF vs ZIP */}
+                    <div className="pt-2.5 border-t border-amber-200/80 space-y-1.5">
+                      <label className="text-[11px] font-bold text-amber-900 block">
+                        Tipe Dokumen Hasil Ekspor:
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setBulkBibFileType('pdf')}
+                          className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                            bulkBibFileType === 'pdf'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-400/40 font-black'
+                              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-black flex items-center space-x-1">
+                              <span>📄 1 File PDF Multi-Halaman</span>
+                            </span>
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${bulkBibFileType === 'pdf' ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-800'}`}>
+                              Standar Percetakan
+                            </span>
+                          </div>
+                          <p className={`text-[10px] leading-tight ${bulkBibFileType === 'pdf' ? 'text-rose-100' : 'text-slate-500'}`}>
+                            Terkunci ukuran asli 300 DPI, operator tinggal buka &amp; klik Print All.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBulkBibFileType('zip')}
+                          className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                            bulkBibFileType === 'zip'
+                              ? 'bg-brand-royal text-white border-brand-royal shadow-md ring-2 ring-brand-royal/30 font-black'
+                              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-black">📦 File ZIP (Gambar JPG)</span>
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${bulkBibFileType === 'zip' ? 'bg-brand-yellow text-brand-navy' : 'bg-slate-100 text-slate-700'}`}>
+                              Gambar Lepasan
+                            </span>
+                          </div>
+                          <p className={`text-[10px] leading-tight ${bulkBibFileType === 'zip' ? 'text-blue-100' : 'text-slate-500'}`}>
+                            Kumpulan file gambar per lembar dalam arsip ZIP.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-2">
                     Pilih Cakupan Peserta:
@@ -4585,16 +4839,34 @@ export default function AdminDashboardPage() {
                 {/* Target Count Preview */}
                 {(() => {
                   const targetList = getBulkBibTargetList();
+                  const perSheet =
+                    bulkBibA3Layout === '8_per_sheet_a3_plus'
+                      ? 8
+                      : bulkBibA3Layout === '2_per_sheet'
+                      ? 2
+                      : 4;
+                  const totalSheets = Math.ceil(targetList.length / perSheet);
+                  const sheetTypeName =
+                    bulkBibA3Layout === '8_per_sheet_a3_plus'
+                      ? 'Lembar A3+ (329×483 mm)'
+                      : 'Lembar A3 Standar';
+
                   return (
                     <div className="p-3.5 bg-brand-iceBg rounded-2xl border border-brand-sky/40 flex items-center justify-between">
                       <div className="text-xs">
                         <span className="text-slate-500 font-medium block">Total yang akan di-render:</span>
                         <span className="text-brand-navy font-black text-sm">
-                          {targetList.length} Kartu BIB
+                          {bulkBibFormatMode === 'a3_sheet'
+                            ? `${totalSheets} ${sheetTypeName} (${targetList.length} Nomor BIB)`
+                            : `${targetList.length} Kartu BIB (PNG)`}
                         </span>
                       </div>
                       <span className="text-[11px] font-bold text-brand-royal bg-white px-2.5 py-1 rounded-lg border border-brand-sky/60 shadow-sm">
-                        Format PNG 2.5K
+                        {bulkBibFormatMode === 'a3_sheet'
+                          ? bulkBibA3Layout === '8_per_sheet_a3_plus'
+                            ? 'A3+ 300 DPI (Area 310×470mm)'
+                            : '300 DPI + Garis Siku'
+                          : 'Format PNG 2.5K'}
                       </span>
                     </div>
                   );
@@ -4610,7 +4882,7 @@ export default function AdminDashboardPage() {
                     <Loader2 className="w-4 h-4 text-brand-royal animate-spin" />
                     <span>
                       {bulkBibProgress?.stage === 'loading_assets' && 'Memuat template desain...'}
-                      {bulkBibProgress?.stage === 'rendering' && `Merender Kartu ${bulkBibProgress.current} dari ${bulkBibProgress.total}`}
+                      {bulkBibProgress?.stage === 'rendering' && `Merender ${bulkBibProgress.current} dari ${bulkBibProgress.total}`}
                       {bulkBibProgress?.stage === 'zipping' && 'Mengompres file ZIP...'}
                       {bulkBibProgress?.stage === 'done' && 'Proses Selesai!'}
                     </span>
@@ -4681,11 +4953,32 @@ export default function AdminDashboardPage() {
                   type="button"
                   disabled={getBulkBibTargetList().length === 0}
                   onClick={handleStartBulkBibDownload}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95"
+                  className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95 ${
+                    bulkBibFormatMode === 'a3_sheet' && bulkBibFileType === 'pdf'
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                      : 'bg-brand-yellow hover:bg-amber-400 text-brand-navy'
+                  }`}
                 >
                   <Download className="w-4 h-4" />
                   <span>
-                    Mulai Unduh ZIP ({getBulkBibTargetList().length} Peserta)
+                    {(() => {
+                      const list = getBulkBibTargetList();
+                      if (bulkBibFormatMode === 'a3_sheet') {
+                        const perSheet =
+                          bulkBibA3Layout === '8_per_sheet_a3_plus'
+                            ? 8
+                            : bulkBibA3Layout === '2_per_sheet'
+                            ? 2
+                            : 4;
+                        const totalSheets = Math.ceil(list.length / perSheet);
+                        const paperLabel = bulkBibA3Layout === '8_per_sheet_a3_plus' ? 'Lembar A3+' : 'Lembar A3';
+                        if (bulkBibFileType === 'pdf') {
+                          return `Unduh PDF (${totalSheets} Halaman • ${list.length} BIB)`;
+                        }
+                        return `Unduh ZIP ${totalSheets} ${paperLabel} (${list.length} BIB)`;
+                      }
+                      return `Unduh ZIP ${list.length} File PNG`;
+                    })()}
                   </span>
                 </button>
               )}
@@ -5118,6 +5411,12 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL GENERATOR & CETAK NAMETAG PANITIA */}
+      <NametagPanitiaModal
+        isOpen={showNametagModal}
+        onClose={() => setShowNametagModal(false)}
+      />
     </div>
   );
 }
