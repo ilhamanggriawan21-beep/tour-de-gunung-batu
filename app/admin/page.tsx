@@ -171,6 +171,7 @@ export default function AdminDashboardPage() {
   const [deleteRegistrantId, setDeleteRegistrantId] = useState<{ id: string; nama: string } | null>(null);
   const [deletePoId, setDeletePoId] = useState<{ id: string; nama: string } | null>(null);
   const [selectedBibParticipant, setSelectedBibParticipant] = useState<any>(null);
+  const [selectedPanitiaNameTag, setSelectedPanitiaNameTag] = useState<{ nama: string; divisi: string } | null>(null);
 
   // Bulk BIB Download Modal State
   const [showBulkBibModal, setShowBulkBibModal] = useState(false);
@@ -1421,6 +1422,15 @@ export default function AdminDashboardPage() {
           >
             <User className="w-4 h-4" />
             <span>Profil</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedPanitiaNameTag({ nama: adminSession?.nama_pic || 'PANITIA TDGB', divisi: 'LOGISTIK' })}
+            className="shrink-0 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center space-x-2 whitespace-nowrap bg-brand-yellow hover:bg-amber-400 text-brand-navy shadow-sm cursor-pointer"
+            title="Pratinjau & Unduh Name Tag Panitia (Cocard)"
+          >
+            <BadgeCheck className="w-4 h-4 text-brand-navy" />
+            <span>Cocard Panitia</span>
           </button>
         </div>
 
@@ -4354,6 +4364,58 @@ export default function AdminDashboardPage() {
               komunitas={selectedBibParticipant.komunitas}
               nomorRegistrasi={selectedBibParticipant.nomor_registrasi}
               jenisRegistrasi={selectedBibParticipant.jenis_registrasi}
+            />
+          </div>
+        </div>
+      )}
+
+      {selectedPanitiaNameTag && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Kartu Cocard Name Tag Panitia">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl relative my-auto mx-auto border border-brand-yellow/50 animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setSelectedPanitiaNameTag(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors z-10"
+              aria-label="Tutup"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center pt-2">
+              <span className="text-[10px] font-black text-brand-navy bg-brand-yellow px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-1.5 shadow-sm">
+                Official Committee Cocard
+              </span>
+              <h3 className="font-extrabold text-xl text-brand-navy">Name Tag Panitia TDGB 2026</h3>
+              <p className="text-xs text-slate-500">Pratinjau &amp; Unduh Cocard Panitia Siap Cetak (HD PNG)</p>
+            </div>
+
+            {/* Live Input Controls */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Panitia</label>
+                <input
+                  type="text"
+                  value={selectedPanitiaNameTag.nama}
+                  onChange={(e) => setSelectedPanitiaNameTag({ ...selectedPanitiaNameTag, nama: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-slate-900"
+                  placeholder="Nama Panitia"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Divisi Panitia</label>
+                <input
+                  type="text"
+                  value={selectedPanitiaNameTag.divisi}
+                  onChange={(e) => setSelectedPanitiaNameTag({ ...selectedPanitiaNameTag, divisi: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold bg-white text-slate-900"
+                  placeholder="Misal: LOGISTIK, ACARA, MARSHAL"
+                />
+              </div>
+            </div>
+
+            <BibCard
+              namaLengkap={selectedPanitiaNameTag.nama}
+              divisi={selectedPanitiaNameTag.divisi}
+              isPanitia={true}
             />
           </div>
         </div>

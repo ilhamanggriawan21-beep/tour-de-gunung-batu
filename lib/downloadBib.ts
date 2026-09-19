@@ -1,7 +1,9 @@
 export async function generateBibCanvas(data: {
-  nomorBib: number;
+  nomorBib?: number;
   namaLengkap: string;
   komunitas?: string;
+  divisi?: string;
+  isPanitia?: boolean;
   nomorRegistrasi?: string;
   jenisRegistrasi?: string;
 }): Promise<HTMLCanvasElement> {
@@ -58,7 +60,7 @@ export async function generateBibCanvas(data: {
       // 1. Large official badge balances the event masthead and establishes status.
       const badgeFont = '900 60px sans-serif';
       ctx.font = badgeFont;
-      const badgeText = 'OFFICIAL PARTICIPANT';
+      const badgeText = data.isPanitia ? 'OFFICIAL COMMITTEE' : 'OFFICIAL PARTICIPANT';
       const badgeTextW = ctx.measureText(badgeText).width;
       const badgeW = badgeTextW + 100;
       const badgeH = 96;
@@ -83,39 +85,44 @@ export async function generateBibCanvas(data: {
       ctx.textBaseline = 'middle';
       ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-      // 2. The number owns the white zone; it must be readable from a distance.
-      const formattedBib = String(data.nomorBib).padStart(4, '0');
-      const cleanName = (data.namaLengkap || 'PESERTA').toUpperCase();
+      // 2. The number & name rendering using Sakana Font
+      const formattedBib = data.nomorBib !== undefined && data.nomorBib !== null
+        ? String(data.nomorBib).padStart(4, '0')
+        : '';
+      const cleanName = (data.namaLengkap || (data.isPanitia ? 'PANITIA' : 'PESERTA')).toUpperCase();
 
-      const bibFontSize = 585;
-      const bibBaselineY = 1030;
+      if (formattedBib) {
+        const bibFontSize = 585;
+        const bibBaselineY = 1030;
 
-      // Draw BIB Number with Sakana Font
-      ctx.fillStyle = '#0A1338';
-      ctx.font = `${bibFontSize}px ${bibFontFamily}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
+        // Draw BIB Number with Sakana Font
+        ctx.fillStyle = '#0A1338';
+        ctx.font = `${bibFontSize}px ${bibFontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
 
-      // Warm glow separates the navy number from the pale photographic background.
-      ctx.shadowColor = 'rgba(244, 199, 22, 0.45)';
-      ctx.shadowBlur = 26;
-      ctx.shadowOffsetY = 8;
-      ctx.fillText(formattedBib, w / 2, bibBaselineY);
+        // Warm glow separates the navy number from the pale photographic background.
+        ctx.shadowColor = 'rgba(244, 199, 22, 0.45)';
+        ctx.shadowBlur = 26;
+        ctx.shadowOffsetY = 8;
+        ctx.fillText(formattedBib, w / 2, bibBaselineY);
 
-      // Reset shadow
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
 
-      let nameFontSize = 115;
-      const nameBaselineY = 1148;
+      // Name Text: exact same Sakana font as BIB number & enlarged size
+      let nameFontSize = data.isPanitia ? 170 : 155;
+      const nameBaselineY = formattedBib ? 1155 : 1060;
 
-      ctx.font = `900 ${nameFontSize}px sans-serif`;
-      const maxNameWidth = w * 0.82;
+      ctx.font = `${nameFontSize}px ${bibFontFamily}`;
+      const maxNameWidth = w * 0.84;
       let nameWidth = ctx.measureText(cleanName).width;
       if (nameWidth > maxNameWidth) {
         nameFontSize = Math.floor(nameFontSize * (maxNameWidth / nameWidth));
-        ctx.font = `900 ${nameFontSize}px sans-serif`;
+        ctx.font = `${nameFontSize}px ${bibFontFamily}`;
       }
 
       ctx.fillStyle = '#0A1338';
@@ -138,18 +145,32 @@ export async function generateBibCanvas(data: {
       ctx.font = '900 46px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
+      ctx.fillText(
+        data.isPanitia
+          ? 'TOUR DE GUNUNG BATU 2026   •   OFFICIAL EVENT COMMITTEE'
+          : 'JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED',
+        w / 2,
+        bannerY + bannerH / 2
+      );
 
-      // 4. Footer badges carry the participant identity without competing with the BIB number.
+      // 4. Footer badges carry identity (Divisi for Panitia - NO Komunitas)
       const pillPadX = 54;
       const gap = 32;
+
       const badgeItems = [
-        {
-          text: `KOMUNITAS: ${(data.komunitas || 'UMUM').toUpperCase()}`,
-          background: '#1D3AAE',
-          border: 'rgba(255, 255, 255, 0.3)',
-          color: '#FFFFFF',
-        },
+        data.isPanitia || data.divisi
+          ? {
+              text: `DIVISI: ${(data.divisi || 'PANITIA').toUpperCase()}`,
+              background: '#1D3AAE',
+              border: 'rgba(255, 255, 255, 0.3)',
+              color: '#FFFFFF',
+            }
+          : {
+              text: `KOMUNITAS: ${(data.komunitas || 'UMUM').toUpperCase()}`,
+              background: '#1D3AAE',
+              border: 'rgba(255, 255, 255, 0.3)',
+              color: '#FFFFFF',
+            },
         data.nomorRegistrasi && {
           text: `REG: ${data.nomorRegistrasi}`,
           background: '#0A1338',
@@ -303,9 +324,11 @@ export async function saveOrShareImage(
 
 export async function downloadBibCard(
   data: {
-    nomorBib: number;
+    nomorBib?: number;
     namaLengkap: string;
     komunitas?: string;
+    divisi?: string;
+    isPanitia?: boolean;
     nomorRegistrasi?: string;
     jenisRegistrasi?: string;
   },
@@ -316,14 +339,18 @@ export async function downloadBibCard(
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('Canvas toBlob failed');
 
+    const fileName = data.isPanitia
+      ? `NAMETAG_PANITIA_${(data.namaLengkap || 'PANITIA').replace(/\s+/g, '_').toUpperCase()}.png`
+      : `BIB_TOUR_DE_GUNUNG_BATU_${data.nomorBib}.png`;
+
     await saveOrShareImage(
       blob,
-      `BIB_TOUR_DE_GUNUNG_BATU_${data.nomorBib}.png`,
-      `BIB #${data.nomorBib}`,
+      fileName,
+      data.isPanitia ? `Name Tag ${data.namaLengkap}` : `BIB #${data.nomorBib}`,
       onIosFallback
     );
   } catch (err) {
-    console.error('Failed to download BIB PNG:', err);
-    alert('Gagal mengunduh gambar BIB. Silakan coba kembali.');
+    console.error('Failed to download BIB/NameTag PNG:', err);
+    alert('Gagal mengunduh gambar Name Tag/BIB. Silakan coba kembali.');
   }
 }

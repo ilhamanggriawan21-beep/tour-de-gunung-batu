@@ -5,9 +5,11 @@ import { Download, Share2, Loader2, X } from 'lucide-react';
 import { saveOrShareImage, generateBibCanvas } from '@/lib/downloadBib';
 
 interface BibCardProps {
-  nomorBib: number;
+  nomorBib?: number;
   namaLengkap: string;
   komunitas?: string;
+  divisi?: string;
+  isPanitia?: boolean;
   nomorRegistrasi?: string;
   jenisRegistrasi?: 'daftar_saja' | 'po_jersey';
 }
@@ -16,6 +18,8 @@ export default function BibCard({
   nomorBib,
   namaLengkap,
   komunitas,
+  divisi,
+  isPanitia,
   nomorRegistrasi,
   jenisRegistrasi
 }: BibCardProps) {
@@ -37,6 +41,8 @@ export default function BibCard({
       nomorBib,
       namaLengkap,
       komunitas,
+      divisi,
+      isPanitia,
       nomorRegistrasi,
       jenisRegistrasi,
     })
@@ -50,7 +56,7 @@ export default function BibCard({
     return () => {
       active = false;
     };
-  }, [jenisRegistrasi, komunitas, namaLengkap, nomorBib, nomorRegistrasi]);
+  }, [jenisRegistrasi, komunitas, divisi, isPanitia, namaLengkap, nomorBib, nomorRegistrasi]);
 
   const handleDownload = async () => {
     if (downloading) return;
@@ -66,6 +72,8 @@ export default function BibCard({
         nomorBib,
         namaLengkap,
         komunitas,
+        divisi,
+        isPanitia,
         nomorRegistrasi,
         jenisRegistrasi,
       });
@@ -73,10 +81,14 @@ export default function BibCard({
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Gagal menghasilkan file gambar.');
 
+      const filename = isPanitia
+        ? `NAMETAG_PANITIA_${(namaLengkap || 'PANITIA').replace(/\s+/g, '_').toUpperCase()}.png`
+        : `BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`;
+
       await saveOrShareImage(
         blob,
-        `BIB_TOUR_DE_GUNUNG_BATU_${nomorBib}.png`,
-        `BIB #${nomorBib}`,
+        filename,
+        isPanitia ? `Name Tag ${namaLengkap}` : `BIB #${nomorBib}`,
         (url) => setIosModalUrl(url)
       );
     } catch (err) {

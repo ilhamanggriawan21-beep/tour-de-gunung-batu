@@ -2,9 +2,11 @@ import JSZip from 'jszip';
 
 export interface ParticipantForBib {
   id?: string;
-  nomor_bib: number;
+  nomor_bib?: number;
   nama_lengkap: string;
   komunitas?: string;
+  divisi?: string;
+  is_panitia?: boolean;
   nomor_registrasi?: string;
   jenis_registrasi?: string;
   status_pembayaran?: string;
@@ -124,7 +126,7 @@ function drawBibParticipant(
   // 1. Large official badge
   const badgeFont = '900 60px sans-serif';
   ctx.font = badgeFont;
-  const badgeText = 'OFFICIAL PARTICIPANT';
+  const badgeText = data.is_panitia ? 'OFFICIAL COMMITTEE' : 'OFFICIAL PARTICIPANT';
   const badgeTextW = ctx.measureText(badgeText).width;
   const badgeW = badgeTextW + 100;
   const badgeH = 96;
@@ -150,39 +152,44 @@ function drawBibParticipant(
   ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
 
   // 2. BIB Number & Name
-  const formattedBib = String(data.nomor_bib).padStart(4, '0');
-  const cleanName = (data.nama_lengkap || 'PESERTA').toUpperCase();
+  const formattedBib = data.nomor_bib !== undefined && data.nomor_bib !== null
+    ? String(data.nomor_bib).padStart(4, '0')
+    : '';
+  const cleanName = (data.nama_lengkap || (data.is_panitia ? 'PANITIA' : 'PESERTA')).toUpperCase();
 
-  const bibFontSize = 585;
-  const bibBaselineY = 1030;
   const bibFontFamily = hasSakanaFont ? 'SakanaCanvas' : 'sans-serif';
 
-  // Draw BIB Number
-  ctx.fillStyle = '#0A1338';
-  ctx.font = `${bibFontSize}px ${bibFontFamily}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
+  if (formattedBib) {
+    const bibFontSize = 585;
+    const bibBaselineY = 1030;
 
-  // Warm glow
-  ctx.shadowColor = 'rgba(244, 199, 22, 0.45)';
-  ctx.shadowBlur = 26;
-  ctx.shadowOffsetY = 8;
-  ctx.fillText(formattedBib, w / 2, bibBaselineY);
+    // Draw BIB Number
+    ctx.fillStyle = '#0A1338';
+    ctx.font = `${bibFontSize}px ${bibFontFamily}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
 
-  // Reset shadow
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
+    // Warm glow
+    ctx.shadowColor = 'rgba(244, 199, 22, 0.45)';
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 8;
+    ctx.fillText(formattedBib, w / 2, bibBaselineY);
 
-  // Participant Name
-  let nameFontSize = 115;
-  const nameBaselineY = 1148;
-  ctx.font = `900 ${nameFontSize}px sans-serif`;
-  const maxNameWidth = w * 0.82;
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+  }
+
+  // Name Text: exact same Sakana font as BIB number & enlarged size
+  let nameFontSize = data.is_panitia ? 170 : 155;
+  const nameBaselineY = formattedBib ? 1155 : 1060;
+  ctx.font = `${nameFontSize}px ${bibFontFamily}`;
+  const maxNameWidth = w * 0.84;
   let nameWidth = ctx.measureText(cleanName).width;
   if (nameWidth > maxNameWidth) {
     nameFontSize = Math.floor(nameFontSize * (maxNameWidth / nameWidth));
-    ctx.font = `900 ${nameFontSize}px sans-serif`;
+    ctx.font = `${nameFontSize}px ${bibFontFamily}`;
   }
 
   ctx.fillStyle = '#0A1338';
@@ -205,18 +212,31 @@ function drawBibParticipant(
   ctx.font = '900 46px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED', w / 2, bannerY + bannerH / 2);
+  ctx.fillText(
+    data.is_panitia
+      ? 'TOUR DE GUNUNG BATU 2026   •   OFFICIAL EVENT COMMITTEE'
+      : 'JONGGOL → GUNUNG BATU   •   ELEVATION GAIN ±700M   •   SELF-SUPPORTED',
+    w / 2,
+    bannerY + bannerH / 2
+  );
 
   // 4. Footer Badges
   const pillPadX = 54;
   const gap = 32;
   const badgeItems = [
-    {
-      text: `KOMUNITAS: ${(data.komunitas || 'UMUM').toUpperCase()}`,
-      background: '#1D3AAE',
-      border: 'rgba(255, 255, 255, 0.3)',
-      color: '#FFFFFF',
-    },
+    data.is_panitia || data.divisi
+      ? {
+          text: `DIVISI: ${(data.divisi || 'PANITIA').toUpperCase()}`,
+          background: '#1D3AAE',
+          border: 'rgba(255, 255, 255, 0.3)',
+          color: '#FFFFFF',
+        }
+      : {
+          text: `KOMUNITAS: ${(data.komunitas || 'UMUM').toUpperCase()}`,
+          background: '#1D3AAE',
+          border: 'rgba(255, 255, 255, 0.3)',
+          color: '#FFFFFF',
+        },
     data.nomor_registrasi && {
       text: `REG: ${data.nomor_registrasi}`,
       background: '#0A1338',
