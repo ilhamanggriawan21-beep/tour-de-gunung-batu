@@ -57,6 +57,9 @@ export async function generateBibCanvas(data: {
       const w = canvas.width;
       const h = canvas.height;
 
+      // 0. Top Safe Zone for hole-punch / zip ties (~110 px = ~9.3 mm)
+      const topSafeZoneH = 110;
+
       // 1. Large official badge balances the event masthead and establishes status.
       const badgeFont = '900 60px sans-serif';
       ctx.font = badgeFont;
@@ -65,7 +68,7 @@ export async function generateBibCanvas(data: {
       const badgeW = badgeTextW + 100;
       const badgeH = 96;
       const badgeX = w - badgeW - w * 0.04;
-      const badgeY = h * 0.285 - badgeH / 2;
+      const badgeY = (h * 0.285 + topSafeZoneH * 0.5) - badgeH / 2;
 
       ctx.fillStyle = '#0A1338';
       ctx.beginPath();
@@ -236,13 +239,20 @@ export async function generateBibCanvas(data: {
     img.onload = () => {
       const ctx2 = canvas.getContext('2d');
       if (ctx2) {
+        const topSafeZoneH = 110;
         ctx2.save();
         ctx2.beginPath();
         if (typeof (ctx2 as any).roundRect === 'function') {
           (ctx2 as any).roundRect(0, 0, canvas.width, canvas.height, 36);
           ctx2.clip();
         }
-        ctx2.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Sky blue background fill
+        ctx2.fillStyle = '#6BA4DC';
+        ctx2.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw template shifted down by topSafeZoneH
+        ctx2.drawImage(img, 0, topSafeZoneH, canvas.width, canvas.height - topSafeZoneH);
         ctx2.restore();
       }
       renderText();
