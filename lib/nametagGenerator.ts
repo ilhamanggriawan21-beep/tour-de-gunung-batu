@@ -214,8 +214,9 @@ export function drawNametagFront(
   // 2. Member Name (Centered inside white bar area below "PANITIA", y: 800 - 950)
   ctx.save();
   const cleanName = member.nama.trim().toUpperCase();
-  let nameFontSize = 62;
-  ctx.font = `900 ${nameFontSize}px sans-serif`;
+  let nameFontSize = 78;
+  const nameFontFamily = hasSakanaFont ? 'SakanaCanvas' : 'sans-serif';
+  ctx.font = `${nameFontSize}px ${nameFontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
@@ -223,7 +224,7 @@ export function drawNametagFront(
   let measuredW = ctx.measureText(cleanName).width;
   if (measuredW > maxNameW) {
     nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
-    ctx.font = `900 ${nameFontSize}px sans-serif`;
+    ctx.font = `${nameFontSize}px ${nameFontFamily}`;
   }
 
   // Name drop shadow
