@@ -36,7 +36,6 @@ export default function Navbar() {
     { href: '/peraturan', label: 'Peraturan', icon: FileText },
     { href: '/faq', label: 'FAQ', icon: HelpCircle },
     { href: '/susulan-po', label: 'Cek Status / PO', icon: ShieldCheck },
-    { href: '/cocard', label: 'Cocard Panitia', icon: BadgeCheck },
   ];
 
   return (
