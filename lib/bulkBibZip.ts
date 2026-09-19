@@ -108,15 +108,22 @@ export function drawBibParticipant(
   // Clear canvas
   ctx.clearRect(0, 0, w, h);
 
-  // 0. Draw Background Image with rounded corners
+  // 0. Draw Background Image with rounded corners and top hole-punch safe zone
+  const topSafeZoneH = 110; // ~9.3 mm safe zone for hole punch / zip ties
   ctx.save();
   ctx.beginPath();
   if (typeof (ctx as any).roundRect === 'function') {
     (ctx as any).roundRect(0, 0, w, h, 36);
     ctx.clip();
   }
+
+  // Base sky blue background matching top sky of Gunung Batu
+  ctx.fillStyle = '#6BA4DC';
+  ctx.fillRect(0, 0, w, h);
+
   if (templateImg.complete && templateImg.naturalWidth > 0) {
-    ctx.drawImage(templateImg, 0, 0, w, h);
+    // Render template shifted down by topSafeZoneH to keep all logos safely below hole punches
+    ctx.drawImage(templateImg, 0, topSafeZoneH, w, h - topSafeZoneH);
   } else {
     ctx.fillStyle = '#0A1338';
     ctx.fillRect(0, 0, w, h);
@@ -131,7 +138,7 @@ export function drawBibParticipant(
   const badgeW = badgeTextW + 100;
   const badgeH = 96;
   const badgeX = w - badgeW - w * 0.04;
-  const badgeY = h * 0.285 - badgeH / 2;
+  const badgeY = (h * 0.285 + topSafeZoneH * 0.5) - badgeH / 2;
 
   ctx.fillStyle = '#0A1338';
   ctx.beginPath();
