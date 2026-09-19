@@ -168,7 +168,7 @@ export function drawBibParticipant(
 
   if (formattedBib) {
     const bibFontSize = 585;
-    const bibBaselineY = 1030;
+    const bibBaselineY = 1095;
 
     // Draw BIB Number
     ctx.fillStyle = '#0A1338';
@@ -190,7 +190,7 @@ export function drawBibParticipant(
 
   // Participant Name (Font standar sans-serif tebal sesuai histori asli)
   let nameFontSize = data.is_panitia ? 140 : 115;
-  const nameBaselineY = formattedBib ? 1148 : 1060;
+  const nameBaselineY = formattedBib ? 1215 : 1120;
   ctx.font = `900 ${nameFontSize}px sans-serif`;
   const maxNameWidth = w * 0.82;
   let nameWidth = ctx.measureText(cleanName).width;
