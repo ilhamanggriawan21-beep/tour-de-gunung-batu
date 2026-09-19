@@ -51,7 +51,7 @@ export async function generateBibCanvas(data: {
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = '/bib-template-revisi.png?v=3';
+    img.src = '/bib-template-revisi.png?v=4';
 
     const renderText = () => {
       const w = canvas.width;

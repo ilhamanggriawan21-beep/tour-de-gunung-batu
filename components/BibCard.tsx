@@ -112,7 +112,7 @@ export default function BibCard({
           aria-busy={!previewUrl && !previewFailed}
         >
           <img
-            src={previewUrl || '/bib-template-revisi.png?v=3'}
+            src={previewUrl || '/bib-template-revisi.png?v=4'}
             alt={`Nomor BIB ${String(nomorBib).padStart(4, '0')} untuk ${namaLengkap}`}
             className="block w-full h-full object-cover select-none"
           />

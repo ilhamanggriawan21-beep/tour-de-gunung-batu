@@ -72,7 +72,7 @@ async function ensureTemplateImageLoaded(): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = '/bib-template-revisi.png?v=3';
+    img.src = '/bib-template-revisi.png?v=4';
     img.onload = () => {
       cachedTemplateImage = img;
       resolve(img);
