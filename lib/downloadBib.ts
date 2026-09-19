@@ -96,7 +96,7 @@ export async function generateBibCanvas(data: {
 
       if (formattedBib) {
         const bibFontSize = 585;
-        const bibBaselineY = 1030;
+        const bibBaselineY = 1095;
 
         // Draw BIB Number with Sakana Font
         ctx.fillStyle = '#0A1338';
@@ -118,7 +118,7 @@ export async function generateBibCanvas(data: {
 
       // Participant Name (Font standar sans-serif tebal sesuai histori asli)
       let nameFontSize = data.isPanitia ? 140 : 115;
-      const nameBaselineY = formattedBib ? 1148 : 1060;
+      const nameBaselineY = formattedBib ? 1215 : 1120;
 
       ctx.font = `900 ${nameFontSize}px sans-serif`;
       const maxNameWidth = w * 0.82;
