@@ -8,6 +8,7 @@ import { downloadBibCard } from '@/lib/downloadBib';
 import { generateBulkBibZip, triggerDownload, BulkBibProgress, ParticipantForBib } from '@/lib/bulkBibZip';
 import {
   ShieldCheck,
+  BadgeCheck,
   Users,
   Shirt,
   Download,
