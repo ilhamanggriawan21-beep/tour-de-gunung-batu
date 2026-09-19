@@ -210,13 +210,13 @@ export default function AdminDashboardPage() {
       const [minStr, maxStr] = bulkBibBatchPreset.split('-');
       const min = parseInt(minStr, 10);
       const max = parseInt(maxStr, 10);
-      return all.filter((p) => p.nomor_bib >= min && p.nomor_bib <= max);
+      return all.filter((p) => p.nomor_bib !== undefined && p.nomor_bib !== null && p.nomor_bib >= min && p.nomor_bib <= max);
     }
 
     if (bulkBibRangeMode === 'custom') {
       const min = Number(bulkBibCustomMin) || 1;
       const max = Number(bulkBibCustomMax) || 9999;
-      return all.filter((p) => p.nomor_bib >= min && p.nomor_bib <= max);
+      return all.filter((p) => p.nomor_bib !== undefined && p.nomor_bib !== null && p.nomor_bib >= min && p.nomor_bib <= max);
     }
 
     return all;
