@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Users, FileText, HelpCircle, ArrowRight, Bike, Sparkles, ShieldCheck, Flame } from 'lucide-react';
+import { Menu, X, Users, FileText, HelpCircle, ArrowRight, Bike, Sparkles, ShieldCheck, Flame, BadgeCheck } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,6 +36,7 @@ export default function Navbar() {
     { href: '/peraturan', label: 'Peraturan', icon: FileText },
     { href: '/faq', label: 'FAQ', icon: HelpCircle },
     { href: '/susulan-po', label: 'Cek Status / PO', icon: ShieldCheck },
+    { href: '/cocard', label: 'Cocard Panitia', icon: BadgeCheck },
   ];
 
   return (
