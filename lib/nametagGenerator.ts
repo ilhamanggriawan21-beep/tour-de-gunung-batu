@@ -211,16 +211,16 @@ export function drawNametagFront(
     ctx.fillRect(0, 0, w, h);
   }
 
-  // 2. Member Name (Centered inside white bar area below "PANITIA", y: 800 - 950)
+  // 2. Member Name (Besar & Dominan di area putih di bawah tulisan "PANITIA")
   ctx.save();
   const cleanName = member.nama.trim().toUpperCase();
-  let nameFontSize = 78;
+  let nameFontSize = 105; // Diperbesar secara signifikan
   const nameFontFamily = hasSakanaFont ? 'SakanaCanvas' : 'sans-serif';
   ctx.font = `${nameFontSize}px ${nameFontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  const maxNameW = w * 0.84; // ~950 px
+  const maxNameW = w * 0.88; // ~1000 px
   let measuredW = ctx.measureText(cleanName).width;
   if (measuredW > maxNameW) {
     nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
@@ -229,24 +229,24 @@ export function drawNametagFront(
 
   // Name drop shadow
   ctx.shadowColor = 'rgba(10, 19, 56, 0.25)';
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 4;
   ctx.fillStyle = '#0A1338'; // Deep Royal Navy
-  ctx.fillText(cleanName, w / 2, 895);
+  ctx.fillText(cleanName, w / 2, 925);
   ctx.restore();
 
-  // 3. Division Pill Badge (y: 955 to 1035)
+  // 3. Division Pill Badge (Tepat di bawah Nama Panitia)
   const divConfig = getDivisionConfig(member.divisi);
   ctx.save();
   const divText = member.divisi.trim().toUpperCase();
 
-  let divFontSize = 38;
+  let divFontSize = 42;
   ctx.font = `900 ${divFontSize}px sans-serif`;
   const divTextW = ctx.measureText(divText).width;
-  const pillW = Math.min(w * 0.82, Math.max(380, divTextW + 80));
-  const pillH = 74;
+  const pillW = Math.min(w * 0.85, Math.max(420, divTextW + 90));
+  const pillH = 82;
   const pillX = (w - pillW) / 2;
-  const pillY = 960;
+  const pillY = 980;
 
   // Badge background & shadow
   ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
@@ -255,7 +255,7 @@ export function drawNametagFront(
   ctx.fillStyle = divConfig.bg;
   ctx.beginPath();
   if (typeof (ctx as any).roundRect === 'function') {
-    (ctx as any).roundRect(pillX, pillY, pillW, pillH, 22);
+    (ctx as any).roundRect(pillX, pillY, pillW, pillH, 24);
   } else {
     ctx.fillRect(pillX, pillY, pillW, pillH);
   }
@@ -273,16 +273,6 @@ export function drawNametagFront(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(divText, w / 2, pillY + pillH / 2);
-  ctx.restore();
-
-  // 4. Sub-details footer (Kode Kru, No WhatsApp, Gol Darah)
-  ctx.save();
-  const subText = `${member.nomor_panitia || 'CREW'}  •  WA: ${member.kontak || '-'}  •  GOL: ${member.golongan_darah || 'O'}`;
-  ctx.fillStyle = '#1D3AAE';
-  ctx.font = 'bold 25px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(subText, w / 2, 1085);
   ctx.restore();
 }
 
