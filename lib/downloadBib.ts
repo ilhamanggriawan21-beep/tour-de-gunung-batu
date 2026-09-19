@@ -113,16 +113,16 @@ export async function generateBibCanvas(data: {
         ctx.shadowOffsetY = 0;
       }
 
-      // Name Text: exact same Sakana font as BIB number & enlarged size
-      let nameFontSize = data.isPanitia ? 170 : 155;
-      const nameBaselineY = formattedBib ? 1155 : 1060;
+      // Participant Name (Font standar sans-serif tebal sesuai histori asli)
+      let nameFontSize = data.isPanitia ? 140 : 115;
+      const nameBaselineY = formattedBib ? 1148 : 1060;
 
-      ctx.font = `${nameFontSize}px ${bibFontFamily}`;
-      const maxNameWidth = w * 0.84;
+      ctx.font = `900 ${nameFontSize}px sans-serif`;
+      const maxNameWidth = w * 0.82;
       let nameWidth = ctx.measureText(cleanName).width;
       if (nameWidth > maxNameWidth) {
         nameFontSize = Math.floor(nameFontSize * (maxNameWidth / nameWidth));
-        ctx.font = `${nameFontSize}px ${bibFontFamily}`;
+        ctx.font = `900 ${nameFontSize}px sans-serif`;
       }
 
       ctx.fillStyle = '#0A1338';
