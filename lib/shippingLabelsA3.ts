@@ -19,26 +19,29 @@ export interface ShippingItemForLabel {
 const A3_PLUS_WIDTH = 3886;
 const A3_PLUS_HEIGHT = 5705;
 
-// Label dimensions for 16-up layout (2 columns x 8 rows or 4 columns x 4 rows)
-// Let's use 3 columns x 6 rows = 18 labels or 2 columns x 8 rows = 16 labels.
-// For shipping label with certificate appreciation text, 2 columns x 7 rows (14 cards) or 2 columns x 8 rows (16 cards):
-// In 2 columns x 8 rows (16 labels per sheet):
-// cardW = 1750 px (~148 mm), cardH = 650 px (~55 mm). Perfect proportions for shipping address + appreciation certificate!
-const CARD_WIDTH = 1750;
-const CARD_HEIGHT = 650;
-const GAP_X = 80;
-const GAP_Y = 40;
+// Source dimensions of public/label ekspedisi.png
+const SOURCE_WIDTH = 1265;
+const SOURCE_HEIGHT = 849;
 
-const TOTAL_GRID_W = CARD_WIDTH * 2 + GAP_X; // 3580 px (fits inside 3661 px printable area)
-const TOTAL_GRID_H = CARD_HEIGHT * 8 + GAP_Y * 7; // 5200 + 280 = 5480 px (fits inside 5551 px printable area)
+// 21-up layout on A3+ sheet (3 columns x 7 rows)
+const COLS = 3;
+const ROWS = 7;
+export const CARDS_PER_SHEET = COLS * ROWS; // 21
 
-const START_X = Math.round((A3_PLUS_WIDTH - TOTAL_GRID_W) / 2);
-const START_Y = Math.round((A3_PLUS_HEIGHT - TOTAL_GRID_H) / 2);
+// Card dimensions on A3+ sheet (maintains exact aspect ratio of 1265 x 849)
+const CARD_WIDTH = 1150;
+const CARD_HEIGHT = 772;
+const GAP_X = 25;
+const GAP_Y = 15;
 
-// Cache images
-let cachedLogoPeaderal: HTMLImageElement | null = null;
-let cachedLogoRudeboys: HTMLImageElement | null = null;
-let cachedPeaberbagi: HTMLImageElement | null = null;
+const TOTAL_GRID_W = CARD_WIDTH * COLS + GAP_X * (COLS - 1); // 3450 + 50 = 3500 px
+const TOTAL_GRID_H = CARD_HEIGHT * ROWS + GAP_Y * (ROWS - 1); // 5404 + 90 = 5494 px
+
+const START_X = Math.round((A3_PLUS_WIDTH - TOTAL_GRID_W) / 2); // ~193 px (~16.3 mm)
+const START_Y = Math.round((A3_PLUS_HEIGHT - TOTAL_GRID_H) / 2); // ~105 px (~8.9 mm)
+
+// Cache template image
+let cachedLabelTemplate: HTMLImageElement | null = null;
 
 async function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -50,29 +53,15 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-export async function ensureShippingLabelAssetsLoaded(): Promise<{
-  logoPeaderal: HTMLImageElement | null;
-  logoRudeboys: HTMLImageElement | null;
-  peaberbagi: HTMLImageElement | null;
-}> {
-  if (!cachedLogoPeaderal) {
-    cachedLogoPeaderal = await loadImage('/images/L.pea.dc.png');
+export async function ensureShippingLabelAssetsLoaded(): Promise<HTMLImageElement | null> {
+  if (!cachedLabelTemplate) {
+    cachedLabelTemplate = await loadImage('/label%20ekspedisi.png');
   }
-  if (!cachedLogoRudeboys) {
-    cachedLogoRudeboys = await loadImage('/images/logo RB.png');
-  }
-  if (!cachedPeaberbagi) {
-    cachedPeaberbagi = await loadImage('/images/Peaberbagi.dc.png');
-  }
-  return {
-    logoPeaderal: cachedLogoPeaderal,
-    logoRudeboys: cachedLogoRudeboys,
-    peaberbagi: cachedPeaberbagi,
-  };
+  return cachedLabelTemplate;
 }
 
 /**
- * Draw Crop Marks around a rectangle (square corners)
+ * Draw Crop Marks around a card
  */
 function drawCropMarks(
   ctx: CanvasRenderingContext2D,
@@ -80,12 +69,12 @@ function drawCropMarks(
   y: number,
   w: number,
   h: number,
-  markLen = 35,
-  markGap = 10
+  markLen = 28,
+  markGap = 8
 ) {
   ctx.save();
-  ctx.strokeStyle = '#1E293B';
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
   ctx.lineCap = 'square';
 
   // Top-Left
@@ -132,357 +121,220 @@ function drawCropMarks(
 }
 
 /**
- * Draw Single Shipping Card + Appreciation Certificate
- * Card Dimension: 1750 x 650 px
+ * Render a single shipping label card at full source resolution (1265 x 849 px)
  */
-export function drawSingleShippingCard(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
+export function renderSingleShippingCard(
   item: ShippingItemForLabel,
-  assets: {
-    logoPeaderal: HTMLImageElement | null;
-    logoRudeboys: HTMLImageElement | null;
-    peaberbagi: HTMLImageElement | null;
-  }
-) {
-  const w = CARD_WIDTH;
-  const h = CARD_HEIGHT;
+  templateImg: HTMLImageElement
+): HTMLCanvasElement {
+  const cardCanvas = document.createElement('canvas');
+  cardCanvas.width = SOURCE_WIDTH;
+  cardCanvas.height = SOURCE_HEIGHT;
+  const ctx = cardCanvas.getContext('2d');
+  if (!ctx) throw new Error('Cannot get 2D context for shipping card');
 
-  ctx.save();
-
-  // 1. Card Background & Outer Border
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(x, y, w, h);
-
-  // Outer border with gold accent
-  ctx.strokeStyle = '#0A1338';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(x, y, w, h);
-
-  // Inner decorative border
-  ctx.strokeStyle = '#F4C716';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x + 6, y + 6, w - 12, h - 12);
-
-  // 2. Card Layout: Left (Appreciation Certificate, w: 900px), Right (Shipping Address, w: 850px)
-  const leftW = 910;
-  const rightX = x + leftW;
-  const rightW = w - leftW;
-
-  // Vertical Separator Line
-  ctx.strokeStyle = '#E2E8F0';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(rightX, y + 10);
-  ctx.lineTo(rightX, y + h - 10);
-  ctx.stroke();
-
-  // -------------------------------------------------------------
-  // LEFT COLUMN: CERTIFICATE OF APPRECIATION & CHARITY IMPACT
-  // -------------------------------------------------------------
-  // Header Navy Banner
-  ctx.fillStyle = '#0A1338';
-  ctx.fillRect(x + 10, y + 10, leftW - 20, 52);
-
-  // Logos in header banner
-  if (assets.logoPeaderal && assets.logoPeaderal.complete) {
-    ctx.drawImage(assets.logoPeaderal, x + 18, y + 14, 44, 44);
-  }
-  if (assets.logoRudeboys && assets.logoRudeboys.complete) {
-    ctx.drawImage(assets.logoRudeboys, x + 68, y + 16, 42, 40);
-  }
-
-  // Header Title
-  ctx.fillStyle = '#F4C716';
-  ctx.font = '900 24px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('TOUR DE GUNUNG BATU 2026', x + 125, y + 36);
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('OFFICIAL JERSEY CHARITY', x + leftW - 25, y + 36);
-
-  // Certificate Heading
-  ctx.fillStyle = '#1D3AAE';
-  ctx.font = '900 21px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('CERTIFICATE OF APPRECIATION', x + 25, y + 92);
-
-  // BIB & Order Tag
-  const bibBadgeText = item.nomor_bib ? `BIB #${item.nomor_bib}` : (item.nomor_registrasi || 'PO JERSEY');
-  ctx.fillStyle = '#0A1338';
-  ctx.font = 'bold 16px monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText(bibBadgeText, x + leftW - 25, y + 92);
-
-  // Recipient / Participant Name
-  ctx.fillStyle = '#64748B';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('Diberikan dengan rasa hormat kepada:', x + 25, y + 124);
+  // 1. Draw Template Image
+  ctx.drawImage(templateImg, 0, 0, SOURCE_WIDTH, SOURCE_HEIGHT);
 
   ctx.fillStyle = '#0A1338';
-  ctx.font = '900 28px sans-serif';
-  const cleanName = (item.nama_penerima || 'PARTISIPAN').trim().toUpperCase();
-  ctx.fillText(cleanName, x + 25, y + 158);
+  ctx.textBaseline = 'alphabetic';
 
-  // Underline
-  ctx.fillStyle = '#F4C716';
-  ctx.fillRect(x + 25, y + 172, Math.min(600, ctx.measureText(cleanName).width + 30), 3.5);
-
-  // Certificate Body Paragraph
-  ctx.fillStyle = '#334155';
-  ctx.font = '500 16.5px sans-serif';
-  const lineH = 26;
-  const bodyStartY = 212;
-
-  ctx.fillText('Terima kasih atas partisipasi dan kepedulian Anda. Melalui pemesanan', x + 25, bodyStartY);
-  ctx.fillText('Official Jersey ini, Anda telah menyumbangkan donasi senilai', x + 25, bodyStartY + lineH);
-
-  // Donation highlight line
-  ctx.font = 'bold 17px sans-serif';
-  ctx.fillStyle = '#0F766E';
-  ctx.fillText('Rp 35.000,- kepada pergerakan PEADERAL BERBAGI', x + 25, bodyStartY + lineH * 2);
-
-  ctx.font = '500 16.5px sans-serif';
-  ctx.fillStyle = '#334155';
-  ctx.fillText('guna pengadaan unit sepeda layak untuk anak-anak yatim/piatu', x + 25, bodyStartY + lineH * 3);
-  ctx.fillText('dan dhuafa yang membutuhkan.', x + 25, bodyStartY + lineH * 4);
-
-  // Bottom impact badge
-  ctx.fillStyle = '#F8FAFC';
-  ctx.fillRect(x + 20, y + h - 110, leftW - 40, 95);
-  ctx.strokeStyle = '#CBD5E1';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x + 20, y + h - 110, leftW - 40, 95);
-
-  if (assets.peaberbagi && assets.peaberbagi.complete) {
-    ctx.drawImage(assets.peaberbagi, x + 30, y + h - 100, 75, 75);
+  // 2. Nama Penerima
+  // Line is at Y=373, ends at X=1014. Start at X=325
+  const rawName = (item.nama_penerima || 'PEMESAN JERSEY').trim().toUpperCase();
+  let nameFontSize = 26;
+  ctx.font = `bold ${nameFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
+  const maxNameWidth = 680;
+  while (ctx.measureText(rawName).width > maxNameWidth && nameFontSize > 17) {
+    nameFontSize -= 1;
+    ctx.font = `bold ${nameFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
   }
+  ctx.fillText(rawName, 325, 365);
 
-  ctx.fillStyle = '#0A1338';
-  ctx.font = 'italic bold 17px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('"Berbayar dengan Senyuman"', x + 120, y + h - 70);
+  // 3. No. Handphone
+  // Line is at Y=429, ends at X=1014. Start at X=445
+  const rawPhone = (item.no_telepon_penerima || '-').trim();
+  let phoneFontSize = 24;
+  ctx.font = `bold ${phoneFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
+  const maxPhoneWidth = 560;
+  while (ctx.measureText(rawPhone).width > maxPhoneWidth && phoneFontSize > 16) {
+    phoneFontSize -= 1;
+    ctx.font = `bold ${phoneFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
+  }
+  ctx.fillText(rawPhone, 445, 421);
 
-  ctx.fillStyle = '#64748B';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.fillText('PEADERAL × RUDEBOYS CYCLIST  •  Jonggol, Bogor', x + 120, y + h - 40);
-
-  // -------------------------------------------------------------
-  // RIGHT COLUMN: SHIPPING ADDRESS LABEL (LABEL EKSPEDISI)
-  // -------------------------------------------------------------
-  // Header Ekspedisi Bar
-  ctx.fillStyle = '#1D3AAE';
-  ctx.fillRect(rightX + 10, y + 10, rightW - 20, 44);
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 18px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('LABEL PENGIRIMAN EKSPEDISI', rightX + rightW / 2, y + 32);
-
-  // SENDER (PENGIRIM)
-  const sendBoxY = y + 66;
-  ctx.fillStyle = '#F1F5F9';
-  ctx.fillRect(rightX + 12, sendBoxY, rightW - 24, 88);
-  ctx.strokeStyle = '#E2E8F0';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(rightX + 12, sendBoxY, rightW - 24, 88);
-
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#64748B';
-  ctx.font = 'bold 13px sans-serif';
-  ctx.fillText('PENGIRIM:', rightX + 22, sendBoxY + 20);
-
+  // 4. Alamat Lengkap (3 Lines Auto-wrap)
+  // Line 1: Y=485, start X=470, max width 535
+  // Line 2: Y=541, start X=255, max width 750
+  // Line 3: Y=596, start X=255, max width 750
+  const addressFontSize = 19;
+  ctx.font = `bold ${addressFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
   ctx.fillStyle = '#0F172A';
-  ctx.font = '900 17px sans-serif';
-  ctx.fillText('PANITIA TOUR DE GUNUNG BATU', rightX + 22, sendBoxY + 44);
 
-  ctx.fillStyle = '#1E3A8A';
-  ctx.font = 'bold 16px monospace';
-  ctx.fillText('Telp/WA: +62 877-4587-0767', rightX + 22, sendBoxY + 70);
+  const rawAddress = (item.alamat_penerima || '-').replace(/\r?\n|\r/g, ' ').trim();
+  const words = rawAddress.split(/\s+/);
 
-  // RECIPIENT (PENERIMA)
-  const recvBoxY = sendBoxY + 100;
-  const recvBoxH = 310;
-  ctx.fillStyle = '#FFFBEB'; // Soft warm yellow
-  ctx.fillRect(rightX + 12, recvBoxY, rightW - 24, recvBoxH);
-  ctx.strokeStyle = '#FDE68A';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(rightX + 12, recvBoxY, rightW - 24, recvBoxH);
+  let line1 = '';
+  let line2 = '';
+  let line3 = '';
+  let wordIdx = 0;
 
-  ctx.fillStyle = '#B45309';
-  ctx.font = '900 14px sans-serif';
-  ctx.fillText('PENERIMA (TUJUAN):', rightX + 22, recvBoxY + 22);
-
-  // Recipient Name
-  ctx.fillStyle = '#0A1338';
-  ctx.font = '900 23px sans-serif';
-  ctx.fillText(cleanName, rightX + 22, recvBoxY + 54);
-
-  // Recipient Phone
-  ctx.fillStyle = '#059669';
-  ctx.font = 'bold 19px monospace';
-  const cleanPhone = item.no_telepon_penerima || '-';
-  ctx.fillText(`No. Telp / WA: ${cleanPhone}`, rightX + 22, recvBoxY + 86);
-
-  // Address
-  ctx.fillStyle = '#334155';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.fillText('Alamat Lengkap:', rightX + 22, recvBoxY + 116);
-
-  ctx.fillStyle = '#0F172A';
-  ctx.font = '600 17px sans-serif';
-  const rawAddr = item.alamat_penerima || 'Alamat tidak dicantumkan (Hubungi penerima)';
-  const addrLines = wrapAddressText(ctx, rawAddr, rightW - 55);
-
-  let addrLineY = recvBoxY + 144;
-  for (let i = 0; i < addrLines.length && i < 6; i++) {
-    ctx.fillText(addrLines[i], rightX + 22, addrLineY);
-    addrLineY += 24;
-  }
-
-  // PACKAGE CONTENT FOOTER
-  const pkgY = recvBoxY + recvBoxH + 12;
-  ctx.fillStyle = '#0A1338';
-  ctx.fillRect(rightX + 12, pkgY, rightW - 24, 60);
-
-  ctx.fillStyle = '#F4C716';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.fillText('ISI PAKET: OFFICIAL JERSEY', rightX + 24, pkgY + 24);
-
-  const sleeveLabel = item.jenis_lengan === 'long_sleeve' ? 'Lengan Panjang' : 'Lengan Pendek';
-  const sizeLabel = item.ukuran_jersey || 'Standard';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '900 16px sans-serif';
-  ctx.fillText(`Ukuran: ${sizeLabel} • ${sleeveLabel} (${item.qty || 1} pcs)`, rightX + 24, pkgY + 46);
-
-  ctx.restore();
-}
-
-function wrapAddressText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let current = '';
-
-  for (const w of words) {
-    const test = current ? `${current} ${w}` : w;
-    if (ctx.measureText(test).width > maxW && current) {
-      lines.push(current);
-      current = w;
+  // Build Line 1 (max width 535)
+  while (wordIdx < words.length) {
+    const test = line1 ? `${line1} ${words[wordIdx]}` : words[wordIdx];
+    if (ctx.measureText(test).width <= 535) {
+      line1 = test;
+      wordIdx++;
     } else {
-      current = test;
+      break;
     }
   }
-  if (current) lines.push(current);
-  return lines;
+
+  // Build Line 2 (max width 750)
+  while (wordIdx < words.length) {
+    const test = line2 ? `${line2} ${words[wordIdx]}` : words[wordIdx];
+    if (ctx.measureText(test).width <= 750) {
+      line2 = test;
+      wordIdx++;
+    } else {
+      break;
+    }
+  }
+
+  // Build Line 3 (max width 750)
+  while (wordIdx < words.length) {
+    const test = line3 ? `${line3} ${words[wordIdx]}` : words[wordIdx];
+    if (ctx.measureText(test).width <= 750) {
+      line3 = test;
+      wordIdx++;
+    } else {
+      // If words still remain, append ellipsis if possible
+      if (line3.length > 3) {
+        line3 = line3.slice(0, -3) + '...';
+      }
+      break;
+    }
+  }
+
+  if (line1) ctx.fillText(line1, 470, 477);
+  if (line2) ctx.fillText(line2, 255, 533);
+  if (line3) ctx.fillText(line3, 255, 588);
+
+  // 5. Detail Pesanan
+  // Cover placeholder [Size: __ / Sleeve: __ / Qty: __] with clean white box
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(665, 680, 360, 38);
+
+  const sleeveStr = item.jenis_lengan === 'long_sleeve' ? 'Panjang' : 'Pendek';
+  const sizeStr = (item.ukuran_jersey || '-').toUpperCase();
+  const qtyStr = `${item.qty || 1} pcs`;
+  const detailText = `[Size: ${sizeStr} / Sleeve: ${sleeveStr} / Qty: ${qtyStr}]`;
+
+  ctx.fillStyle = '#0F172A';
+  ctx.font = `bold 19px 'Plus Jakarta Sans', Arial, sans-serif`;
+  ctx.fillText(detailText, 675, 705);
+
+  return cardCanvas;
 }
 
 /**
- * Render a Single A3+ Master Sheet Containing up to 16 Shipping Labels (2 cols x 8 rows)
+ * Render a single A3+ sheet with up to 21 shipping label cards
  */
-function renderA3PlusShippingSheet(
-  sheetCanvas: HTMLCanvasElement,
-  sheetCtx: CanvasRenderingContext2D,
-  items: ShippingItemForLabel[],
-  assets: {
-    logoPeaderal: HTMLImageElement | null;
-    logoRudeboys: HTMLImageElement | null;
-    peaberbagi: HTMLImageElement | null;
+export function renderA3ShippingSheet(
+  itemsOnSheet: ShippingItemForLabel[],
+  templateImg: HTMLImageElement
+): HTMLCanvasElement {
+  const sheetCanvas = document.createElement('canvas');
+  sheetCanvas.width = A3_PLUS_WIDTH;
+  sheetCanvas.height = A3_PLUS_HEIGHT;
+  const ctx = sheetCanvas.getContext('2d');
+  if (!ctx) throw new Error('Cannot get 2D context for A3+ sheet');
+
+  // Clean white background
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, A3_PLUS_WIDTH, A3_PLUS_HEIGHT);
+
+  for (let idx = 0; idx < itemsOnSheet.length; idx++) {
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+
+    const x = START_X + col * (CARD_WIDTH + GAP_X);
+    const y = START_Y + row * (CARD_HEIGHT + GAP_Y);
+
+    const item = itemsOnSheet[idx];
+    const cardCanvas = renderSingleShippingCard(item, templateImg);
+
+    // Draw scaled card onto sheet
+    ctx.drawImage(cardCanvas, x, y, CARD_WIDTH, CARD_HEIGHT);
+
+    // Draw cutting crop marks
+    drawCropMarks(ctx, x, y, CARD_WIDTH, CARD_HEIGHT, 28, 8);
+
+    // Draw dashed outer border guide
+    ctx.save();
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([12, 10]);
+    ctx.strokeRect(x, y, CARD_WIDTH, CARD_HEIGHT);
+    ctx.restore();
   }
-) {
-  const w = A3_PLUS_WIDTH;
-  const h = A3_PLUS_HEIGHT;
-  sheetCanvas.width = w;
-  sheetCanvas.height = h;
 
-  // Clear sheet to pure white
-  sheetCtx.fillStyle = '#FFFFFF';
-  sheetCtx.fillRect(0, 0, w, h);
-
-  // Draw 2 columns x 8 rows = 16 labels per sheet
-  for (let i = 0; i < items.length && i < 16; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const posX = START_X + col * (CARD_WIDTH + GAP_X);
-    const posY = START_Y + row * (CARD_HEIGHT + GAP_Y);
-
-    drawSingleShippingCard(sheetCtx, posX, posY, items[i], assets);
-    drawCropMarks(sheetCtx, posX, posY, CARD_WIDTH, CARD_HEIGHT, 40, 10);
-  }
-
-  // Cutting guidelines between columns
-  const midX = START_X + CARD_WIDTH + GAP_X / 2;
-  sheetCtx.save();
-  sheetCtx.strokeStyle = '#94A3B8';
-  sheetCtx.lineWidth = 2;
-  sheetCtx.setLineDash([12, 10]);
-  sheetCtx.beginPath();
-  sheetCtx.moveTo(midX, START_Y - 15);
-  sheetCtx.lineTo(midX, START_Y + TOTAL_GRID_H + 15);
-  sheetCtx.stroke();
-
-  // Cutting guidelines between rows
-  for (let r = 1; r < 8; r++) {
-    const lineY = START_Y + r * CARD_HEIGHT + (r - 0.5) * GAP_Y;
-    sheetCtx.beginPath();
-    sheetCtx.moveTo(START_X - 20, lineY);
-    sheetCtx.lineTo(START_X + TOTAL_GRID_W + 20, lineY);
-    sheetCtx.stroke();
-  }
-  sheetCtx.restore();
+  return sheetCanvas;
 }
 
 /**
- * Bulk Generate Shipping Labels as a Single Multi-Page PDF (A3+ @ 300 DPI)
+ * Generate Bulk Shipping Labels PDF in A3+ (21 cards per sheet)
  */
 export async function generateBulkShippingLabelsPdf(
   items: ShippingItemForLabel[],
   onProgress?: (percent: number, message: string) => void
 ): Promise<Blob> {
-  const total = items.length;
-  if (total === 0) throw new Error('Tidak ada data paket pengiriman untuk dicetak.');
+  if (items.length === 0) {
+    throw new Error('Tidak ada data paket pengiriman untuk dicetak.');
+  }
 
-  onProgress?.(5, 'Memuat aset logo & template...');
-  const assets = await ensureShippingLabelAssetsLoaded();
+  onProgress?.(5, 'Memuat aset template label ekspedisi...');
+  const templateImg = await ensureShippingLabelAssetsLoaded();
+  if (!templateImg) {
+    throw new Error('Gagal memuat template label (/label ekspedisi.png). Pastikan file tersedia.');
+  }
 
-  const perSheet = 16;
-  const totalSheets = Math.ceil(total / perSheet);
-
-  const sheetCanvas = document.createElement('canvas');
-  sheetCanvas.width = A3_PLUS_WIDTH;
-  sheetCanvas.height = A3_PLUS_HEIGHT;
-  const sheetCtx = sheetCanvas.getContext('2d');
-  if (!sheetCtx) throw new Error('Browser tidak mendukung 2D Canvas context.');
-
-  const doc = new jsPDF({
+  const totalSheets = Math.ceil(items.length / CARDS_PER_SHEET);
+  const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [329, 483], // A3+ mm
+    format: [329, 483], // A3+ standard
     compress: true,
   });
 
-  for (let s = 0; s < totalSheets; s++) {
-    const sheetItems = items.slice(s * perSheet, (s + 1) * perSheet);
-    const pct = Math.round(10 + ((s + 1) / totalSheets) * 80);
-    onProgress?.(pct, `Merender Lembar A3+ #${s + 1} dari ${totalSheets} (${sheetItems.length} label)...`);
+  for (let sheetIdx = 0; sheetIdx < totalSheets; sheetIdx++) {
+    const startIdx = sheetIdx * CARDS_PER_SHEET;
+    const endIdx = Math.min(startIdx + CARDS_PER_SHEET, items.length);
+    const sheetItems = items.slice(startIdx, endIdx);
 
-    renderA3PlusShippingSheet(sheetCanvas, sheetCtx, sheetItems, assets);
+    const pct = Math.round(((sheetIdx + 1) / totalSheets) * 90);
+    onProgress?.(
+      pct,
+      `Merender lembar A3+ ke-${sheetIdx + 1} dari ${totalSheets} (${sheetItems.length} label)...`
+    );
 
-    const imgData = sheetCanvas.toDataURL('image/jpeg', 0.94);
+    // Yield control to UI thread
+    await new Promise((resolve) => setTimeout(resolve, 30));
 
-    if (s > 0) doc.addPage([329, 483], 'portrait');
-    doc.addImage(imgData, 'JPEG', 0, 0, 329, 483, undefined, 'FAST');
+    const sheetCanvas = renderA3ShippingSheet(sheetItems, templateImg);
+    const sheetImgData = sheetCanvas.toDataURL('image/jpeg', 0.94);
 
-    await new Promise((r) => setTimeout(r, 20));
+    if (sheetIdx > 0) {
+      pdf.addPage([329, 483], 'portrait');
+    }
+
+    pdf.addImage(sheetImgData, 'JPEG', 0, 0, 329, 483, undefined, 'FAST');
   }
 
-  onProgress?.(95, 'Menyusun file PDF...');
-  const pdfBlob = doc.output('blob');
+  onProgress?.(96, 'Menyusun file PDF A3+...');
+  await new Promise((resolve) => setTimeout(resolve, 30));
+
+  const pdfBlob = pdf.output('blob');
   onProgress?.(100, 'Selesai!');
   return pdfBlob;
 }
