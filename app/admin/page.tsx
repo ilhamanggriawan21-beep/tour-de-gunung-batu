@@ -1860,6 +1860,17 @@ export default function AdminDashboardPage() {
                     )}
                   </button>
 
+                  {/* Tombol Cetak Stiker Merchandise A3+ (36 Pcs per Lembar) */}
+                  <a
+                    href="/STIKER_MERCHANDISE_A3_TDGB_2026.pdf"
+                    download="STIKER_MERCHANDISE_A3_TDGB_2026.pdf"
+                    className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow flex items-center justify-center space-x-1.5 transition-transform active:scale-95 border border-emerald-700/30"
+                    title="Download Lembar Cetak Stiker A3+ (5x7 cm, isi 36 pcs/lembar)"
+                  >
+                    <Download className="w-4 h-4 text-emerald-200" />
+                    <span>Cetak Stiker A3+ (36 Pcs)</span>
+                  </a>
+
                   {/* Tombol Cetak Label Pengiriman Ekspedisi A3+ (Khusus yang Dikirim) */}
                   <button
                     type="button"
