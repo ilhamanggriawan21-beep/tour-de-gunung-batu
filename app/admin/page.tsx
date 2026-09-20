@@ -8,6 +8,7 @@ import { downloadBibCard } from '@/lib/downloadBib';
 import { generateBulkBibZip, triggerDownload, BulkBibProgress, ParticipantForBib } from '@/lib/bulkBibZip';
 import { generateBulkBibA3Zip, generateBulkBibA3Pdf } from '@/lib/bibA3Imposition';
 import { generateBulkShippingLabelsPdf, ShippingItemForLabel } from '@/lib/shippingLabelsA3';
+import { generateBulkCertificatesPdf, CertificateParticipant } from '@/lib/certificateA3';
 import { NametagPanitiaModal } from '@/components/NametagPanitiaModal';
 import {
   ShieldCheck,
@@ -88,6 +89,8 @@ export default function AdminDashboardPage() {
   const [tempResiValue, setTempResiValue] = useState('');
   const [downloadingShippingLabels, setDownloadingShippingLabels] = useState(false);
   const [shippingLabelProgress, setShippingLabelProgress] = useState<{ percent: number; message: string } | null>(null);
+  const [downloadingCertificates, setDownloadingCertificates] = useState(false);
+  const [certificateProgress, setCertificateProgress] = useState<{ percent: number; message: string } | null>(null);
 
   // Finance (Keuangan) State
   const [financeData, setFinanceData] = useState<any>({
@@ -1230,6 +1233,55 @@ export default function AdminDashboardPage() {
     setTimeout(() => setBatchCopyFeedback(null), 3000);
   };
 
+  const handleDownloadCertificates = async (items: any[], filterLabel: string) => {
+    if (items.length === 0) {
+      alert('Tidak ada data peserta jersey untuk dicetak.');
+      return;
+    }
+
+    setDownloadingCertificates(true);
+    setCertificateProgress({ percent: 5, message: 'Menyiapkan data sertifikat ucapan...' });
+
+    try {
+      const certItems: CertificateParticipant[] = items.map((item) => {
+        const r = item.registrant;
+        const p = item.jersey_po;
+        return {
+          id: p?.id || r?.id || '',
+          nomor_bib: r?.nomor_bib,
+          nomor_registrasi: r?.nomor_registrasi,
+          nama_lengkap: r?.nama_lengkap || 'PESERTA TOUR DE GUNUNG BATU',
+          komunitas: r?.nama_komunitas,
+          ukuran_jersey: p?.ukuran,
+          jenis_lengan: p?.jenis_lengan,
+          batch_produksi: p?.batch_produksi,
+          metode_ambil: p?.metode_ambil,
+        };
+      });
+
+      const pdfBlob = await generateBulkCertificatesPdf(certItems, (pct, msg) => {
+        setCertificateProgress({ percent: pct, message: msg });
+      });
+
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SERTIFIKAT_UCAPAN_A3_TDGB_${filterLabel}_${certItems.length}_PESERTA.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (err: any) {
+      console.error('Download certificate error:', err);
+      alert(`Gagal membuat PDF sertifikat ucapan: ${err?.message || 'Error tidak diketahui'}`);
+    } finally {
+      setDownloadingCertificates(false);
+      setCertificateProgress(null);
+    }
+  };
+
   const handleUpdateBatch = async (poId: string, registrantId: string, batchNumber: number | null) => {
     try {
       const res = await fetch('/api/admin/batch', {
@@ -1787,6 +1839,28 @@ export default function AdminDashboardPage() {
                     ))}
                   </div>
 
+                  {/* Tombol Cetak Sertifikat Ucapan A3+ (Untuk Seluruh Partisipan Jersey) */}
+                  <button
+                    type="button"
+                    disabled={downloadingCertificates || poList.length === 0}
+                    onClick={() => handleDownloadCertificates(poList, 'Semua_PO')}
+                    className="shrink-0 bg-brand-navy hover:bg-brand-royal text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow flex items-center justify-center space-x-1.5 transition-transform active:scale-95 disabled:opacity-50 border border-brand-navy/30"
+                    title="Cetak Sertifikat Apresiasi A3+ (10x6.5 cm, 21 pcs/lembar) untuk seluruh pemesan jersey (dikirim maupun ambil langsung)"
+                  >
+                    {downloadingCertificates ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-brand-yellow" />
+                        <span>{certificateProgress ? `${certificateProgress.percent}%` : 'Memproses...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-brand-yellow" />
+                        <span>Cetak Sertifikat Ucapan A3+ ({poList.length})</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Tombol Cetak Label Pengiriman Ekspedisi A3+ (Khusus yang Dikirim) */}
                   <button
                     type="button"
                     disabled={downloadingShippingLabels || filteredShippingList.length === 0}
@@ -1841,7 +1915,8 @@ export default function AdminDashboardPage() {
                         setShippingLabelProgress(null);
                       }
                     }}
-                    className="shrink-0 bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black px-4 py-2 rounded-xl shadow flex items-center justify-center space-x-1.5 transition-transform active:scale-95 disabled:opacity-50"
+                    className="shrink-0 bg-brand-yellow hover:bg-amber-400 text-brand-navy text-xs font-black px-3.5 py-2 rounded-xl shadow flex items-center justify-center space-x-1.5 transition-transform active:scale-95 disabled:opacity-50"
+                    title="Cetak Label Pengiriman Alamat Ekspedisi khusus untuk paket yang dikirim"
                   >
                     {downloadingShippingLabels ? (
                       <>
@@ -1851,12 +1926,25 @@ export default function AdminDashboardPage() {
                     ) : (
                       <>
                         <Download className="w-4 h-4 text-brand-navy" />
-                        <span>Cetak Label &amp; Ucapan A3+ ({filteredShippingList.length})</span>
+                        <span>Cetak Label Ekspedisi A3+ ({filteredShippingList.length})</span>
                       </>
                     )}
                   </button>
                 </div>
               </div>
+
+              {/* Live progress indicator when rendering certificates */}
+              {downloadingCertificates && certificateProgress && (
+                <div className="bg-sky-50 border border-sky-200 p-3 rounded-xl flex items-center justify-between text-xs font-bold text-sky-900 animate-in fade-in">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
+                    <span>{certificateProgress.message}</span>
+                  </div>
+                  <span className="font-mono bg-white px-2 py-0.5 rounded border border-sky-300">
+                    {certificateProgress.percent}%
+                  </span>
+                </div>
+              )}
 
               {/* Live progress indicator when rendering labels */}
               {downloadingShippingLabels && shippingLabelProgress && (
@@ -2591,6 +2679,29 @@ export default function AdminDashboardPage() {
                     <Download className="w-4 h-4 text-brand-yellow" />
                     <span>Download CSV {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Unbatched'}</span>
                   </a>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadCertificates(
+                      selectedBatchView === 'batch_1' ? batch1List : unbatchedList,
+                      selectedBatchView === 'batch_1' ? 'Batch_1' : 'Unbatched'
+                    )}
+                    disabled={downloadingCertificates || (selectedBatchView === 'batch_1' ? batch1List.length === 0 : unbatchedList.length === 0)}
+                    className="min-h-10 px-4 py-2 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
+                    title="Cetak Sertifikat Apresiasi A3+ (10x6.5 cm, 21 pcs/lembar) untuk batch ini"
+                  >
+                    {downloadingCertificates ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-sky-200" />
+                        <span>{certificateProgress ? `${certificateProgress.percent}%` : 'Memproses...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-sky-300" />
+                        <span>Cetak Sertifikat {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Unbatched'} A3+</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {selectedBatchView === 'unbatched' && unbatchedList.length > 0 && (
