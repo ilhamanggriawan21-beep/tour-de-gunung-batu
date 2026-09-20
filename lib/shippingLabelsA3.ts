@@ -142,32 +142,33 @@ export function renderSingleShippingCard(
   // 2. Nama Penerima
   // Line is at Y=373, ends at X=1014. Start at X=325
   const rawName = (item.nama_penerima || 'PEMESAN JERSEY').trim().toUpperCase();
-  let nameFontSize = 26;
+  let nameFontSize = 25;
   ctx.font = `bold ${nameFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
-  const maxNameWidth = 680;
-  while (ctx.measureText(rawName).width > maxNameWidth && nameFontSize > 17) {
+  const maxNameWidth = 650;
+  while (ctx.measureText(rawName).width > maxNameWidth && nameFontSize > 16) {
     nameFontSize -= 1;
     ctx.font = `bold ${nameFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
   }
-  ctx.fillText(rawName, 325, 365);
+  // Line is at Y=373. Colon ends at X=337. Sits at X=355, baseline Y=358
+  ctx.fillText(rawName, 355, 358);
 
   // 3. No. Handphone
-  // Line is at Y=429, ends at X=1014. Start at X=445
+  // Line is at Y=429. Colon ends at X=464. Sits at X=485, baseline Y=414
   const rawPhone = (item.no_telepon_penerima || '-').trim();
-  let phoneFontSize = 24;
+  let phoneFontSize = 23;
   ctx.font = `bold ${phoneFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
-  const maxPhoneWidth = 560;
-  while (ctx.measureText(rawPhone).width > maxPhoneWidth && phoneFontSize > 16) {
+  const maxPhoneWidth = 525;
+  while (ctx.measureText(rawPhone).width > maxPhoneWidth && phoneFontSize > 15) {
     phoneFontSize -= 1;
     ctx.font = `bold ${phoneFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
   }
-  ctx.fillText(rawPhone, 445, 421);
+  ctx.fillText(rawPhone, 485, 414);
 
   // 4. Alamat Lengkap (3 Lines Auto-wrap)
-  // Line 1: Y=485, start X=470, max width 535
-  // Line 2: Y=541, start X=255, max width 750
-  // Line 3: Y=596, start X=255, max width 750
-  const addressFontSize = 19;
+  // Line 1: Line is at Y=485. Colon ends at X=474. Sits at X=495, baseline Y=470 (max width 515)
+  // Line 2: Line is at Y=541. Sits at X=255, baseline Y=526 (max width 755)
+  // Line 3: Line is at Y=596. Sits at X=255, baseline Y=581 (max width 755)
+  const addressFontSize = 18;
   ctx.font = `bold ${addressFontSize}px 'Plus Jakarta Sans', Arial, sans-serif`;
   ctx.fillStyle = '#0F172A';
 
@@ -179,10 +180,10 @@ export function renderSingleShippingCard(
   let line3 = '';
   let wordIdx = 0;
 
-  // Build Line 1 (max width 535)
+  // Build Line 1 (max width 515)
   while (wordIdx < words.length) {
     const test = line1 ? `${line1} ${words[wordIdx]}` : words[wordIdx];
-    if (ctx.measureText(test).width <= 535) {
+    if (ctx.measureText(test).width <= 515) {
       line1 = test;
       wordIdx++;
     } else {
@@ -190,10 +191,10 @@ export function renderSingleShippingCard(
     }
   }
 
-  // Build Line 2 (max width 750)
+  // Build Line 2 (max width 755)
   while (wordIdx < words.length) {
     const test = line2 ? `${line2} ${words[wordIdx]}` : words[wordIdx];
-    if (ctx.measureText(test).width <= 750) {
+    if (ctx.measureText(test).width <= 755) {
       line2 = test;
       wordIdx++;
     } else {
@@ -201,14 +202,13 @@ export function renderSingleShippingCard(
     }
   }
 
-  // Build Line 3 (max width 750)
+  // Build Line 3 (max width 755)
   while (wordIdx < words.length) {
     const test = line3 ? `${line3} ${words[wordIdx]}` : words[wordIdx];
-    if (ctx.measureText(test).width <= 750) {
+    if (ctx.measureText(test).width <= 755) {
       line3 = test;
       wordIdx++;
     } else {
-      // If words still remain, append ellipsis if possible
       if (line3.length > 3) {
         line3 = line3.slice(0, -3) + '...';
       }
@@ -216,9 +216,9 @@ export function renderSingleShippingCard(
     }
   }
 
-  if (line1) ctx.fillText(line1, 470, 477);
-  if (line2) ctx.fillText(line2, 255, 533);
-  if (line3) ctx.fillText(line3, 255, 588);
+  if (line1) ctx.fillText(line1, 495, 470);
+  if (line2) ctx.fillText(line2, 255, 526);
+  if (line3) ctx.fillText(line3, 255, 581);
 
   // 5. Detail Pesanan
   // Cover placeholder [Size: __ / Sleeve: __ / Qty: __] with clean white box
@@ -231,7 +231,7 @@ export function renderSingleShippingCard(
   const detailText = `[Size: ${sizeStr} / Sleeve: ${sleeveStr} / Qty: ${qtyStr}]`;
 
   ctx.fillStyle = '#0F172A';
-  ctx.font = `bold 19px 'Plus Jakarta Sans', Arial, sans-serif`;
+  ctx.font = `bold 18px 'Plus Jakarta Sans', Arial, sans-serif`;
   ctx.fillText(detailText, 675, 705);
 
   return cardCanvas;
