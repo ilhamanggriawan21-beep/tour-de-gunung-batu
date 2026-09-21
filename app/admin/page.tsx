@@ -1754,12 +1754,22 @@ export default function AdminDashboardPage() {
                                   🏷️ Hanya Nomor BIB
                                 </span>
                               ) : isJerseyOnSite ? (
-                                <span className="inline-flex items-center text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                                  🎁 BIB + Jersey {p.kategori_ukuran === 'anak' ? 'Anak' : ''} ({p.ukuran}, {p.jenis_lengan === 'short_sleeve' ? 'Pendek' : 'Panjang'})
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                                  <span>🎁 BIB + Jersey {p.kategori_ukuran === 'anak' ? 'Anak' : ''} ({p.ukuran}, {p.jenis_lengan === 'short_sleeve' ? 'Pendek' : 'Panjang'})</span>
+                                  {p.batch_produksi === 1 ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-600 text-white">B1</span>
+                                  ) : p.batch_produksi === 2 ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-sky-600 text-white">B2</span>
+                                  ) : null}
                                 </span>
                               ) : isJerseyShipped ? (
-                                <span className="inline-flex items-center text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                                  📦 Jersey Dikirim ke Alamat
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                  <span>📦 Jersey Dikirim ke Alamat</span>
+                                  {p.batch_produksi === 1 ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-600 text-white">B1</span>
+                                  ) : p.batch_produksi === 2 ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-sky-600 text-white">B2</span>
+                                  ) : null}
                                 </span>
                               ) : null}
 
@@ -2041,6 +2051,19 @@ export default function AdminDashboardPage() {
                             <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
                               👕 {p.ukuran} ({p.jenis_lengan === 'short_sleeve' ? 'Pendek' : 'Panjang'}) x{p.qty}
                             </span>
+                            {p.batch_produksi === 1 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                BATCH 1
+                              </span>
+                            ) : p.batch_produksi === 2 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                                BATCH 2
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                BELUM BATCH
+                              </span>
+                            )}
 
                             {editingResiId === p.id ? (
                               <div className="inline-flex items-center space-x-1">
@@ -2199,6 +2222,10 @@ export default function AdminDashboardPage() {
                             {p.batch_produksi === 1 ? (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
                                 BATCH 1
+                              </span>
+                            ) : p.batch_produksi === 2 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                                BATCH 2
                               </span>
                             ) : (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
@@ -2433,6 +2460,10 @@ export default function AdminDashboardPage() {
                               {p.batch_produksi === 1 ? (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
                                   BATCH 1
+                                </span>
+                              ) : p.batch_produksi === 2 ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                                  BATCH 2
                                 </span>
                               ) : (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
@@ -3088,15 +3119,30 @@ export default function AdminDashboardPage() {
                           </button>
                         </div>
                         {p ? (
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              p.status_pembayaran === 'lunas'
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            PO ({p.status_pembayaran})
-                          </span>
+                          <div className="flex flex-col items-end gap-1">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                p.status_pembayaran === 'lunas'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              PO ({p.status_pembayaran})
+                            </span>
+                            {p.batch_produksi === 1 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                BATCH 1
+                              </span>
+                            ) : p.batch_produksi === 2 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                                BATCH 2
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                BELUM BATCH
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[11px] text-slate-400">Daftar Saja (Gratis)</span>
                         )}
@@ -3231,6 +3277,21 @@ export default function AdminDashboardPage() {
                                 >
                                   PO ({p.status_pembayaran})
                                 </span>
+                                <div className="mt-1 flex items-center justify-center gap-1">
+                                  {p.batch_produksi === 1 ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      BATCH 1
+                                    </span>
+                                  ) : p.batch_produksi === 2 ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                                      BATCH 2
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                      BELUM BATCH
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-[10px] text-slate-500 block font-medium mt-0.5">
                                   {p.jenis_lengan === 'short_sleeve' ? 'Short' : 'Long'} {p.kategori_ukuran === 'anak' ? '(Anak)' : ''} ({p.ukuran}) x{p.qty}
                                 </span>

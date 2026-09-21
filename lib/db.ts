@@ -540,9 +540,16 @@ function getLocalRegistrationDetails(nomorRegistrasi: string): { registrant: Reg
   if (!reg) return null;
 
   const po = db.jersey_pos.find(p => p.registrant_id === reg.id);
+  const resolvedPo = po ? {
+    ...po,
+    batch_produksi: po.batch_produksi !== undefined && po.batch_produksi !== null
+      ? po.batch_produksi
+      : (reg.nomor_bib <= 1184 ? 1 : null)
+  } : undefined;
+
   return {
     registrant: reg,
-    jersey_po: po,
+    jersey_po: resolvedPo,
     settings: db.settings
   };
 }

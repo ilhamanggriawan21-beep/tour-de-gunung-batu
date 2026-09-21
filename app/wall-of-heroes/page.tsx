@@ -79,9 +79,9 @@ export default function WallOfHeroesPage() {
         ? item.batch_produksi === 1
         : batchFilter === 'batch_2'
         ? item.batch_produksi === 2
-        : !item.batch_produksi;
+        : item.jenis_registrasi === 'po_jersey' && !item.batch_produksi;
 
-    return matchesSearch && (activeTab === 'jersey' ? matchesBatch : true);
+    return matchesSearch && (batchFilter === 'semua' ? true : matchesBatch);
   });
 
   const filteredJersey = (data.partisipan_jersey || []).filter((item: any) => {
@@ -225,8 +225,75 @@ export default function WallOfHeroesPage() {
           </div>
         </div>
 
-        {/* Legend Indicator or Batch Switcher */}
-        {activeTab === 'peserta' ? (
+        {/* Batch Info Banner & Filter (Visible for both tabs) */}
+        <div className="space-y-3">
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl text-xs space-y-1 text-slate-800 shadow-xs">
+            <div className="flex items-center space-x-2 text-amber-900 font-extrabold text-sm">
+              <Shirt className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Status &amp; Transparansi Batch Produksi Jersey</span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
+              • <strong className="text-emerald-800">Batch 1:</strong> Cut-off pendaftar awal s/d BIB #1184 (Hanifsyah Aditya) — kloter produksi pertama vendor konveksi.<br />
+              • <strong className="text-sky-800">Batch 2:</strong> Pesanan setelah BIB #1184 — masuk kloter produksi kedua vendor konveksi.<br />
+              Ketik nama Anda di kolom pencarian atau gunakan tombol filter kloter di bawah ini untuk mengecek status pesanan:
+            </p>
+          </div>
+
+          {/* Batch Filter Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setBatchFilter('semua')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                batchFilter === 'semua'
+                  ? 'bg-brand-navy text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Semua ({activeTab === 'jersey' ? data.total_partisipan_jersey : data.total_peserta})
+            </button>
+
+            <button
+              onClick={() => setBatchFilter('batch_1')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1.5 ${
+                batchFilter === 'batch_1'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Batch 1 ({totalBatch1})</span>
+            </button>
+
+            <button
+              onClick={() => setBatchFilter('batch_2')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1.5 ${
+                batchFilter === 'batch_2'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-sky-400" />
+              <span>Batch 2 ({totalBatch2})</span>
+            </button>
+
+            {totalUnbatched > 0 && (
+              <button
+                onClick={() => setBatchFilter('unbatched')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                  batchFilter === 'unbatched'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Antrian Batch ({totalUnbatched})</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Legend Indicator for Peserta Tab */}
+        {activeTab === 'peserta' && (
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold px-2 text-slate-600">
             <span className="flex items-center">
               <span className="w-3 h-3 rounded-full bg-brand-yellow border border-amber-500 mr-1.5" />
@@ -240,73 +307,6 @@ export default function WallOfHeroesPage() {
               <span className="w-3 h-3 rounded-full bg-brand-royal mr-1.5" />
               <strong className="text-brand-royal mr-1">Warna Biru:</strong> Peserta Event Saja
             </span>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* Batch Info Banner */}
-            <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl text-xs space-y-1 text-slate-800 shadow-xs">
-              <div className="flex items-center space-x-2 text-amber-900 font-extrabold text-sm">
-                <Shirt className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Status &amp; Transparansi Batch Produksi Jersey</span>
-              </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
-                • <strong className="text-emerald-800">Batch 1:</strong> Cut-off pendaftar awal s/d BIB #1184 (Hanifsyah Aditya) — data telah dikunci dan sedang dalam tahap pengerjaan vendor konveksi kloter pertama.<br />
-                • <strong className="text-sky-800">Batch 2:</strong> Pesanan setelah BIB #1184 — masuk kloter produksi kedua.<br />
-                Ketik nama Anda di kolom pencarian atau klik tombol kloter di bawah ini untuk melihat status batch masing-masing:
-              </p>
-            </div>
-
-            {/* Batch Filter Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setBatchFilter('semua')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  batchFilter === 'semua'
-                    ? 'bg-brand-navy text-white shadow-sm'
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                Semua Batch ({data.total_partisipan_jersey})
-              </button>
-
-              <button
-                onClick={() => setBatchFilter('batch_1')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1.5 ${
-                  batchFilter === 'batch_1'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Batch 1 ({totalBatch1})</span>
-              </button>
-
-              <button
-                onClick={() => setBatchFilter('batch_2')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1.5 ${
-                  batchFilter === 'batch_2'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-sky-400" />
-                <span>Batch 2 ({totalBatch2})</span>
-              </button>
-
-              {totalUnbatched > 0 && (
-                <button
-                  onClick={() => setBatchFilter('unbatched')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
-                    batchFilter === 'unbatched'
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300'
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span>Antrian Batch ({totalUnbatched})</span>
-                </button>
-              )}
-            </div>
           </div>
         )}
 
@@ -360,12 +360,16 @@ export default function WallOfHeroesPage() {
                       {/* Status & Batch Badge */}
                       <div className="flex-shrink-0 flex items-center gap-1.5">
                         {p.batch_produksi === 1 ? (
-                          <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
                             Batch 1
                           </span>
                         ) : p.batch_produksi === 2 ? (
-                          <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap">
                             Batch 2
+                          </span>
+                        ) : isPo ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
+                            Antrian
                           </span>
                         ) : null}
 

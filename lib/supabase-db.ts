@@ -573,7 +573,7 @@ export async function getSupabaseRegistrationDetails(nomorRegistrasi: string): P
 
   return {
     registrant: reg as Registrant,
-    jersey_po: po ? parseJerseyPO(po) : undefined,
+    jersey_po: po ? parseJerseyPO(po, reg.nomor_bib) : undefined,
     settings
   };
 }
@@ -601,7 +601,7 @@ export async function getSupabaseBibLookup(nomorBib: number): Promise<BibLookupP
       .maybeSingle();
 
     if (poData) {
-      const parsedPo = parseJerseyPO(poData);
+      const parsedPo = parseJerseyPO(poData, data.nomor_bib);
       status_jersey = parsedPo.status_pembayaran;
       batch_produksi = parsedPo.batch_produksi !== undefined && parsedPo.batch_produksi !== null
         ? parsedPo.batch_produksi
@@ -666,7 +666,11 @@ export async function getSupabaseWallOfHeroesData() {
   const { data: jersey_pos } = await supabase.from('jersey_pos').select('*');
 
   const regs = registrants || [];
-  const pos = (jersey_pos || []).map(parseJerseyPO);
+  const regBibMap = new Map<string, number>();
+  regs.forEach((r: any) => {
+    if (r.nomor_bib) regBibMap.set(r.id, r.nomor_bib);
+  });
+  const pos = (jersey_pos || []).map((p: any) => parseJerseyPO(p, regBibMap.get(p.registrant_id)));
 
   const poMap = new Map<string, any>();
   const lunasPoMap = new Map<string, any>();
