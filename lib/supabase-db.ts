@@ -584,12 +584,40 @@ export async function getSupabaseBibLookup(nomorBib: number): Promise<BibLookupP
 
   const { data, error } = await supabase
     .from('registrants')
-    .select('nomor_bib, nama_lengkap, komunitas, nomor_registrasi, jenis_registrasi')
+    .select('id, nomor_bib, nama_lengkap, komunitas, nomor_registrasi, jenis_registrasi')
     .eq('nomor_bib', nomorBib)
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as BibLookupParticipant;
+
+  let batch_produksi: number | null = null;
+  let status_jersey: string | null = null;
+
+  if (data.jenis_registrasi === 'po_jersey') {
+    const { data: poData } = await supabase
+      .from('jersey_pos')
+      .select('*')
+      .eq('registrant_id', data.id)
+      .maybeSingle();
+
+    if (poData) {
+      const parsedPo = parseJerseyPO(poData);
+      status_jersey = parsedPo.status_pembayaran;
+      batch_produksi = parsedPo.batch_produksi !== undefined && parsedPo.batch_produksi !== null
+        ? parsedPo.batch_produksi
+        : (data.nomor_bib <= 1184 ? 1 : null);
+    }
+  }
+
+  return {
+    nomor_bib: data.nomor_bib,
+    nama_lengkap: data.nama_lengkap,
+    komunitas: data.komunitas,
+    nomor_registrasi: data.nomor_registrasi,
+    jenis_registrasi: data.jenis_registrasi,
+    batch_produksi,
+    status_jersey
+  };
 }
 
 // ==========================================
@@ -651,6 +679,7 @@ export async function getSupabaseWallOfHeroesData() {
 
   const peserta_terdaftar = regs.map((r: any) => {
     const po = poMap.get(r.id);
+    const batch_produksi = po ? (po.batch_produksi !== undefined && po.batch_produksi !== null ? po.batch_produksi : (r.nomor_bib <= 1184 ? 1 : null)) : null;
     return {
       id: r.id,
       nama_lengkap: r.nama_lengkap,
@@ -659,6 +688,7 @@ export async function getSupabaseWallOfHeroesData() {
       jenis_registrasi: r.jenis_registrasi,
       status_pembayaran: po ? po.status_pembayaran : null,
       is_jersey_lunas: lunasPoMap.has(r.id),
+      batch_produksi,
       created_at: r.created_at
     };
   });
@@ -669,12 +699,14 @@ export async function getSupabaseWallOfHeroesData() {
     if (po) {
       const sleeveStr = po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve';
       const katStr = po.kategori_ukuran === 'anak' ? ' (Anak)' : '';
+      const batch_produksi = po.batch_produksi !== undefined && po.batch_produksi !== null ? po.batch_produksi : (r.nomor_bib <= 1184 ? 1 : null);
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
         komunitas: normalizeCommunityName(r.komunitas),
         nomor_bib: r.nomor_bib,
         jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
+        batch_produksi,
         created_at: r.created_at
       });
     }

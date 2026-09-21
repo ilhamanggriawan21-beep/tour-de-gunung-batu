@@ -26,6 +26,8 @@ export interface BibLookupParticipant {
   komunitas: string;
   nomor_registrasi: string;
   jenis_registrasi: 'daftar_saja' | 'po_jersey';
+  batch_produksi?: number | null;
+  status_jersey?: string | null;
 }
 
 export type JerseyKategori = 'dewasa' | 'anak';
@@ -550,12 +552,24 @@ function getLocalBibLookup(nomorBib: number): BibLookupParticipant | null {
   const registrant = db.registrants.find((item) => item.nomor_bib === nomorBib);
   if (!registrant) return null;
 
+  let batch_produksi: number | null = null;
+  let status_jersey: string | null = null;
+  const po = db.jersey_pos.find((p) => p.registrant_id === registrant.id);
+  if (po) {
+    status_jersey = po.status_pembayaran;
+    batch_produksi = po.batch_produksi !== undefined && po.batch_produksi !== null
+      ? po.batch_produksi
+      : (registrant.nomor_bib <= 1184 ? 1 : null);
+  }
+
   return {
     nomor_bib: registrant.nomor_bib,
     nama_lengkap: registrant.nama_lengkap,
     komunitas: registrant.komunitas,
     nomor_registrasi: registrant.nomor_registrasi,
     jenis_registrasi: registrant.jenis_registrasi,
+    batch_produksi,
+    status_jersey
   };
 }
 
@@ -673,6 +687,7 @@ function getLocalWallOfHeroesData(): {
 
   const peserta_terdaftar = db.registrants.map(r => {
     const po = poMap.get(r.id);
+    const batch_produksi = po ? (po.batch_produksi !== undefined && po.batch_produksi !== null ? po.batch_produksi : (r.nomor_bib <= 1184 ? 1 : null)) : null;
     return {
       id: r.id,
       nama_lengkap: r.nama_lengkap,
@@ -681,6 +696,7 @@ function getLocalWallOfHeroesData(): {
       jenis_registrasi: r.jenis_registrasi,
       status_pembayaran: po ? po.status_pembayaran : null,
       is_jersey_lunas: lunasPoMap.has(r.id),
+      batch_produksi,
       created_at: r.created_at
     };
   });
@@ -691,6 +707,7 @@ function getLocalWallOfHeroesData(): {
     komunitas: string;
     nomor_bib: number;
     jersey_spec_str: string;
+    batch_produksi?: number | null;
     created_at: string;
   }> = [];
 
@@ -699,12 +716,14 @@ function getLocalWallOfHeroesData(): {
     if (po) {
       const sleeveStr = po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve';
       const katStr = po.kategori_ukuran === 'anak' ? ' (Anak)' : '';
+      const batch_produksi = po.batch_produksi !== undefined && po.batch_produksi !== null ? po.batch_produksi : (r.nomor_bib <= 1184 ? 1 : null);
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
         komunitas: normalizeCommunityName(r.komunitas),
         nomor_bib: r.nomor_bib,
         jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
+        batch_produksi,
         created_at: r.created_at
       });
     }
@@ -913,6 +932,7 @@ export async function getWallOfHeroesData(): Promise<{
     komunitas: string;
     nomor_bib: number;
     is_jersey_lunas: boolean;
+    batch_produksi?: number | null;
     created_at: string;
   }>;
   partisipan_jersey: Array<{
@@ -921,9 +941,11 @@ export async function getWallOfHeroesData(): Promise<{
     komunitas: string;
     nomor_bib: number;
     jersey_spec_str: string;
+    batch_produksi?: number | null;
     created_at: string;
   }>;
   top_komunitas: Array<{ nama: string; jumlah: number }>;
+  daftar_komunitas?: string[];
 }> {
   if (isSupabaseConfigured()) {
     const res = await getSupabaseWallOfHeroesData();

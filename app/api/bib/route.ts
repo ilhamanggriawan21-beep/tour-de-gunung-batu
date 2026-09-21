@@ -57,6 +57,8 @@ export async function POST(req: Request) {
         nomor_registrasi: participant.nomor_registrasi,
         jenis_registrasi: participant.jenis_registrasi,
         bib_status: 'tersedia',
+        batch_produksi: participant.batch_produksi,
+        status_jersey: participant.status_jersey,
       },
     });
   } catch {

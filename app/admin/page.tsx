@@ -72,8 +72,8 @@ export default function AdminDashboardPage() {
   const [adminsList, setAdminsList] = useState<any[]>([]);
 
   // Batch Produksi State
-  const [selectedBatchView, setSelectedBatchView] = useState<'batch_1' | 'unbatched'>('batch_1');
-  const [poFilterBatch, setPoFilterBatch] = useState<'semua' | 'batch_1' | 'unbatched'>('semua');
+  const [selectedBatchView, setSelectedBatchView] = useState<'batch_1' | 'batch_2' | 'unbatched'>('batch_1');
+  const [poFilterBatch, setPoFilterBatch] = useState<'semua' | 'batch_1' | 'batch_2' | 'unbatched'>('semua');
   const [batchCopyFeedback, setBatchCopyFeedback] = useState<string | null>(null);
   const [assigningBatch, setAssigningBatch] = useState(false);
   const [batchSearchTerm, setBatchSearchTerm] = useState('');
@@ -1209,16 +1209,24 @@ export default function AdminDashboardPage() {
   };
 
   const batch1List = poList.filter((item) => item.jersey_po?.batch_produksi === 1);
+  const batch2List = poList.filter((item) => item.jersey_po?.batch_produksi === 2);
   const unbatchedList = poList.filter((item) => !item.jersey_po?.batch_produksi);
   const batch1Summary = computeBatchSummary(batch1List);
+  const batch2Summary = computeBatchSummary(batch2List);
   const unbatchedSummary = computeBatchSummary(unbatchedList);
 
-  const handleCopyVendorSummary = (isBatch1: boolean) => {
-    const summary = isBatch1 ? batch1Summary : unbatchedSummary;
-    const title = isBatch1 ? 'REKAP ORDER PRODUKSI JERSEY - BATCH 1' : 'REKAP ORDER PRODUKSI JERSEY - UNBATCHED (SIAP BATCH 2)';
-    const note = isBatch1
+  const handleCopyVendorSummary = (batch: 'batch_1' | 'batch_2' | 'unbatched') => {
+    const summary = batch === 'batch_1' ? batch1Summary : batch === 'batch_2' ? batch2Summary : unbatchedSummary;
+    const title = batch === 'batch_1'
+      ? 'REKAP ORDER PRODUKSI JERSEY - BATCH 1'
+      : batch === 'batch_2'
+      ? 'REKAP ORDER PRODUKSI JERSEY - BATCH 2 (KLOTER KEDUA)'
+      : 'REKAP ORDER PRODUKSI JERSEY - UNBATCHED (ANTRIAN)';
+    const note = batch === 'batch_1'
       ? 'Cut-off: Data awal s/d Peserta Hanifsyah Aditya (BIB #1184)'
-      : 'Data Pesanan Baru (Nomor BIB > 1184)';
+      : batch === 'batch_2'
+      ? 'Data Pesanan PO Jersey Kloter 2 (Setelah BIB #1184)'
+      : 'Data Pesanan Baru Belum Masuk Batch';
 
     let text = `*${title}*\n*TOUR DE GUNUNG BATU 2026*\n_${note}_\n\n`;
     text += `*RINGKASAN TOTAL:* ${summary.totalQty} pcs (${summary.totalCount} pendaftar)\n`;
@@ -1246,7 +1254,7 @@ export default function AdminDashboardPage() {
     text += `\n_Generated via Sistem Panitia Tour De Gunung Batu 2026_`;
 
     navigator.clipboard.writeText(text);
-    setBatchCopyFeedback(isBatch1 ? 'batch1' : 'unbatched');
+    setBatchCopyFeedback(batch);
     setTimeout(() => setBatchCopyFeedback(null), 3000);
   };
 
@@ -1360,6 +1368,8 @@ export default function AdminDashboardPage() {
         ? true
         : poFilterBatch === 'batch_1'
         ? item.jersey_po.batch_produksi === 1
+        : poFilterBatch === 'batch_2'
+        ? item.jersey_po.batch_produksi === 2
         : !item.jersey_po.batch_produksi;
 
     const matchesSearch =
@@ -2139,6 +2149,7 @@ export default function AdminDashboardPage() {
                   {[
                     { id: 'semua', label: 'Semua Batch' },
                     { id: 'batch_1', label: `Batch 1 (${batch1List.length})` },
+                    { id: 'batch_2', label: `Batch 2 (${batch2List.length})` },
                     { id: 'unbatched', label: `Belum Batch (${unbatchedList.length})` }
                   ].map((b) => (
                     <button
@@ -2584,7 +2595,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Sub-view Switcher */}
-                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
                   <button
                     onClick={() => setSelectedBatchView('batch_1')}
                     className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 ${
@@ -2596,6 +2607,20 @@ export default function AdminDashboardPage() {
                     <span>Batch 1 (Siap Produksi)</span>
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${selectedBatchView === 'batch_1' ? 'bg-amber-800 text-amber-100' : 'bg-slate-200 text-slate-700'}`}>
                       {batch1List.length} Order ({batch1Summary.totalQty} pcs)
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedBatchView('batch_2')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 ${
+                      selectedBatchView === 'batch_2'
+                        ? 'bg-sky-600 text-white shadow-md'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>Batch 2 (Kloter Kedua)</span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${selectedBatchView === 'batch_2' ? 'bg-sky-800 text-sky-100' : 'bg-slate-200 text-slate-700'}`}>
+                      {batch2List.length} Order ({batch2Summary.totalQty} pcs)
                     </span>
                   </button>
 
@@ -2622,7 +2647,17 @@ export default function AdminDashboardPage() {
                   <div>
                     <span className="font-extrabold block">Cut-Off Batch 1: s/d Hanifsyah Aditya (BIB #1184)</span>
                     <p className="text-[11px] text-emerald-800 mt-0.5">
-                      Seluruh data pesanan PO jersey dari awal pendaftaran sampai dengan nomor BIB 1184 dikunci ke Batch 1. Data ini yang diberikan ke vendor produksi konveksi pertama hari ini.
+                      Seluruh data pesanan PO jersey dari awal pendaftaran sampai dengan nomor BIB 1184 dikunci ke Batch 1. Data ini yang diberikan ke vendor produksi konveksi pertama.
+                    </p>
+                  </div>
+                </div>
+              ) : selectedBatchView === 'batch_2' ? (
+                <div className="p-3.5 bg-sky-50 border border-sky-300 text-sky-900 rounded-2xl text-xs flex items-start space-x-2.5">
+                  <CheckCircle className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold block">Produksi Batch 2 (Kloter Kedua)</span>
+                    <p className="text-[11px] text-sky-800 mt-0.5">
+                      Pesanan PO jersey setelah cutoff BIB 1184 yang telah dikunci ke Batch 2 untuk diproduksi pada gelombang kedua oleh vendor konveksi.
                     </p>
                   </div>
                 </div>
@@ -2630,9 +2665,9 @@ export default function AdminDashboardPage() {
                 <div className="p-3.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs flex items-start space-x-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-extrabold block">Pesanan PO Jersey Baru (Setelah BIB 1184)</span>
+                    <span className="font-extrabold block">Pesanan PO Jersey Baru (Belum Masuk Batch)</span>
                     <p className="text-[11px] text-amber-800 mt-0.5">
-                      Peserta yang mendaftar atau memesan jersey setelah cutoff BIB 1184 akan masuk ke status ini. Pesanan ini aman dan terpisah dari Batch 1. Jika sudah cukup banyak, panitia dapat mengunci &amp; memasukkannya ke Batch 2.
+                      Peserta yang mendaftar atau memesan jersey dan masih dalam antrian kloter. Pesanan ini aman dan dapat dikunci ke Batch 2 menggunakan tombol di bawah.
                     </p>
                   </div>
                 </div>
@@ -2640,7 +2675,7 @@ export default function AdminDashboardPage() {
 
               {/* 4 Stat Badges */}
               {(() => {
-                const currentSummary = selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary;
+                const currentSummary = selectedBatchView === 'batch_1' ? batch1Summary : selectedBatchView === 'batch_2' ? batch2Summary : unbatchedSummary;
                 return (
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
                     <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
@@ -2682,7 +2717,7 @@ export default function AdminDashboardPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => handleCopyVendorSummary(selectedBatchView === 'batch_1')}
+                    onClick={() => handleCopyVendorSummary(selectedBatchView)}
                     className="min-h-10 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
                   >
                     {batchCopyFeedback === selectedBatchView ? (
@@ -2693,43 +2728,46 @@ export default function AdminDashboardPage() {
                     ) : (
                       <>
                         <Copy className="w-4 h-4" />
-                        <span>Salin Rekap untuk WA Vendor</span>
+                        <span>Salin Rekap WA Vendor ({selectedBatchView === 'batch_1' ? 'Batch 1' : selectedBatchView === 'batch_2' ? 'Batch 2' : 'Antrian'})</span>
                       </>
                     )}
                   </button>
 
                   <a
-                    href={`/api/admin/export?batch=${selectedBatchView === 'batch_1' ? '1' : 'unbatched'}`}
+                    href={`/api/admin/export?batch=${selectedBatchView === 'batch_1' ? '1' : selectedBatchView === 'batch_2' ? '2' : 'unbatched'}`}
                     target="_blank"
                     download
                     className="min-h-10 px-4 py-2 bg-brand-navy hover:bg-brand-royal text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
                   >
                     <Download className="w-4 h-4 text-brand-yellow" />
-                    <span>Download CSV {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Unbatched'}</span>
+                    <span>Download CSV {selectedBatchView === 'batch_1' ? 'Batch 1' : selectedBatchView === 'batch_2' ? 'Batch 2' : 'Belum Batch'}</span>
                   </a>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadCertificates(
-                      selectedBatchView === 'batch_1' ? batch1List : unbatchedList,
-                      selectedBatchView === 'batch_1' ? 'Batch_1' : 'Unbatched'
-                    )}
-                    disabled={downloadingCertificates || (selectedBatchView === 'batch_1' ? batch1List.length === 0 : unbatchedList.length === 0)}
-                    className="min-h-10 px-4 py-2 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
-                    title="Cetak Sertifikat Apresiasi A3+ (10x6.5 cm, 21 pcs/lembar) untuk batch ini"
-                  >
-                    {downloadingCertificates ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-sky-200" />
-                        <span>{certificateProgress ? `${certificateProgress.percent}%` : 'Memproses...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4 text-sky-300" />
-                        <span>Cetak Sertifikat {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Unbatched'} A3+</span>
-                      </>
-                    )}
-                  </button>
+                  {(() => {
+                    const currentBatchList = selectedBatchView === 'batch_1' ? batch1List : selectedBatchView === 'batch_2' ? batch2List : unbatchedList;
+                    const batchLabelStr = selectedBatchView === 'batch_1' ? 'Batch_1' : selectedBatchView === 'batch_2' ? 'Batch_2' : 'Unbatched';
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadCertificates(currentBatchList, batchLabelStr)}
+                        disabled={downloadingCertificates || currentBatchList.length === 0}
+                        className="min-h-10 px-4 py-2 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition-all"
+                        title="Cetak Sertifikat Apresiasi A3+ (10x6.5 cm, 21 pcs/lembar) untuk batch ini"
+                      >
+                        {downloadingCertificates ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-sky-200" />
+                            <span>{certificateProgress ? `${certificateProgress.percent}%` : 'Memproses...'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 text-sky-300" />
+                            <span>Cetak Sertifikat {selectedBatchView === 'batch_1' ? 'Batch 1' : selectedBatchView === 'batch_2' ? 'Batch 2' : 'Belum Batch'} A3+</span>
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {selectedBatchView === 'unbatched' && unbatchedList.length > 0 && (
@@ -2746,89 +2784,94 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Matrix Rekap Ukuran Vendor */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Ukuran Dewasa */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                <div className="flex items-center justify-between border-b pb-2.5">
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-brand-navy" />
-                    <h3 className="font-extrabold text-sm text-brand-navy">Rekap Ukuran Dewasa (Adult)</h3>
+            {(() => {
+              const matrixSummary = selectedBatchView === 'batch_1' ? batch1Summary : selectedBatchView === 'batch_2' ? batch2Summary : unbatchedSummary;
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {/* Ukuran Dewasa */}
+                  <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b pb-2.5">
+                      <div className="flex items-center space-x-2">
+                        <User className="w-4 h-4 text-brand-navy" />
+                        <h3 className="font-extrabold text-sm text-brand-navy">Rekap Ukuran Dewasa (Adult)</h3>
+                      </div>
+                      <span className="text-xs font-bold text-slate-500">
+                        {Object.values(matrixSummary.dewasaSizes).reduce((acc, d) => acc + d.total, 0)} pcs
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-bold">
+                          <tr>
+                            <th className="py-2 px-3">Size</th>
+                            <th className="py-2 px-3 text-center">Short Sleeve</th>
+                            <th className="py-2 px-3 text-center">Long Sleeve</th>
+                            <th className="py-2 px-3 text-right">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {Object.entries(matrixSummary.dewasaSizes).map(([size, data]) => (
+                            <tr key={size} className={data.total > 0 ? 'font-bold bg-amber-50/40' : 'text-slate-400'}>
+                              <td className="py-2 px-3 font-mono">{size}</td>
+                              <td className="py-2 px-3 text-center">{data.short}</td>
+                              <td className="py-2 px-3 text-center">{data.long}</td>
+                              <td className="py-2 px-3 text-right font-mono font-black text-brand-navy">
+                                {data.total > 0 ? `${data.total} pcs` : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-slate-500">
-                    {Object.values((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).dewasaSizes).reduce((acc, d) => acc + d.total, 0)} pcs
-                  </span>
-                </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-bold">
-                      <tr>
-                        <th className="py-2 px-3">Size</th>
-                        <th className="py-2 px-3 text-center">Short Sleeve</th>
-                        <th className="py-2 px-3 text-center">Long Sleeve</th>
-                        <th className="py-2 px-3 text-right">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {Object.entries((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).dewasaSizes).map(([size, data]) => (
-                        <tr key={size} className={data.total > 0 ? 'font-bold bg-amber-50/40' : 'text-slate-400'}>
-                          <td className="py-2 px-3 font-mono">{size}</td>
-                          <td className="py-2 px-3 text-center">{data.short}</td>
-                          <td className="py-2 px-3 text-center">{data.long}</td>
-                          <td className="py-2 px-3 text-right font-mono font-black text-brand-navy">
-                            {data.total > 0 ? `${data.total} pcs` : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                  {/* Ukuran Anak-Anak */}
+                  <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b pb-2.5">
+                      <div className="flex items-center space-x-2">
+                        <Baby className="w-4 h-4 text-amber-600" />
+                        <h3 className="font-extrabold text-sm text-brand-navy">Rekap Ukuran Anak-Anak (Kids)</h3>
+                      </div>
+                      <span className="text-xs font-bold text-amber-700">
+                        {Object.values(matrixSummary.anakSizes).reduce((acc, d) => acc + d.total, 0)} pcs
+                      </span>
+                    </div>
 
-              {/* Ukuran Anak-Anak */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                <div className="flex items-center justify-between border-b pb-2.5">
-                  <div className="flex items-center space-x-2">
-                    <Baby className="w-4 h-4 text-amber-600" />
-                    <h3 className="font-extrabold text-sm text-brand-navy">Rekap Ukuran Anak-Anak (Kids)</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-amber-50 text-amber-900 uppercase text-[10px] font-bold">
+                          <tr>
+                            <th className="py-2 px-3">Size Anak</th>
+                            <th className="py-2 px-3 text-center">Short Sleeve</th>
+                            <th className="py-2 px-3 text-center">Long Sleeve</th>
+                            <th className="py-2 px-3 text-right">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {Object.entries(matrixSummary.anakSizes).map(([size, data]) => (
+                            <tr key={size} className={data.total > 0 ? 'font-bold bg-amber-100/40' : 'text-slate-400'}>
+                              <td className="py-2 px-3 font-mono">{size}</td>
+                              <td className="py-2 px-3 text-center">{data.short}</td>
+                              <td className="py-2 px-3 text-center">{data.long}</td>
+                              <td className="py-2 px-3 text-right font-mono font-black text-amber-900">
+                                {data.total > 0 ? `${data.total} pcs` : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-amber-700">
-                    {Object.values((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).anakSizes).reduce((acc, d) => acc + d.total, 0)} pcs
-                  </span>
                 </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-amber-50 text-amber-900 uppercase text-[10px] font-bold">
-                      <tr>
-                        <th className="py-2 px-3">Size Anak</th>
-                        <th className="py-2 px-3 text-center">Short Sleeve</th>
-                        <th className="py-2 px-3 text-center">Long Sleeve</th>
-                        <th className="py-2 px-3 text-right">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {Object.entries((selectedBatchView === 'batch_1' ? batch1Summary : unbatchedSummary).anakSizes).map(([size, data]) => (
-                        <tr key={size} className={data.total > 0 ? 'font-bold bg-amber-100/40' : 'text-slate-400'}>
-                          <td className="py-2 px-3 font-mono">{size}</td>
-                          <td className="py-2 px-3 text-center">{data.short}</td>
-                          <td className="py-2 px-3 text-center">{data.long}</td>
-                          <td className="py-2 px-3 text-right font-mono font-black text-amber-900">
-                            {data.total > 0 ? `${data.total} pcs` : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Tabel Detail Peserta dalam Batch */}
             <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
                 <h3 className="font-extrabold text-sm text-brand-navy">
-                  Daftar Peserta {selectedBatchView === 'batch_1' ? 'Batch 1' : 'Belum Masuk Batch'}
+                  Daftar Peserta {selectedBatchView === 'batch_1' ? 'Batch 1' : selectedBatchView === 'batch_2' ? 'Batch 2' : 'Belum Masuk Batch'}
                 </h3>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
@@ -2843,7 +2886,7 @@ export default function AdminDashboardPage() {
               </div>
 
               {(() => {
-                const targetList = selectedBatchView === 'batch_1' ? batch1List : unbatchedList;
+                const targetList = selectedBatchView === 'batch_1' ? batch1List : selectedBatchView === 'batch_2' ? batch2List : unbatchedList;
                 const filtered = targetList.filter((item) => {
                   if (!batchSearchTerm.trim()) return true;
                   const q = batchSearchTerm.toLowerCase();
@@ -2858,7 +2901,7 @@ export default function AdminDashboardPage() {
                 if (filtered.length === 0) {
                   return (
                     <div className="p-8 text-center text-slate-400 font-medium text-xs bg-slate-50 rounded-2xl">
-                      Tidak ada pesanan di {selectedBatchView === 'batch_1' ? 'Batch 1' : 'status Belum Masuk Batch'}.
+                      Tidak ada pesanan di {selectedBatchView === 'batch_1' ? 'Batch 1' : selectedBatchView === 'batch_2' ? 'Batch 2' : 'status Belum Masuk Batch'}.
                     </div>
                   );
                 }
@@ -2913,11 +2956,15 @@ export default function AdminDashboardPage() {
                               </td>
                               <td className="py-2.5 px-3 text-center">
                                 {p.batch_produksi === 1 ? (
-                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
                                     Batch 1
                                   </span>
+                                ) : p.batch_produksi === 2 ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap">
+                                    Batch 2
+                                  </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 whitespace-nowrap">
                                     Belum Batch
                                   </span>
                                 )}
@@ -2930,21 +2977,31 @@ export default function AdminDashboardPage() {
                                   >
                                     Edit
                                   </button>
-                                  {selectedBatchView === 'batch_1' ? (
+                                  {p.batch_produksi !== 1 && (
+                                    <button
+                                      onClick={() => handleUpdateBatch(p.id, r.id, 1)}
+                                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-1.5 py-1 rounded-lg text-[10px] border border-emerald-200"
+                                      title="Pindahkan ke Batch 1"
+                                    >
+                                      + B1
+                                    </button>
+                                  )}
+                                  {p.batch_produksi !== 2 && (
+                                    <button
+                                      onClick={() => handleUpdateBatch(p.id, r.id, 2)}
+                                      className="bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold px-1.5 py-1 rounded-lg text-[10px] border border-sky-200"
+                                      title="Pindahkan ke Batch 2"
+                                    >
+                                      + B2
+                                    </button>
+                                  )}
+                                  {p.batch_produksi && (
                                     <button
                                       onClick={() => handleUpdateBatch(p.id, r.id, null)}
                                       className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-1.5 py-1 rounded-lg text-[10px]"
-                                      title="Keluarkan dari Batch 1"
+                                      title="Keluarkan ke Antrian (Belum Batch)"
                                     >
-                                      Lepas Batch
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleUpdateBatch(p.id, r.id, 1)}
-                                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-1.5 py-1 rounded-lg text-[10px]"
-                                      title="Masukkan ke Batch 1"
-                                    >
-                                      + Batch 1
+                                      Lepas
                                     </button>
                                   )}
                                 </div>

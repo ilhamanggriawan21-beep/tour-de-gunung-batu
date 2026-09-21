@@ -15,7 +15,8 @@ import {
   Heart,
   RefreshCw,
   Image as ImageIcon,
-  Phone
+  Phone,
+  Shirt
 } from 'lucide-react';
 import { compressImage, estimateDataUrlSize } from '@/lib/imageCompression';
 
@@ -214,6 +215,61 @@ export default function PembayaranPage() {
             <span>Periksa Pembaruan Status</span>
           </button>
         </div>
+
+        {/* Jersey Production Batch Card (If PO Jersey) */}
+        {jersey_po && (
+          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl border bg-white shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
+                jersey_po.batch_produksi === 1
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : jersey_po.batch_produksi === 2
+                  ? 'bg-sky-100 text-sky-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                <Shirt className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status Produksi Jersey:</span>
+                  {jersey_po.batch_produksi === 1 ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      BATCH 1 (Kloter 1)
+                    </span>
+                  ) : jersey_po.batch_produksi === 2 ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-100 text-sky-800 border border-sky-300">
+                      BATCH 2 (Kloter 2)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
+                      ANTRIAN BATCH
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                  {jersey_po.batch_produksi === 1 ? (
+                    <>Pesanan Anda masuk ke <strong>Batch 1</strong> (Cutoff BIB &le; 1184). Data telah diserahkan ke vendor konveksi dan sedang dalam proses jahit.</>
+                  ) : jersey_po.batch_produksi === 2 ? (
+                    <>Pesanan Anda masuk ke <strong>Batch 2</strong> (Kloter 2). Data telah dikunci panitia dan diserahkan ke vendor konveksi.</>
+                  ) : (
+                    <>Pesanan Anda berada di <strong>Antrian Batch</strong> dan akan segera dikunci ke kloter produksi berikutnya oleh panitia.</>
+                  )}
+                </p>
+                <div className="text-[11px] text-slate-500 font-medium">
+                  Spesifikasi: Jersey {jersey_po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve'} {jersey_po.kategori_ukuran === 'anak' ? '(Anak)' : ''} Size {jersey_po.ukuran} ({jersey_po.qty} pcs)
+                </div>
+              </div>
+            </div>
+
+            <Link
+              href="/wall-of-heroes"
+              className="shrink-0 text-xs font-bold text-brand-royal hover:text-brand-navy flex items-center space-x-1 underline self-end sm:self-center"
+            >
+              <span>Lihat di Wall of Heroes</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
 
         {/* Split Grid: Left QRIS & Rekening, Right Upload */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

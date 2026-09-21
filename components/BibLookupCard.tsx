@@ -12,6 +12,8 @@ type BibParticipant = {
   nomor_registrasi: string;
   jenis_registrasi: 'daftar_saja' | 'po_jersey';
   bib_status: 'tersedia';
+  batch_produksi?: number | null;
+  status_jersey?: string | null;
 };
 
 export default function BibLookupCard() {
@@ -120,6 +122,33 @@ export default function BibLookupCard() {
                 <strong className="text-sm text-emerald-700">Sudah tersedia</strong>
               </div>
             </div>
+
+            {participant.jenis_registrasi === 'po_jersey' && (
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-left">
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Status Jersey</span>
+                  <strong className="text-xs text-brand-navy">
+                    {participant.status_jersey === 'lunas' ? 'Jersey Lunas' : 'Menunggu Verifikasi'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 text-right">Batch Produksi</span>
+                  {participant.batch_produksi === 1 ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Batch 1 (Kloter 1)
+                    </span>
+                  ) : participant.batch_produksi === 2 ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                      Batch 2 (Kloter 2)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      Antrian Batch
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <BibCard

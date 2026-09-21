@@ -59,15 +59,49 @@ export default function WallOfHeroesPage() {
     };
   }, [loadData]);
 
-  const filteredPeserta = (data.peserta_terdaftar || []).filter((item: any) =>
-    (item.nama_lengkap || '').toLowerCase().includes(search.toLowerCase()) ||
-    (item.komunitas || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const [batchFilter, setBatchFilter] = useState<'semua' | 'batch_1' | 'batch_2' | 'unbatched'>('semua');
 
-  const filteredJersey = (data.partisipan_jersey || []).filter((item: any) =>
-    (item.nama_lengkap || '').toLowerCase().includes(search.toLowerCase()) ||
-    (item.komunitas || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const totalBatch1 = (data.partisipan_jersey || []).filter((j: any) => j.batch_produksi === 1).length;
+  const totalBatch2 = (data.partisipan_jersey || []).filter((j: any) => j.batch_produksi === 2).length;
+  const totalUnbatched = (data.partisipan_jersey || []).filter((j: any) => !j.batch_produksi).length;
+
+  const filteredPeserta = (data.peserta_terdaftar || []).filter((item: any) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      (item.nama_lengkap || '').toLowerCase().includes(q) ||
+      (item.komunitas || '').toLowerCase().includes(q) ||
+      (item.nomor_bib && String(item.nomor_bib).includes(q));
+
+    const matchesBatch =
+      batchFilter === 'semua'
+        ? true
+        : batchFilter === 'batch_1'
+        ? item.batch_produksi === 1
+        : batchFilter === 'batch_2'
+        ? item.batch_produksi === 2
+        : !item.batch_produksi;
+
+    return matchesSearch && (activeTab === 'jersey' ? matchesBatch : true);
+  });
+
+  const filteredJersey = (data.partisipan_jersey || []).filter((item: any) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      (item.nama_lengkap || '').toLowerCase().includes(q) ||
+      (item.komunitas || '').toLowerCase().includes(q) ||
+      (item.nomor_bib && String(item.nomor_bib).includes(q));
+
+    const matchesBatch =
+      batchFilter === 'semua'
+        ? true
+        : batchFilter === 'batch_1'
+        ? item.batch_produksi === 1
+        : batchFilter === 'batch_2'
+        ? item.batch_produksi === 2
+        : !item.batch_produksi;
+
+    return matchesSearch && matchesBatch;
+  });
 
   return (
     <div className="min-h-screen pt-28 pb-12 px-4 sm:px-6 lg:px-8 relative bg-brand-iceBg">
@@ -191,8 +225,8 @@ export default function WallOfHeroesPage() {
           </div>
         </div>
 
-        {/* Legend Indicator */}
-        {activeTab === 'peserta' && (
+        {/* Legend Indicator or Batch Switcher */}
+        {activeTab === 'peserta' ? (
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold px-2 text-slate-600">
             <span className="flex items-center">
               <span className="w-3 h-3 rounded-full bg-brand-yellow border border-amber-500 mr-1.5" />
@@ -206,6 +240,73 @@ export default function WallOfHeroesPage() {
               <span className="w-3 h-3 rounded-full bg-brand-royal mr-1.5" />
               <strong className="text-brand-royal mr-1">Warna Biru:</strong> Peserta Event Saja
             </span>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Batch Info Banner */}
+            <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl text-xs space-y-1 text-slate-800 shadow-xs">
+              <div className="flex items-center space-x-2 text-amber-900 font-extrabold text-sm">
+                <Shirt className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Status &amp; Transparansi Batch Produksi Jersey</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
+                • <strong className="text-emerald-800">Batch 1:</strong> Cut-off pendaftar awal s/d BIB #1184 (Hanifsyah Aditya) — data telah dikunci dan sedang dalam tahap pengerjaan vendor konveksi kloter pertama.<br />
+                • <strong className="text-sky-800">Batch 2:</strong> Pesanan setelah BIB #1184 — masuk kloter produksi kedua.<br />
+                Ketik nama Anda di kolom pencarian atau klik tombol kloter di bawah ini untuk melihat status batch masing-masing:
+              </p>
+            </div>
+
+            {/* Batch Filter Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setBatchFilter('semua')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  batchFilter === 'semua'
+                    ? 'bg-brand-navy text-white shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                Semua Batch ({data.total_partisipan_jersey})
+              </button>
+
+              <button
+                onClick={() => setBatchFilter('batch_1')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1.5 ${
+                  batchFilter === 'batch_1'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>Batch 1 ({totalBatch1})</span>
+              </button>
+
+              <button
+                onClick={() => setBatchFilter('batch_2')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1.5 ${
+                  batchFilter === 'batch_2'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-sky-400" />
+                <span>Batch 2 ({totalBatch2})</span>
+              </button>
+
+              {totalUnbatched > 0 && (
+                <button
+                  onClick={() => setBatchFilter('unbatched')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                    batchFilter === 'unbatched'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>Antrian Batch ({totalUnbatched})</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -256,25 +357,37 @@ export default function WallOfHeroesPage() {
                         </p>
                       </div>
 
-                      {/* Status Badge */}
-                      {isJerseyLunas ? (
-                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
-                          <Shirt className="w-3 h-3" />
-                          <span className="hidden sm:inline">Jersey Lunas</span>
-                          <span className="sm:hidden">✓</span>
-                        </span>
-                      ) : isPo ? (
-                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
-                          <Shirt className="w-3 h-3" />
-                          <span className="hidden sm:inline">Menunggu</span>
-                          <span className="sm:hidden">⏳</span>
-                        </span>
-                      ) : (
-                        <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 whitespace-nowrap">
-                          <span className="hidden sm:inline">Peserta</span>
-                          <span className="sm:hidden">—</span>
-                        </span>
-                      )}
+                      {/* Status & Batch Badge */}
+                      <div className="flex-shrink-0 flex items-center gap-1.5">
+                        {p.batch_produksi === 1 ? (
+                          <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                            Batch 1
+                          </span>
+                        ) : p.batch_produksi === 2 ? (
+                          <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap">
+                            Batch 2
+                          </span>
+                        ) : null}
+
+                        {isJerseyLunas ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
+                            <Shirt className="w-3 h-3" />
+                            <span className="hidden sm:inline">Jersey Lunas</span>
+                            <span className="sm:hidden">✓</span>
+                          </span>
+                        ) : isPo ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                            <Shirt className="w-3 h-3" />
+                            <span className="hidden sm:inline">Menunggu</span>
+                            <span className="sm:hidden">⏳</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 whitespace-nowrap">
+                            <span className="hidden sm:inline">Peserta</span>
+                            <span className="sm:hidden">—</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -285,7 +398,9 @@ export default function WallOfHeroesPage() {
             <div className="divide-y divide-slate-100">
               {filteredJersey.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-xs">
-                  Belum ada partisipan jersey yang terverifikasi Lunas.
+                  {batchFilter !== 'semua'
+                    ? `Tidak ada data partisipan jersey pada ${batchFilter === 'batch_1' ? 'Batch 1' : batchFilter === 'batch_2' ? 'Batch 2' : 'Antrian Batch'}.`
+                    : 'Belum ada partisipan jersey yang terverifikasi Lunas.'}
                 </div>
               ) : (
                 filteredJersey.map((j: any) => (
@@ -309,10 +424,25 @@ export default function WallOfHeroesPage() {
                       </p>
                     </div>
 
-                    {/* Jersey Spec Badge */}
-                    <span className="flex-shrink-0 inline-flex items-center px-2 py-1 rounded-full text-[10px] font-extrabold bg-brand-navy text-brand-yellow text-center leading-tight whitespace-normal text-right">
-                      {j.jersey_spec_str}
-                    </span>
+                    {/* Batch & Spec Badges */}
+                    <div className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2">
+                      {j.batch_produksi === 1 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap shadow-xs" title="Produksi Kloter 1">
+                          Batch 1
+                        </span>
+                      ) : j.batch_produksi === 2 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap shadow-xs" title="Produksi Kloter 2">
+                          Batch 2
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap" title="Menunggu kloter berikutnya">
+                          Antrian
+                        </span>
+                      )}
+                      <span className="inline-flex items-center px-2 py-1 rounded-xl text-[10px] font-extrabold bg-brand-navy text-brand-yellow text-center leading-tight whitespace-normal text-right">
+                        {j.jersey_spec_str}
+                      </span>
+                    </div>
                   </div>
                 ))
               )}
