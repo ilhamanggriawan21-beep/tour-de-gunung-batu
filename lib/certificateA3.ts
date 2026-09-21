@@ -138,32 +138,39 @@ export function renderSingleCertificate(
   const baselineY = 362; // Baseline sits just ~16px above the underline (Y=378)
   const maxTextWidth = 760; // Safe width within the line
 
-  const rawName = (item.nama_lengkap || 'PESERTA TOUR DE GUNUNG BATU').trim();
+  const rawName = (item.nama_lengkap || '').trim();
   const nameText = rawName.toUpperCase();
 
-  // Dynamic font sizing (starts at 42px bold serif)
-  let fontSize = 42;
-  ctx.font = `bold ${fontSize}px 'Cinzel', 'Times New Roman', 'Playfair Display', Georgia, serif`;
-  while (ctx.measureText(nameText).width > maxTextWidth && fontSize > 20) {
-    fontSize -= 2;
+  // Render nama peserta hanya jika tersedia. Jika kosong, biarkan garis kosong untuk ditulis manual
+  if (nameText) {
+    // Dynamic font sizing (starts at 42px bold serif)
+    let fontSize = 42;
     ctx.font = `bold ${fontSize}px 'Cinzel', 'Times New Roman', 'Playfair Display', Georgia, serif`;
-  }
+    while (ctx.measureText(nameText).width > maxTextWidth && fontSize > 20) {
+      fontSize -= 2;
+      ctx.font = `bold ${fontSize}px 'Cinzel', 'Times New Roman', 'Playfair Display', Georgia, serif`;
+    }
 
-  // Exact Deep Navy Blue matching sertifikat.png text
-  ctx.fillStyle = '#0c1963';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(nameText, centerX, baselineY);
+    // Exact Deep Navy Blue matching sertifikat.png text
+    ctx.fillStyle = '#0c1963';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(nameText, centerX, baselineY);
+  }
 
   ctx.restore();
 }
 
 /**
  * Render a single A3+ sheet with up to 21 certificate cards
+ * @param itemsOnSheet Daftar kartu peserta pada lembar ini
+ * @param certImage Template latar belakang sertifikat
+ * @param padToFullSheet Jika true, otomatis penuhkan slot hingga 21 kartu dengan nama kosong
  */
 export function renderA3CertificateSheet(
   itemsOnSheet: CertificateParticipant[],
-  certImage: HTMLImageElement
+  certImage: HTMLImageElement,
+  padToFullSheet = true
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = A3_PLUS_WIDTH;
@@ -175,15 +182,27 @@ export function renderA3CertificateSheet(
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, A3_PLUS_WIDTH, A3_PLUS_HEIGHT);
 
+  // Jika kartu kurang dari 21 dan padToFullSheet diaktifkan, penuhkan sampai 21 slot
+  const cardsToRender = [...itemsOnSheet];
+  if (padToFullSheet && cardsToRender.length < CARDS_PER_SHEET) {
+    const needed = CARDS_PER_SHEET - cardsToRender.length;
+    for (let i = 0; i < needed; i++) {
+      cardsToRender.push({
+        id: `blank-slot-${i + 1}`,
+        nama_lengkap: '', // Dikosongkan agar bisa ditulis manual
+      });
+    }
+  }
+
   // Grid layout (3 cols x 7 rows = 21 cards)
-  for (let idx = 0; idx < itemsOnSheet.length; idx++) {
+  for (let idx = 0; idx < cardsToRender.length; idx++) {
     const col = idx % COLS;
     const row = Math.floor(idx / COLS);
 
     const x = START_X + col * (CARD_WIDTH + GAP_X);
     const y = START_Y + row * (CARD_HEIGHT + GAP_Y);
 
-    const item = itemsOnSheet[idx];
+    const item = cardsToRender[idx];
     renderSingleCertificate(ctx, item, certImage, x, y);
 
     // Draw cutting crop marks around each card
@@ -203,6 +222,7 @@ export function renderA3CertificateSheet(
 
 /**
  * Generate Bulk Certificates PDF in A3+ (21 cards per sheet)
+ * Lembar terakhir otomatis dipenuhi sampai 21 kartu (kartu tambahan dikosongkan namanya untuk ditulis manual)
  */
 export async function generateBulkCertificatesPdf(
   items: CertificateParticipant[],
@@ -218,8 +238,21 @@ export async function generateBulkCertificatesPdf(
     throw new Error('Gagal memuat template sertifikat (/sertifikat.png). Pastikan file tersedia.');
   }
 
+  // Penuhkan daftar kartu hingga kelipatan 21 (CARDS_PER_SHEET)
+  // Jadi lembar terakhir tidak akan ada slot kosong
+  const remainder = items.length % CARDS_PER_SHEET;
+  const paddingCount = remainder === 0 ? 0 : CARDS_PER_SHEET - remainder;
+
+  const paddedItems: CertificateParticipant[] = [...items];
+  for (let i = 0; i < paddingCount; i++) {
+    paddedItems.push({
+      id: `blank-manual-${i + 1}`,
+      nama_lengkap: '', // Kosongkan nama untuk ditulis manual
+    });
+  }
+
   // Calculate pages
-  const totalSheets = Math.ceil(items.length / CARDS_PER_SHEET);
+  const totalSheets = Math.ceil(paddedItems.length / CARDS_PER_SHEET);
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -229,19 +262,22 @@ export async function generateBulkCertificatesPdf(
 
   for (let sheetIdx = 0; sheetIdx < totalSheets; sheetIdx++) {
     const startIdx = sheetIdx * CARDS_PER_SHEET;
-    const endIdx = Math.min(startIdx + CARDS_PER_SHEET, items.length);
-    const sheetItems = items.slice(startIdx, endIdx);
+    const endIdx = startIdx + CARDS_PER_SHEET;
+    const sheetItems = paddedItems.slice(startIdx, endIdx);
+
+    const isLastSheet = sheetIdx === totalSheets - 1;
+    const extraMsg = isLastSheet && paddingCount > 0 ? ` (+${paddingCount} kartu manual kosong)` : '';
 
     const pct = Math.round(((sheetIdx + 1) / totalSheets) * 90);
     onProgress?.(
       pct,
-      `Merender lembar A3+ ke-${sheetIdx + 1} dari ${totalSheets} (${sheetItems.length} kartu)...`
+      `Merender lembar A3+ ke-${sheetIdx + 1} dari ${totalSheets} (21 kartu${extraMsg})...`
     );
 
     // Yield control to UI thread
     await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const sheetCanvas = renderA3CertificateSheet(sheetItems, certImage);
+    const sheetCanvas = renderA3CertificateSheet(sheetItems, certImage, false);
 
     // High quality JPEG compression for PDF
     const sheetImgData = sheetCanvas.toDataURL('image/jpeg', 0.94);

@@ -1250,7 +1250,7 @@ export default function AdminDashboardPage() {
           id: p?.id || r?.id || '',
           nomor_bib: r?.nomor_bib,
           nomor_registrasi: r?.nomor_registrasi,
-          nama_lengkap: r?.nama_lengkap || 'PESERTA TOUR DE GUNUNG BATU',
+          nama_lengkap: (r?.nama_lengkap || '').trim(),
           komunitas: r?.nama_komunitas,
           ukuran_jersey: p?.ukuran,
           jenis_lengan: p?.jenis_lengan,
