@@ -190,6 +190,8 @@ export default function AdminDashboardPage() {
   const [bulkBibBatchPreset, setBulkBibBatchPreset] = useState<'1-100' | '101-200' | '201-300' | '301-400'>('1-100');
   const [bulkBibCustomMin, setBulkBibCustomMin] = useState<number>(1);
   const [bulkBibCustomMax, setBulkBibCustomMax] = useState<number>(100);
+  const [bulkBibIncludeBlanks, setBulkBibIncludeBlanks] = useState(true);
+  const [bulkBibBlankCount, setBulkBibBlankCount] = useState<number>(22);
   const [bulkBibProcessing, setBulkBibProcessing] = useState(false);
   const [bulkBibProgress, setBulkBibProgress] = useState<BulkBibProgress | null>(null);
   const [bulkBibAbortCtrl, setBulkBibAbortCtrl] = useState<AbortController | null>(null);
@@ -216,24 +218,39 @@ export default function AdminDashboardPage() {
       .filter((p) => p.nomor_bib > 0)
       .sort((a, b) => a.nomor_bib - b.nomor_bib);
 
+    let filtered = all;
     if (bulkBibRangeMode === 'verified') {
-      return all.filter((p) => p.status_pembayaran === 'lunas');
-    }
-
-    if (bulkBibRangeMode === 'batch') {
+      filtered = all.filter((p) => p.status_pembayaran === 'lunas');
+    } else if (bulkBibRangeMode === 'batch') {
       const [minStr, maxStr] = bulkBibBatchPreset.split('-');
       const min = parseInt(minStr, 10);
       const max = parseInt(maxStr, 10);
-      return all.filter((p) => p.nomor_bib !== undefined && p.nomor_bib !== null && p.nomor_bib >= min && p.nomor_bib <= max);
-    }
-
-    if (bulkBibRangeMode === 'custom') {
+      filtered = all.filter((p) => p.nomor_bib !== undefined && p.nomor_bib !== null && p.nomor_bib >= min && p.nomor_bib <= max);
+    } else if (bulkBibRangeMode === 'custom') {
       const min = Number(bulkBibCustomMin) || 1;
       const max = Number(bulkBibCustomMax) || 9999;
-      return all.filter((p) => p.nomor_bib !== undefined && p.nomor_bib !== null && p.nomor_bib >= min && p.nomor_bib <= max);
+      filtered = all.filter((p) => p.nomor_bib !== undefined && p.nomor_bib !== null && p.nomor_bib >= min && p.nomor_bib <= max);
     }
 
-    return all;
+    // Tambahkan 22 nomor BIB kosong (hanya nomor saja, nama & komunitas kosong)
+    if (bulkBibIncludeBlanks && bulkBibBlankCount > 0 && filtered.length > 0) {
+      const highestBib = Math.max(...all.map((p) => p.nomor_bib || 0), 1315);
+      const baseBib = bulkBibRangeMode === 'all' ? highestBib : Math.max(...filtered.map((p) => p.nomor_bib || 0));
+      const blanks: ParticipantForBib[] = [];
+      for (let i = 1; i <= bulkBibBlankCount; i++) {
+        blanks.push({
+          id: `blank-bib-manual-${baseBib + i}`,
+          nomor_bib: baseBib + i,
+          nama_lengkap: '', // Dikosongkan agar bisa ditulis manual
+          komunitas: '', // Komunitas dikosongkan
+          nomor_registrasi: '',
+          status_pembayaran: 'lunas',
+        });
+      }
+      return [...filtered, ...blanks];
+    }
+
+    return filtered;
   };
 
   const handleStartBulkBibDownload = async () => {
@@ -4982,6 +4999,43 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Opsi Tambahan Nomor BIB Cadangan Kosong */}
+                <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-emerald-950 flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bulkBibIncludeBlanks}
+                        onChange={(e) => setBulkBibIncludeBlanks(e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span>Tambahkan Nomor BIB Cadangan Kosong (Tulis Manual)</span>
+                    </label>
+                    <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
+                      +{bulkBibBlankCount} Nomor
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Menambahkan nomor berurutan dari nomor terakhir. <strong>Nama dan komunitas otomatis dikosongkan</strong> sehingga lembar cetak terisi penuh dan siap Anda tulis manual.
+                  </p>
+                  {bulkBibIncludeBlanks && (
+                    <div className="flex items-center space-x-2 pt-1 text-xs">
+                      <span className="text-slate-600 font-semibold">Jumlah nomor kosong:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={bulkBibBlankCount}
+                        onChange={(e) => setBulkBibBlankCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-20 px-2.5 py-1 border border-emerald-300 rounded-lg text-xs font-bold bg-white text-slate-800 text-center"
+                      />
+                      <span className="text-emerald-700 text-[11px] font-medium">
+                        (Melengkapi lembar cetak hingga pas tanpa ruang kosong)
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Target Count Preview */}
                 {(() => {

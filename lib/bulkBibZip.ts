@@ -162,7 +162,7 @@ export function drawBibParticipant(
   const formattedBib = data.nomor_bib !== undefined && data.nomor_bib !== null
     ? String(data.nomor_bib).padStart(4, '0')
     : '';
-  const cleanName = (data.nama_lengkap || (data.is_panitia ? 'PANITIA' : 'PESERTA')).toUpperCase();
+  const cleanName = (data.nama_lengkap || (data.is_panitia ? 'PANITIA' : '')).trim().toUpperCase();
 
   const bibFontFamily = hasSakanaFont ? 'SakanaCanvas' : 'sans-serif';
 
@@ -188,21 +188,23 @@ export function drawBibParticipant(
     ctx.shadowOffsetY = 0;
   }
 
-  // Participant Name (Font standar sans-serif tebal sesuai histori asli)
-  let nameFontSize = data.is_panitia ? 140 : 115;
-  const nameBaselineY = formattedBib ? 1215 : 1120;
-  ctx.font = `900 ${nameFontSize}px sans-serif`;
-  const maxNameWidth = w * 0.82;
-  let nameWidth = ctx.measureText(cleanName).width;
-  if (nameWidth > maxNameWidth) {
-    nameFontSize = Math.floor(nameFontSize * (maxNameWidth / nameWidth));
+  // Participant Name (Hanya render jika nama tersedia. Jika kosong, biarkan bersih untuk ditulis manual)
+  if (cleanName) {
+    let nameFontSize = data.is_panitia ? 140 : 115;
+    const nameBaselineY = formattedBib ? 1215 : 1120;
     ctx.font = `900 ${nameFontSize}px sans-serif`;
-  }
+    const maxNameWidth = w * 0.82;
+    let nameWidth = ctx.measureText(cleanName).width;
+    if (nameWidth > maxNameWidth) {
+      nameFontSize = Math.floor(nameFontSize * (maxNameWidth / nameWidth));
+      ctx.font = `900 ${nameFontSize}px sans-serif`;
+    }
 
-  ctx.fillStyle = '#0A1338';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(cleanName, w / 2, nameBaselineY);
+    ctx.fillStyle = '#0A1338';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(cleanName, w / 2, nameBaselineY);
+  }
 
   // 3. Route Banner
   const bannerH = 108;
@@ -227,23 +229,29 @@ export function drawBibParticipant(
     bannerY + bannerH / 2
   );
 
-  // 4. Footer Badges
+  // 4. Footer Badges (Komunitas hanya digambar jika tersedia, tidak memaksakan UMUM jika sengaja dikosongkan)
+  const isPanitia = Boolean(data.is_panitia || data.divisi);
+  const rawKomunitas = (data.komunitas || '').trim();
+  const hasKomunitas = Boolean(rawKomunitas);
+
   const pillPadX = 54;
   const gap = 32;
   const badgeItems = [
-    data.is_panitia || data.divisi
+    isPanitia
       ? {
           text: `DIVISI: ${(data.divisi || 'PANITIA').toUpperCase()}`,
           background: '#1D3AAE',
           border: 'rgba(255, 255, 255, 0.3)',
           color: '#FFFFFF',
         }
-      : {
-          text: `KOMUNITAS: ${(data.komunitas || 'UMUM').toUpperCase()}`,
+      : hasKomunitas
+      ? {
+          text: `KOMUNITAS: ${rawKomunitas.toUpperCase()}`,
           background: '#1D3AAE',
           border: 'rgba(255, 255, 255, 0.3)',
           color: '#FFFFFF',
-        },
+        }
+      : null,
     data.nomor_registrasi && {
       text: `REG: ${data.nomor_registrasi}`,
       background: '#0A1338',

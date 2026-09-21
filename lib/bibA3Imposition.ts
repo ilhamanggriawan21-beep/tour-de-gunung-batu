@@ -297,6 +297,35 @@ function renderA3PlusSheet8Up(
 }
 
 /**
+ * Penuhkan daftar peserta BIB ke kelipatan lembar (A3+ = 8 kartu, A3 4-up = 4 kartu, 2-up = 2 kartu)
+ * Nomor BIB kosong lanjutan berurutan dari nomor terakhir, tanpa nama dan tanpa komunitas
+ */
+export function padBibParticipantsToFullSheets(
+  participants: ParticipantForBib[],
+  itemsPerSheet: number
+): ParticipantForBib[] {
+  if (participants.length === 0) return [];
+  const remainder = participants.length % itemsPerSheet;
+  if (remainder === 0) return participants;
+
+  const needed = itemsPerSheet - remainder;
+  const maxBib = Math.max(...participants.map((p) => p.nomor_bib || 0));
+
+  const padded: ParticipantForBib[] = [...participants];
+  for (let i = 1; i <= needed; i++) {
+    padded.push({
+      id: `blank-bib-pad-${maxBib + i}`,
+      nomor_bib: maxBib + i,
+      nama_lengkap: '', // Dikosongkan agar bisa ditulis manual
+      komunitas: '', // Komunitas dikosongkan
+      nomor_registrasi: '',
+      status_pembayaran: 'lunas',
+    });
+  }
+  return padded;
+}
+
+/**
  * Main Generator for Bulk A3 Imposition ZIP
  */
 export async function generateBulkBibA3Zip(
@@ -305,8 +334,7 @@ export async function generateBulkBibA3Zip(
   onProgress?: (progress: BibA3SheetProgress) => void,
   abortSignal?: AbortSignal
 ): Promise<Blob | null> {
-  const total = participants.length;
-  if (total === 0) {
+  if (participants.length === 0) {
     throw new Error('Tidak ada data peserta untuk dibuatkan lembar A3.');
   }
 
@@ -316,6 +344,8 @@ export async function generateBulkBibA3Zip(
       : options.layout === '2_per_sheet'
       ? 2
       : 4;
+  const effectiveParticipants = padBibParticipantsToFullSheets(participants, itemsPerSheet);
+  const total = effectiveParticipants.length;
   const totalSheets = Math.ceil(total / itemsPerSheet);
 
   onProgress?.({
@@ -371,7 +401,7 @@ export async function generateBulkBibA3Zip(
     }
 
     const startIdx = sheetIdx * itemsPerSheet;
-    const sheetParticipants = participants.slice(startIdx, startIdx + itemsPerSheet);
+    const sheetParticipants = effectiveParticipants.slice(startIdx, startIdx + itemsPerSheet);
 
     const firstBib = String(sheetParticipants[0].nomor_bib).padStart(4, '0');
     const lastBib = String(sheetParticipants[sheetParticipants.length - 1].nomor_bib).padStart(4, '0');
@@ -490,13 +520,14 @@ export async function generateBulkBibA3Pdf(
   onProgress?: (progress: BibA3SheetProgress) => void,
   abortSignal?: AbortSignal
 ): Promise<Blob | null> {
-  const total = participants.length;
-  if (total === 0) {
+  if (participants.length === 0) {
     throw new Error('Tidak ada data peserta untuk dibuatkan PDF A3.');
   }
 
   const isA3Plus = options.layout === '8_per_sheet_a3_plus';
   const itemsPerSheet = isA3Plus ? 8 : options.layout === '2_per_sheet' ? 2 : 4;
+  const effectiveParticipants = padBibParticipantsToFullSheets(participants, itemsPerSheet);
+  const total = effectiveParticipants.length;
   const totalSheets = Math.ceil(total / itemsPerSheet);
 
   onProgress?.({
@@ -559,7 +590,7 @@ export async function generateBulkBibA3Pdf(
     }
 
     const startIdx = sheetIdx * itemsPerSheet;
-    const sheetParticipants = participants.slice(startIdx, startIdx + itemsPerSheet);
+    const sheetParticipants = effectiveParticipants.slice(startIdx, startIdx + itemsPerSheet);
 
     const firstBib = String(sheetParticipants[0].nomor_bib).padStart(4, '0');
     const lastBib = String(sheetParticipants[sheetParticipants.length - 1].nomor_bib).padStart(4, '0');
