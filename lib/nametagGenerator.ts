@@ -212,32 +212,36 @@ export function drawNametagFront(
   }
 
   // 2. Member Name (Font 900 sans-serif tebal, diperbesar ekstra & agak ke bawah sedikit)
-  ctx.save();
-  const cleanName = member.nama.trim().toUpperCase();
-  let nameFontSize = 160; // Diperbesar ekstra
-  ctx.font = `900 ${nameFontSize}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-
-  const maxNameW = w * 0.92; // ~1040 px
-  let measuredW = ctx.measureText(cleanName).width;
-  if (measuredW > maxNameW) {
-    nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
+  // Hanya render teks jika nama tersedia. Jika kosong (kartu penggenap manual), biarkan kosong untuk ditulis manual
+  const cleanName = (member.nama || '').trim().toUpperCase();
+  if (cleanName) {
+    ctx.save();
+    let nameFontSize = 160; // Diperbesar ekstra
     ctx.font = `900 ${nameFontSize}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+
+    const maxNameW = w * 0.92; // ~1040 px
+    let measuredW = ctx.measureText(cleanName).width;
+    if (measuredW > maxNameW) {
+      nameFontSize = Math.floor(nameFontSize * (maxNameW / measuredW));
+      ctx.font = `900 ${nameFontSize}px sans-serif`;
+    }
+
+    // Name drop shadow
+    ctx.shadowColor = 'rgba(10, 19, 56, 0.25)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = '#0A1338'; // Deep Royal Navy
+    ctx.fillText(cleanName, w / 2, 955); // Agak ke bawah sedikit (dari 920 ke 955)
+    ctx.restore();
   }
 
-  // Name drop shadow
-  ctx.shadowColor = 'rgba(10, 19, 56, 0.25)';
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = '#0A1338'; // Deep Royal Navy
-  ctx.fillText(cleanName, w / 2, 955); // Agak ke bawah sedikit (dari 920 ke 955)
-  ctx.restore();
-
   // 3. Division Pill Badge (Diturunkan seimbang di bawah nama)
-  const divConfig = getDivisionConfig(member.divisi);
+  const divName = (member.divisi || 'PANITIA UMUM').trim();
+  const divConfig = getDivisionConfig(divName);
   ctx.save();
-  const divText = member.divisi.trim().toUpperCase();
+  const divText = divName.toUpperCase();
 
   let divFontSize = 46;
   ctx.font = `900 ${divFontSize}px sans-serif`;
@@ -300,8 +304,9 @@ export function drawNametagBack(
     ctx.fillRect(0, 0, w, h);
   }
 
-  const divConfig = getDivisionConfig(member.divisi);
-  const tasks = member.tugas && member.tugas.length > 0 ? member.tugas : getDivisionTasks(member.divisi);
+  const divName = (member.divisi || 'PANITIA UMUM').trim();
+  const divConfig = getDivisionConfig(divName);
+  const tasks = member.tugas && member.tugas.length > 0 ? member.tugas : getDivisionTasks(divName);
 
   // 2. Sub-header below "TUGAS :"
   ctx.save();
@@ -309,7 +314,7 @@ export function drawNametagBack(
   ctx.font = '900 32px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillText(`DIVISI: ${member.divisi.toUpperCase()}`, w / 2, 515);
+  ctx.fillText(`DIVISI: ${divName.toUpperCase()}`, w / 2, 515);
 
   // Accent divider line
   ctx.fillStyle = divConfig.bg;
@@ -536,7 +541,31 @@ export function renderNametagA3PlusSheet(
 }
 
 /**
+ * Penuhkan daftar panitia ke kelipatan 9 (1 lembar A3+ = 9 kartu)
+ * Slot sisa pada lembar akhir diisi kartu 'PANITIA UMUM' dengan nama kosong (siap tulis manual)
+ */
+export function padPanitiaMembersToFullSheets(members: PanitiaMember[], perSheet = 9): PanitiaMember[] {
+  if (members.length === 0) return [];
+  const remainder = members.length % perSheet;
+  const paddingCount = remainder === 0 ? 0 : perSheet - remainder;
+
+  const padded: PanitiaMember[] = [...members];
+  for (let i = 0; i < paddingCount; i++) {
+    padded.push({
+      id: `blank-panitia-${Date.now()}-${i + 1}`,
+      nama: '', // Kosongkan nama agar bisa ditulis manual
+      divisi: 'PANITIA UMUM', // Default divisi panitia umum beserta tugas belakangnya
+      nomor_panitia: `CREW #${String(members.length + i + 1).padStart(2, '0')}`,
+      golongan_darah: '',
+      tugas: DEFAULT_DIVISION_TASKS['PANITIA UMUM'],
+    });
+  }
+  return padded;
+}
+
+/**
  * Bulk Generate Nametags as a SINGLE MULTI-PAGE PDF (Duplex A3+ Ready)
+ * Lembar terakhir otomatis dipenuhi sampai 9 kartu (diisi kartu Panitia Umum dengan nama kosong)
  */
 export async function generateBulkNametagPdf(
   members: PanitiaMember[],
@@ -553,7 +582,10 @@ export async function generateBulkNametagPdf(
   ]);
 
   const perSheet = 9;
-  const totalBatches = Math.ceil(total / perSheet);
+  // Penuhkan daftar panitia agar lembar terakhir genap 9 kartu
+  const paddedMembers = padPanitiaMembersToFullSheets(members, perSheet);
+  const totalBatches = Math.ceil(paddedMembers.length / perSheet);
+  const paddingCount = paddedMembers.length - members.length;
 
   // Create 9 card canvases for rendering
   const cardCanvases: HTMLCanvasElement[] = [];
@@ -585,12 +617,14 @@ export async function generateBulkNametagPdf(
   let pageCounter = 0;
 
   for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
-    const slice = members.slice(batchIdx * perSheet, (batchIdx + 1) * perSheet);
+    const slice = paddedMembers.slice(batchIdx * perSheet, (batchIdx + 1) * perSheet);
+    const isLastBatch = batchIdx === totalBatches - 1;
+    const extraMsg = isLastBatch && paddingCount > 0 ? ` (+${paddingCount} Panitia Umum kosong)` : '';
 
     // 1. Render FRONT side
     if (mode === 'duplex_a3_plus' || mode === 'front_only_a3_plus') {
       const p = Math.round(10 + (batchIdx / totalBatches) * 40);
-      onProgress?.(p, `Merender Lembar Depan Batch #${batchIdx + 1} (${slice.length} Panitia)...`);
+      onProgress?.(p, `Merender Lembar Depan Batch #${batchIdx + 1} (${slice.length} Kartu${extraMsg})...`);
 
       for (let c = 0; c < slice.length; c++) {
         drawNametagFront(cardCanvases[c], cardContexts[c], slice[c], templateImg, hasSakana);
@@ -608,7 +642,7 @@ export async function generateBulkNametagPdf(
     // 2. Render BACK side (with horizontal mirror for duplex flip on long edge)
     if (mode === 'duplex_a3_plus' || mode === 'back_only_a3_plus') {
       const p = Math.round(50 + (batchIdx / totalBatches) * 40);
-      onProgress?.(p, `Merender Lembar Belakang Batch #${batchIdx + 1} (Tugas)...`);
+      onProgress?.(p, `Merender Lembar Belakang Batch #${batchIdx + 1} (Tugas${extraMsg})...`);
 
       for (let c = 0; c < slice.length; c++) {
         drawNametagBack(cardCanvases[c], cardContexts[c], slice[c], templateImg, hasSakana);
@@ -632,6 +666,7 @@ export async function generateBulkNametagPdf(
 
 /**
  * Bulk Generate Nametags as ZIP of A3+ sheets or individual cards
+ * Lembar A3+ otomatis dipenuhi sampai 9 kartu per lembar
  */
 export async function generateBulkNametagZip(
   members: PanitiaMember[],
@@ -678,7 +713,9 @@ export async function generateBulkNametagZip(
   } else {
     // Sheet A3+ (9 per sheet)
     const perSheet = 9;
-    const totalBatches = Math.ceil(total / perSheet);
+    const paddedMembers = padPanitiaMembersToFullSheets(members, perSheet);
+    const totalBatches = Math.ceil(paddedMembers.length / perSheet);
+    const paddingCount = paddedMembers.length - members.length;
     const folder = zip.folder('LEMBAR_A3_PLUS_NAMETAG_PANITIA_B4') || zip;
 
     const cardCanvases: HTMLCanvasElement[] = [];
@@ -700,10 +737,12 @@ export async function generateBulkNametagZip(
     if (!sheetCtx) throw new Error('Canvas context sheet tidak didukung.');
 
     for (let b = 0; b < totalBatches; b++) {
+      const isLastBatch = b === totalBatches - 1;
+      const extraMsg = isLastBatch && paddingCount > 0 ? ` (+${paddingCount} Panitia Umum kosong)` : '';
       const p = Math.round(10 + (b / totalBatches) * 80);
-      onProgress?.(p, `Merender Lembar A3+ Batch #${b + 1} dari ${totalBatches}...`);
+      onProgress?.(p, `Merender Lembar A3+ Batch #${b + 1} dari ${totalBatches}${extraMsg}...`);
 
-      const slice = members.slice(b * perSheet, (b + 1) * perSheet);
+      const slice = paddedMembers.slice(b * perSheet, (b + 1) * perSheet);
 
       // Front Sheet
       for (let c = 0; c < slice.length; c++) {
