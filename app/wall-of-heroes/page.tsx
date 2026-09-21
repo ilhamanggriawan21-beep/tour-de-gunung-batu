@@ -6,6 +6,23 @@ import TopoBackground from '@/components/TopoBackground';
 import CharityGoalProgressBar from '@/components/CharityGoalProgressBar';
 import { Users, Shirt, Search, Trophy, ShieldCheck, Heart, Award, ArrowRight, RefreshCw, Download } from 'lucide-react';
 
+function formatCompactJerseySpec(spec: string | undefined): string {
+  if (!spec) return '';
+  if (!spec.startsWith('Jersey ')) return spec;
+  const isLong = spec.includes('Long Sleeve') || spec.toLowerCase().includes('panjang');
+  const isAnak = spec.includes('Anak') || spec.toLowerCase().includes('kids');
+  const sleeve = isLong ? 'Panjang' : 'Pendek';
+  const prefix = isAnak ? 'Anak ' : '';
+  let size = '';
+  const sizeMatch = spec.match(/Size\s+([^()]+?)(?:\s*\(\d+x\))?$/i);
+  if (sizeMatch) {
+    size = sizeMatch[1].replace(/kids\s*/i, '').trim();
+  }
+  const qtyMatch = spec.match(/\((\d+)x\)/);
+  const qtyStr = qtyMatch && parseInt(qtyMatch[1], 10) > 1 ? ` (${qtyMatch[1]}x)` : '';
+  return `${prefix}${sleeve} • ${size || 'L'}${qtyStr}`;
+}
+
 export default function WallOfHeroesPage() {
   const [activeTab, setActiveTab] = useState<'peserta' | 'jersey'>('peserta');
   const [loading, setLoading] = useState(true);
@@ -431,20 +448,22 @@ export default function WallOfHeroesPage() {
                     {/* Batch & Spec Badges */}
                     <div className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2">
                       {j.batch_produksi === 1 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap shadow-xs" title="Produksi Kloter 1">
-                          Batch 1
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap shadow-xs" title="Produksi Kloter 1">
+                          <span className="sm:hidden">B1</span>
+                          <span className="hidden sm:inline">Batch 1</span>
                         </span>
                       ) : j.batch_produksi === 2 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap shadow-xs" title="Produksi Kloter 2">
-                          Batch 2
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300 whitespace-nowrap shadow-xs" title="Produksi Kloter 2">
+                          <span className="sm:hidden">B2</span>
+                          <span className="hidden sm:inline">Batch 2</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap" title="Menunggu kloter berikutnya">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap" title="Menunggu kloter berikutnya">
                           Antrian
                         </span>
                       )}
-                      <span className="inline-flex items-center px-2 py-1 rounded-xl text-[10px] font-extrabold bg-brand-navy text-brand-yellow text-center leading-tight whitespace-normal text-right">
-                        {j.jersey_spec_str}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-brand-navy text-brand-yellow whitespace-nowrap shadow-xs">
+                        {formatCompactJerseySpec(j.jersey_spec_str)}
                       </span>
                     </div>
                   </div>

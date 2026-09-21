@@ -721,15 +721,19 @@ function getLocalWallOfHeroesData(): {
   db.registrants.forEach(r => {
     const po = lunasPoMap.get(r.id);
     if (po) {
-      const sleeveStr = po.jenis_lengan === 'short_sleeve' ? 'Short Sleeve' : 'Long Sleeve';
-      const katStr = po.kategori_ukuran === 'anak' ? ' (Anak)' : '';
+      const sleeveText = po.jenis_lengan === 'short_sleeve' ? 'Pendek' : 'Panjang';
+      const isAnak = po.kategori_ukuran === 'anak' || (po.ukuran && String(po.ukuran).toLowerCase().includes('kids'));
+      const cleanSize = String(po.ukuran || 'L').replace(/kids\s*/i, '').trim();
+      const katPrefix = isAnak ? 'Anak ' : '';
+      const qtySuffix = (po.qty && po.qty > 1) ? ` (${po.qty}x)` : '';
+      const jersey_spec_str = `${katPrefix}${sleeveText} • ${cleanSize}${qtySuffix}`;
       const batch_produksi = po.batch_produksi !== undefined && po.batch_produksi !== null ? po.batch_produksi : (r.nomor_bib <= 1184 ? 1 : null);
       partisipan_jersey.push({
         id: r.id,
         nama_lengkap: r.nama_lengkap,
         komunitas: normalizeCommunityName(r.komunitas),
         nomor_bib: r.nomor_bib,
-        jersey_spec_str: `Jersey ${sleeveStr}${katStr} Size ${po.ukuran} (${po.qty}x)`,
+        jersey_spec_str,
         batch_produksi,
         created_at: r.created_at
       });
